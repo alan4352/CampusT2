@@ -1,14 +1,26 @@
+// Funciones de seguridad globales
+window.esc = function(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
+window.apiFetch = function(url, options = {}) {
+    const opts = { ...options };
+    const headers = { ...(opts.headers || {}) };
+    headers['X-Requested-With'] = 'XMLHttpRequest';
+    opts.headers = headers;
+    opts.credentials = 'same-origin';
+    return fetch(url, opts);
+};
+
 (function() {
-    // Escapa texto antes de insertarlo con innerHTML (los nombres, DNI y materias los escriben los alumnos)
-    function esc(valor) {
-        return String(valor ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    }
-
-    // Toda llamada a la API lleva esta cabecera: api.php rechaza los POST que no la traen (protección CSRF)
-    function apiFetch(url, opciones = {}) {
-        return fetch(url, { ...opciones, headers: { ...(opciones.headers || {}), 'X-Requested-With': 'preinscripciones' } });
-    }
-
+    const esc = window.esc;
+    const apiFetch = window.apiFetch;
     // Materias de cada año y tecnicatura según el plan de estudios de la EET N° 2
     const listado_materias = {
       "1er AÑO": [
@@ -1097,7 +1109,7 @@
         if (parent && !parent.querySelector('.field-error-msg')) {
             const msgEl = document.createElement('div');
             msgEl.className = 'field-error-msg';
-            msgEl.innerHTML = `<span class="material-symbols-outlined" style="font-size: 1rem; color: #b45309;">warning</span> ${esc(customMsg)}`;
+            msgEl.innerHTML = `<span class="material-symbols-outlined" style="font-size: 1rem; color: #b45309;">warning</span> ${customMsg}`;
             parent.appendChild(msgEl);
         }
         if (customWrapper) {
@@ -1327,7 +1339,6 @@
         COURSE_LEVEL_MAP,
         YEAR_LEVEL_MAP,
         initCustomSelect,
-        initAllCustomSelects,
-        esc
+        initAllCustomSelects
     };
 })();

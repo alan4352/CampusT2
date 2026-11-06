@@ -59,12 +59,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $clave = bin2hex(random_bytes(4));
 
                     // Guardamos en la BD con la contraseña CIFRADA
-                    crearAlumno($nombre, $correo, $dni, password_hash($clave, PASSWORD_DEFAULT));
+                    $nuevoId = crearAlumno($nombre, $correo, $dni, password_hash($clave, PASSWORD_DEFAULT));
 
                     // Redirigimos a login.php para iniciar sesión directamente con la clave generada
                     $_SESSION['mensaje_exito'] = [
                         'tipo'    => 'registro',
                         'rol'     => 'alumno',
+                        'id'      => $nuevoId,
                         'dni'     => $dni,
                         'clave'   => $clave,
                         'mensaje' => '¡Registro exitoso! Su cuenta ha sido creada.'
@@ -97,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Código tipo PROF-4F9A2C
                     $codigo = 'PROF-' . strtoupper(bin2hex(random_bytes(3)));
 
-                    crearProfesor($nombre, $correo, password_hash($codigo, PASSWORD_DEFAULT));
+                    $nuevoIdProf = crearProfesor($nombre, $correo, password_hash($codigo, PASSWORD_DEFAULT));
 
                     $mensaje = "Hola $nombre,\n\nSu registro como profesor fue exitoso.\n\n"
                              . "Su código de acceso es: $codigo\n\n"
@@ -107,6 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['mensaje_exito'] = [
                         'tipo'    => 'registro',
                         'rol'     => 'profesor',
+                        'id'      => $nuevoIdProf,
                         'codigo'  => $codigo,
                         'mensaje' => '¡Registro exitoso! Su cuenta de profesor ha sido creada.'
                     ];

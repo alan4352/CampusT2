@@ -29,6 +29,26 @@ $rolElegido = 'alumno';
 $dniPrellenado = '';
 $mensajeExito = null;
 
+// Control de intentos fallidos (Rate Limiting contra ataques de fuerza bruta)
+$ipRemota = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+$rateLimitKey = 'campus_login_' . md5($ipRemota);
+$rateLimitFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $rateLimitKey . '.json';
+
+$rateData = ['intentos' => 0, 'bloqueado_hasta' => 0];
+if (file_exists($rateLimitFile)) {
+    $raw = @file_get_contents($rateLimitFile);
+    if ($raw) {
+        $decoded = @json_decode($raw, true);
+        if (is_array($decoded)) {
+            $rateData = $decoded;
+        }
+    }
+}
+
+$ahora = time();
+$bloqueadoHasta = max($rateData['bloqueado_hasta'] ?? 0, $_SESSION['login_bloqueado_hasta'] ?? 0);
+$estaBloqueado = ($bloqueadoHasta > $ahora);
+
 // Si venimos de un registro o recuperación de contraseña, recuperamos el mensaje
 if (isset($_SESSION['mensaje_exito'])) {
     $mensajeExito = $_SESSION['mensaje_exito'];
@@ -46,6 +66,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $rolElegido = $_POST['rol'] ?? '';
 
+    if ($estaBloqueado) {
+        $minutosRestantes = max(1, (int) ceil(($bloqueadoHasta - $ahora) / 60));
+        $error = "Demasiados intentos fallidos. Por seguridad, el acceso ha sido bloqueado temporalmente. Intente nuevamente en {$minutosRestantes} minuto(s).";
+    } else {
+
     try {
 
         /* ---------- CASO A: ALUMNO (DNI + contraseña) ---------- */
@@ -60,11 +85,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Verificamos contraseña (password_verify compara con el hash)
             if ($alumno && password_verify($clave, $alumno['clave_hash'])) {
 
+                // Login exitoso: restablecemos el contador de intentos
+                unset($_SESSION['login_intentos'], $_SESSION['login_bloqueado_hasta']);
+                if (file_exists($rateLimitFile)) { @unlink($rateLimitFile); }
+
                 session_regenerate_id(true);
-                $_SESSION['rol']    = 'alumno';
-                $_SESSION['nombre'] = $alumno['nombre'];
-                $_SESSION['correo'] = $alumno['correo'] ?? '';
-                $_SESSION['id']     = 'alumno:' . $alumno['dni'];   // lo usa ProgMesas
+                $_SESSION['rol']        = 'alumno';
+                $_SESSION['usuario_id'] = (int) ($alumno['id'] ?? 0);
+                $_SESSION['user_id']    = (int) ($alumno['id'] ?? 0);
+                $_SESSION['nombre']     = $alumno['nombre'];
+                $_SESSION['dni']        = $alumno['dni'];
+                $_SESSION['correo']     = $alumno['correo'] ?? '';
+                $_SESSION['email']      = $alumno['correo'] ?? '';
+                $_SESSION['id']         = (int) ($alumno['id'] ?? 0);
                 header('Location: ' . destinoTrasLogin());
                 exit;
             }
@@ -80,11 +113,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // El código está cifrado, así que se compara contra cada profesor
                 foreach (listarProfesores() as $profesor) {
                     if (password_verify($codigo, $profesor['codigo_hash'])) {
+                        // Login exitoso: restablecemos el contador de intentos
+                        unset($_SESSION['login_intentos'], $_SESSION['login_bloqueado_hasta']);
+                        if (file_exists($rateLimitFile)) { @unlink($rateLimitFile); }
+
                         session_regenerate_id(true);
-                        $_SESSION['rol']    = 'profesor';
-                        $_SESSION['nombre'] = $profesor['nombre'];
-                        $_SESSION['correo'] = $profesor['correo'] ?? '';
-                        $_SESSION['id']     = 'profesor:' . strtolower($profesor['correo'] ?? $profesor['nombre']);
+                        $_SESSION['rol']        = 'profesor';
+                        $_SESSION['usuario_id'] = (int) ($profesor['id'] ?? 0);
+                        $_SESSION['user_id']    = (int) ($profesor['id'] ?? 0);
+                        $_SESSION['nombre']     = $profesor['nombre'];
+                        $_SESSION['correo']     = $profesor['correo'] ?? '';
+                        $_SESSION['email']      = $profesor['correo'] ?? '';
+                        $_SESSION['id']         = (int) ($profesor['id'] ?? 0);
                         header('Location: ' . destinoTrasLogin());
                         exit;
                     }
@@ -103,11 +143,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (strtolower($correo) === strtolower($directivo['correo'])
                     && password_verify($clave, $directivo['clave_hash'])) {
 
+                    // Login exitoso: restablecemos el contador de intentos
+                    unset($_SESSION['login_intentos'], $_SESSION['login_bloqueado_hasta']);
+                    if (file_exists($rateLimitFile)) { @unlink($rateLimitFile); }
+
                     session_regenerate_id(true);
-                    $_SESSION['rol']    = 'directivo';
-                    $_SESSION['nombre'] = $directivo['nombre'];
-                    $_SESSION['correo'] = $directivo['correo'];
-                    $_SESSION['id']     = 'directivo:' . strtolower($directivo['correo']);
+                    $_SESSION['rol']        = 'directivo';
+                    $_SESSION['usuario_id'] = 'directivo:' . strtolower($directivo['correo']);
+                    $_SESSION['user_id']    = 'directivo:' . strtolower($directivo['correo']);
+                    $_SESSION['nombre']     = $directivo['nombre'];
+                    $_SESSION['correo']     = $directivo['correo'];
+                    $_SESSION['email']      = $directivo['correo'];
+                    $_SESSION['id']         = 'directivo:' . strtolower($directivo['correo']);
                     header('Location: ' . destinoTrasLogin());
                     exit;
                 }
@@ -124,6 +171,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // No mostramos detalles técnicos al visitante; quedan en el log del servidor
         error_log('Error de BD en login: ' . $ex->getMessage());
         $error = 'No se pudo conectar con la base de datos. Intente más tarde.';
+    }
+
+    // Si hubo un fallo de autenticación, incrementamos el contador de intentos
+    if ($error !== '') {
+        $intentos = ($rateData['intentos'] ?? 0) + 1;
+        $bloqueadoHasta = 0;
+        if ($intentos >= 5) {
+            $bloqueadoHasta = time() + 900; // 15 minutos de bloqueo tras 5 intentos
+            $error = 'Demasiados intentos fallidos. Por seguridad, su acceso ha sido bloqueado temporalmente por 15 minutos.';
+        }
+        $rateData = ['intentos' => $intentos, 'bloqueado_hasta' => $bloqueadoHasta];
+        $_SESSION['login_intentos'] = $intentos;
+        $_SESSION['login_bloqueado_hasta'] = $bloqueadoHasta;
+        @file_put_contents($rateLimitFile, json_encode($rateData));
+    }
     }
 }
 ?>

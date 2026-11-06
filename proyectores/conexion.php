@@ -64,6 +64,7 @@ function asegurar_estructura_proyectores(PDO $pdo): void
     $pdo->exec("CREATE TABLE IF NOT EXISTS `reservas` (
         `id` int NOT NULL AUTO_INCREMENT,
         `proyector_id` int NOT NULL,
+        `docente_id` int DEFAULT NULL,
         `dia` timestamp NOT NULL,
         `hora_inicio` varchar(20) NOT NULL,
         `hora_fin` varchar(20) NOT NULL,
@@ -73,8 +74,17 @@ function asegurar_estructura_proyectores(PDO $pdo): void
         `docente` varchar(150) NOT NULL,
         PRIMARY KEY (`id`),
         KEY `proyector_id` (`proyector_id`),
+        KEY `idx_docente_id` (`docente_id`),
         CONSTRAINT `fk_reservas_proyectores` FOREIGN KEY (`proyector_id`) REFERENCES `proyectores` (`ID`) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    try {
+        $cols = $pdo->query("DESCRIBE `reservas`")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('docente_id', $cols, true)) {
+            $pdo->exec("ALTER TABLE `reservas` ADD COLUMN `docente_id` INT NULL DEFAULT NULL AFTER `proyector_id`, ADD INDEX `idx_reservas_docente_id` (`docente_id`)");
+        }
+    } catch (Throwable $e) {
+    }
 
     // Insertar proyectores iniciales si la tabla está vacía
     $cant = (int)$pdo->query("SELECT COUNT(*) FROM `proyectores`")->fetchColumn();
@@ -135,17 +145,42 @@ function usuario_reservas(): ?array
     $nombre = trim((string) $_SESSION['nombre']);
 
     if ($rol === 'directivo') {
-        $usuario = ['rol' => 'directivo', 'nombre' => $nombre];
+        $usuario = [
+            'id'     => $_SESSION['usuario_id'] ?? $_SESSION['user_id'] ?? 'directivo',
+            'rol'    => 'directivo',
+            'nombre' => $nombre,
+            'correo' => $_SESSION['correo'] ?? $_SESSION['email'] ?? ''
+        ];
     } elseif ($rol === 'profesor') {
-        // La sesión trae lo que guardó el login (`profesores.nombre`). Se acepta tanto el nombre completo como el valor de
-        // `nombre` (como antes), y se usa el nombre completo escrito en la base, que es el que ve el directivo en su lista.
-        $pdo      = conectar();
-        $completo = sql_nombre_completo($pdo);
-        $st = $pdo->prepare("SELECT $completo FROM profesores WHERE $completo = ? OR nombre = ? LIMIT 1");
-        $st->execute([$nombre, $nombre]);
-        $nombreBD = $st->fetchColumn();
-        if ($nombreBD !== false && trim((string) $nombreBD) !== '') {
-            $usuario = ['rol' => 'profesor', 'nombre' => (string) $nombreBD];
+        $pdo        = conectar();
+        $completo   = sql_nombre_completo($pdo);
+        $profId     = (int)($_SESSION['usuario_id'] ?? $_SESSION['user_id'] ?? (is_numeric($_SESSION['id'] ?? null) ? $_SESSION['id'] : 0));
+        $correoProf = strtolower(trim((string)($_SESSION['correo'] ?? $_SESSION['email'] ?? '')));
+
+        $profFila = false;
+        if ($profId > 0) {
+            $st = $pdo->prepare("SELECT id, $completo AS completo, correo FROM profesores WHERE id = ? LIMIT 1");
+            $st->execute([$profId]);
+            $profFila = $st->fetch();
+        }
+        if ($profFila === false && $correoProf !== '') {
+            $st = $pdo->prepare("SELECT id, $completo AS completo, correo FROM profesores WHERE correo = ? LIMIT 1");
+            $st->execute([$correoProf]);
+            $profFila = $st->fetch();
+        }
+        if ($profFila === false) {
+            $st = $pdo->prepare("SELECT id, $completo AS completo, correo FROM profesores WHERE $completo = ? OR nombre = ? LIMIT 1");
+            $st->execute([$nombre, $nombre]);
+            $profFila = $st->fetch();
+        }
+
+        if ($profFila !== false && trim((string)($profFila['completo'] ?? '')) !== '') {
+            $usuario = [
+                'id'     => (int) $profFila['id'],
+                'rol'    => 'profesor',
+                'nombre' => (string) $profFila['completo'],
+                'correo' => (string) ($profFila['correo'] ?? $correoProf)
+            ];
         }
     }
     return $usuario;
@@ -189,10 +224,21 @@ function mismo_nombre(string $a, string $b): bool
     return mb_strtolower(trim($a), 'UTF-8') === mb_strtolower(trim($b), 'UTF-8');
 }
 
-/** El directivo cancela cualquier reserva; el profesor solo las que están a su nombre. */
-function puede_eliminar_reserva(array $usuario, string $docente): bool
+/** El directivo cancela cualquier reserva; el profesor solo las que están a su nombre o ID. */
+function puede_eliminar_reserva(array $usuario, $reservaOTexto): bool
 {
-    return $usuario['rol'] === 'directivo' || mismo_nombre($usuario['nombre'], $docente);
+    if ($usuario['rol'] === 'directivo') {
+        return true;
+    }
+    if (is_array($reservaOTexto)) {
+        if (!empty($reservaOTexto['docente_id']) && !empty($usuario['id'])) {
+            return (int)$reservaOTexto['docente_id'] === (int)$usuario['id'];
+        }
+        $docenteNombre = (string)($reservaOTexto['docente'] ?? $reservaOTexto['nombre'] ?? '');
+    } else {
+        $docenteNombre = (string)$reservaOTexto;
+    }
+    return mismo_nombre($usuario['nombre'], $docenteNombre);
 }
 
 /**

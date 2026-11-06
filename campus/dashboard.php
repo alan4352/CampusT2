@@ -106,10 +106,6 @@ $etiquetaRol = $etiquetas[$rol] ?? 'Usuario';
                 <h2>Control de programas de examen</h2>
                 <p>Vea qué programas faltan por curso y por docente, fije la fecha límite y revise el registro.</p>
             </a>
-            <a class="modulo" href="restablecer.php">
-                <h2>Restablecer contraseña de alumno</h2>
-                <p>Genere una contraseña nueva para un alumno que olvidó la suya.</p>
-            </a>
         <?php
         } elseif ($rol === 'profesor') {
         ?>
@@ -123,6 +119,18 @@ $etiquetaRol = $etiquetas[$rol] ?? 'Usuario';
             <a class="modulo" href="programas.php">
                 <h2>Programa de examen</h2>
                 <p>Descargue el programa de examen de cada materia.</p>
+            </a>
+        <?php } ?>
+
+        <?php
+        /* =============================================================
+           MÓDULO: RESTABLECER CONTRASEÑAS (SOLO DIRECTIVO)
+           ============================================================= */
+        if ($rol === 'directivo') {
+        ?>
+            <a class="modulo" href="restablecer.php">
+                <h2>Restablecer contraseñas</h2>
+                <p>Genere una nueva contraseña para los alumnos que hayan olvidado su acceso.</p>
             </a>
         <?php } ?>
 

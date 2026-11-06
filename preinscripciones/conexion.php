@@ -74,34 +74,51 @@ function usuario_mesas(?string $rolRequerido = null): ?array
     }
 
     if ($rol === 'alumno') {
-        // El DNI sale de la sesión (login.php guarda id = "alumno:<DNI>"), nunca del nombre: dos alumnos pueden llamarse igual
-        $dniSesion = preg_match('/^alumno:(\d{7,8})$/', (string) ($_SESSION['id'] ?? ''), $m) ? $m[1] : '';
-        if ($dniSesion === '') {
-            return ['rol' => 'alumno', 'nombre' => $nombre, 'dni' => '', 'correo' => ''];
-        }
+        $alumnoId = (int)($_SESSION['usuario_id'] ?? $_SESSION['user_id'] ?? (is_numeric($_SESSION['id'] ?? null) ? $_SESSION['id'] : 0));
+        $dniSesion = trim((string)($_SESSION['dni'] ?? ''));
+        $correoSesion = strtolower(trim((string)($_SESSION['correo'] ?? $_SESSION['email'] ?? '')));
 
+        // Buscamos el alumno usando su ID único generado automáticamente o su DNI/Correo.
+        // NUNCA usamos solo el nombre, para permitir múltiples alumnos homónimos con diferentes DNI y Gmail.
         try {
-            $st = conectar()->prepare('SELECT nombre, dni, correo FROM alumnos WHERE dni = ? LIMIT 1');
-            $st->execute([$dniSesion]);
-            $fila = $st->fetch();
+            $pdo = conectar();
+            $fila = false;
+            if ($alumnoId > 0) {
+                $st = $pdo->prepare('SELECT id, nombre, dni, correo FROM alumnos WHERE id = ? LIMIT 1');
+                $st->execute([$alumnoId]);
+                $fila = $st->fetch();
+            }
+            if ($fila === false && $dniSesion !== '') {
+                $st = $pdo->prepare('SELECT id, nombre, dni, correo FROM alumnos WHERE dni = ? LIMIT 1');
+                $st->execute([$dniSesion]);
+                $fila = $st->fetch();
+            }
+            if ($fila === false && $correoSesion !== '') {
+                $st = $pdo->prepare('SELECT id, nombre, dni, correo FROM alumnos WHERE correo = ? LIMIT 1');
+                $st->execute([$correoSesion]);
+                $fila = $st->fetch();
+            }
             if ($fila !== false) {
                 return [
+                    'id'     => (int) $fila['id'],
                     'rol'    => 'alumno',
                     'nombre' => (string) $fila['nombre'],
-                    'dni'    => (string) ($fila['dni'] ?? ''),
-                    'correo' => (string) ($fila['correo'] ?? ''),
+                    'dni'    => (string) ($fila['dni'] ?? $dniSesion),
+                    'correo' => (string) ($fila['correo'] ?? $correoSesion),
                 ];
             }
         } catch (Throwable $e) {
             error_log('conexion.php (consulta alumno): ' . $e->getMessage());
         }
 
-        // Si es uno de los alumnos de prueba cargados en datos.php, tomamos sus datos de ahí
+        // Si es uno de los alumnos de prueba cargados en datos.php, buscamos por DNI o correo
         global $ALUMNOS;
         if (isset($ALUMNOS) && is_array($ALUMNOS)) {
-            foreach ($ALUMNOS as $al) {
-                if ((string) ($al['dni'] ?? '') === $dniSesion) {
+            foreach ($ALUMNOS as $idx => $al) {
+                if (($dniSesion !== '' && ($al['dni'] ?? '') === $dniSesion) ||
+                    ($correoSesion !== '' && strtolower($al['correo'] ?? '') === $correoSesion)) {
                     return [
+                        'id'     => $idx + 1,
                         'rol'    => 'alumno',
                         'nombre' => (string) $al['nombre'],
                         'dni'    => (string) ($al['dni'] ?? ''),
@@ -112,26 +129,33 @@ function usuario_mesas(?string $rolRequerido = null): ?array
         }
 
         return [
+            'id'     => $alumnoId > 0 ? $alumnoId : null,
             'rol'    => 'alumno',
             'nombre' => $nombre,
-            'dni'    => '',
-            'correo' => '',
+            'dni'    => $dniSesion,
+            'correo' => $correoSesion,
         ];
     }
 
     return null;
 }
 
+/** Exige cabecera X-Requested-With en peticiones que modifican datos para mitigar ataques CSRF */
+function exigir_peticion_propia(): void
+{
+    $m = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    if (in_array($m, ['GET', 'HEAD', 'OPTIONS'], true)) {
+        return;
+    }
+    if (empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
+        responder_json(['success' => false, 'error' => 'Petición no permitida (falta cabecera CSRF)'], 403);
+    }
+}
+
 // Función que usamos en api.php para bloquear peticiones si no hay sesión iniciada
 function exigir_usuario_api(bool $soloDirectivo = false): array
 {
-    // CSRF: lo que modifica datos solo se acepta desde las páginas del módulo, que mandan esta cabecera
-    // (otro sitio no puede agregarla sin CORS, que este servidor no habilita)
-    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET'
-        && ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'preinscripciones') {
-        responder_json(['success' => false, 'error' => 'Petición no permitida'], 403);
-    }
-
+    exigir_peticion_propia();
     $u = null;
     try {
         $u = usuario_mesas();
@@ -170,6 +194,7 @@ SQL,
         <<<'SQL'
 CREATE TABLE IF NOT EXISTS `alumnos_inscripciones` (
   `id` varchar(50) NOT NULL,
+  `alumno_id` int DEFAULT NULL,
   `student_name` varchar(150) NOT NULL,
   `student_dni` varchar(20) NOT NULL,
   `student_course` varchar(50) NOT NULL,
@@ -177,7 +202,8 @@ CREATE TABLE IF NOT EXISTS `alumnos_inscripciones` (
   `student_email` varchar(150) DEFAULT NULL,
   `paid` tinyint(1) DEFAULT 0,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_ai_alumno_id` (`alumno_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
         <<<'SQL'
@@ -220,6 +246,14 @@ function asegurar_estructura(PDO $pdo): void
 {
     foreach (sql_tablas_mesas() as $sql) {
         $pdo->exec($sql);
+    }
+
+    try {
+        $cols = $pdo->query("DESCRIBE alumnos_inscripciones")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('alumno_id', $cols, true)) {
+            $pdo->exec("ALTER TABLE alumnos_inscripciones ADD COLUMN alumno_id INT NULL DEFAULT NULL AFTER id, ADD INDEX idx_ai_alumno_id (alumno_id)");
+        }
+    } catch (Throwable $e) {
     }
 
     // Valores por defecto de configuración si la tabla está vacía

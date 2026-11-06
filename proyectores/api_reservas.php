@@ -186,7 +186,7 @@ try {
             responder_json(['error' => 'Fecha inválida'], 400);
         }
         $st = $pdo->prepare(
-            "SELECT ID, proyector_id, hora_inicio, materia, curso, docente
+            "SELECT ID, proyector_id, docente_id, hora_inicio, materia, curso, docente
              FROM reservas
              WHERE dia >= ? AND dia < ? AND estado_reserva = 'reservado'"
         );
@@ -199,7 +199,7 @@ try {
                 'materia' => $r['materia'],
                 'curso'   => $r['curso'],
                 'nombre'  => $r['docente'],
-                'puede_eliminar' => puede_eliminar_reserva($usuario, (string) $r['docente']),
+                'puede_eliminar' => puede_eliminar_reserva($usuario, $r),
             ];
         }
         foreach ($mapa as $pid => $turnos) {   // objetos (no listas) aunque haya una sola clave
@@ -281,11 +281,12 @@ try {
              WHERE proyector_id = ? AND dia >= ? AND dia < ? AND hora_inicio = ? AND estado_reserva = 'disponible'"
         )->execute([$pid, $desde, $hasta, $ini . ':00']);
 
+        $docenteId = ($usuario['rol'] === 'profesor') ? ($usuario['id'] ?? null) : null;
         try {
             $pdo->prepare(
-                "INSERT INTO reservas (proyector_id, dia, hora_inicio, hora_fin, estado_reserva, materia, curso, docente)
-                 VALUES (?, ?, ?, ?, 'reservado', ?, ?, ?)"
-            )->execute([$pid, $fecha . ' 00:00:00', $ini . ':00', $fin . ':00', $materia, $curso, $nombre]);
+                "INSERT INTO reservas (proyector_id, docente_id, dia, hora_inicio, hora_fin, estado_reserva, materia, curso, docente)
+                 VALUES (?, ?, ?, ?, ?, 'reservado', ?, ?, ?)"
+            )->execute([$pid, $docenteId, $fecha . ' 00:00:00', $ini . ':00', $fin . ':00', $materia, $curso, $nombre]);
         } catch (PDOException $e) {
             if ((int) ($e->errorInfo[1] ?? 0) === 1062) {   // otro usuario reservó justo antes
                 responder_json(['error' => 'El turno ya está reservado', 'existing' => true], 409);
@@ -317,7 +318,7 @@ try {
         // primero se busca la reserva para saber a nombre de quién está
         [$desde, $hasta] = rango_dia($fecha);
         $st = $pdo->prepare(
-            "SELECT ID, docente, hora_fin FROM reservas
+            "SELECT ID, docente_id, docente, hora_fin FROM reservas
              WHERE proyector_id = ? AND dia >= ? AND dia < ? AND hora_inicio = ? AND estado_reserva = 'reservado' LIMIT 1"
         );
         $st->execute([(int) $proy, $desde, $hasta, $hora . ':00']);
@@ -326,7 +327,7 @@ try {
             responder_json(['error' => 'Reserva no encontrada'], 404);
         }
         // el profesor solo puede cancelar las suyas; el directivo, cualquiera
-        if (!puede_eliminar_reserva($usuario, (string) $reserva['docente'])) {
+        if (!puede_eliminar_reserva($usuario, $reserva)) {
             responder_json(['error' => 'Solo podés cancelar las reservas hechas a tu nombre'], 403);
         }
         // igual que la página: una reserva de un turno que ya pasó queda como registro y no se cancela

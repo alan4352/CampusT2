@@ -440,6 +440,9 @@ $nombreDirectivo = $usuario['nombre'] !== '' ? $usuario['nombre'] : 'Directivo/a
                                 </div>
                             </div>
 
+                            <!-- Cartel de aviso de período de abonos -->
+                            <div id="abonosPeriodNotice" class="alert-custom alert-warning" style="margin-bottom: 1.2rem; display: none; align-items: center; gap: 0.8rem;"></div>
+
                             <!-- Filtros Dinámicos -->
                             <div class="filter-bar">
                                 <select id="filterCourseAbono" class="form-select filter-item">

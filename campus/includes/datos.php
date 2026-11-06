@@ -22,6 +22,7 @@
    --------------------------------------------------------------------- */
 $ALUMNOS = [
     [
+        'id'         => 1,
         'nombre'     => 'Lucía Fernández',
         'correo'     => 'alumno@gmail.com',
         'dni'        => '40123456',
@@ -37,6 +38,7 @@ $ALUMNOS = [
    --------------------------------------------------------------------- */
 $PROFESORES = [
     [
+        'id'          => 1,
         'nombre'      => 'Martín Gómez',
         'correo'      => 'profesor@escuela.edu.ar',
         'codigo_hash' => password_hash('PROF-A1B2C3', PASSWORD_DEFAULT), // Código de prueba: PROF-A1B2C3

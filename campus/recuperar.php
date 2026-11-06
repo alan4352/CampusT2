@@ -1,10 +1,10 @@
 <?php
 /* =====================================================================
    ARCHIVO: recuperar.php
-   PARA QUÉ SIRVE: le explica al alumno cómo recuperar su contraseña.
-   La contraseña NO se restablece desde acá: con el DNI y una clave
-   compartida cualquiera podía quedarse con la cuenta de otro alumno.
-   La restablece un directivo desde restablecer.php.
+   PARA QUÉ SIRVE: información para alumnos sobre cómo restablecer su
+   contraseña de forma segura. Por motivos de seguridad y privacidad,
+   las contraseñas las restablece el personal directivo de la institución
+   en campus/restablecer.php.
    ===================================================================== */
 require_once 'includes/sesion.php';
 
@@ -30,10 +30,19 @@ if (estaLogueado()) {
     <h1>Campus Virtual</h1>
     <p class="login__sub">Recuperar contraseña de Alumno</p>
 
-    <div class="exito">
-        <p><strong>¿Olvidó su contraseña?</strong></p>
-        <p>Pídale a un directivo de la escuela que la restablezca. Le van a pedir su <strong>DNI</strong>
-           y le van a dar una contraseña nueva para ingresar.</p>
+    <div class="formulario" style="display: block; text-align: left; line-height: 1.6;">
+        <p style="margin-top: 0; font-size: 1.05rem;">
+            <strong>¿Olvidaste tu contraseña de alumno?</strong>
+        </p>
+        <p style="color: var(--color-texto-suave, #555); font-size: 0.95rem;">
+            Por motivos de seguridad y para proteger la privacidad de las cuentas y solicitudes de exámenes, las contraseñas de los alumnos ya no se restablecen públicamente.
+        </p>
+        <div style="background: rgba(160, 20, 20, 0.08); border-left: 4px solid var(--color-guinda, #6b0f1a); padding: 0.85rem 1rem; border-radius: 4px; margin: 1rem 0;">
+            <p style="margin: 0; font-size: 0.92rem; color: #222;">
+                <strong>¿Cómo solicitar una nueva clave?</strong><br>
+                Acercate a la <strong>Preceptoría, Secretaría o Dirección</strong> de la escuela con tu DNI. El personal directivo restablecerá tu acceso de forma inmediata.
+            </div>
+        </div>
     </div>
 
     <!-- ACCIONES: VOLVER AL LOGIN Y AL INICIO -->

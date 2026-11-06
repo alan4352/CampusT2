@@ -16,41 +16,56 @@ require_once __DIR__ . '/db.php';
 
 
 /* ---------------------------------------------------------------------
+   TABLAS Y ESTRUCTURA AUTOMÁTICA
+   --------------------------------------------------------------------- */
+
+function asegurarTablasUsuarios(PDO $pdo) {
+    static $aseguradas = false;
+    if ($aseguradas) {
+        return;
+    }
+    $pdo->exec("CREATE TABLE IF NOT EXISTS alumnos (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nombre VARCHAR(100) NOT NULL,
+        correo VARCHAR(150) NOT NULL,
+        dni VARCHAR(20) NOT NULL UNIQUE,
+        clave_hash VARCHAR(255) NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS profesores (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nombre VARCHAR(100) NOT NULL,
+        correo VARCHAR(150) NOT NULL UNIQUE,
+        codigo_hash VARCHAR(255) NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    $aseguradas = true;
+}
+
+
+/* ---------------------------------------------------------------------
    ALUMNOS
    --------------------------------------------------------------------- */
 
-// Devuelve el alumno con ese correo (array) o false si no existe.
+// Devuelve el alumno con ese correo (array con id, nombre, correo, dni, clave_hash) o false si no existe.
 function buscarAlumnoPorCorreo($correo) {
-    $st = conectarBD()->prepare('SELECT nombre, correo, dni, clave_hash FROM alumnos WHERE correo = ? LIMIT 1');
-    $st->execute([strtolower(trim($correo))]);
-    return $st->fetch();
-}
-
-// Devuelve el alumno con ese DNI (array) o false si no existe.
-function buscarAlumnoPorDni($dni) {
-    $dniLimpio = trim($dni);
+    $correoLimpio = strtolower(trim($correo));
     try {
         $pdo = conectarBD();
-        $pdo->exec("CREATE TABLE IF NOT EXISTS alumnos (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            nombre VARCHAR(100) NOT NULL,
-            correo VARCHAR(150) NOT NULL,
-            dni VARCHAR(20) NOT NULL UNIQUE,
-            clave_hash VARCHAR(255) NOT NULL
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-        $st = $pdo->prepare('SELECT nombre, correo, dni, clave_hash FROM alumnos WHERE dni = ? LIMIT 1');
-        $st->execute([$dniLimpio]);
+        asegurarTablasUsuarios($pdo);
+        $st = $pdo->prepare('SELECT id, nombre, correo, dni, clave_hash FROM alumnos WHERE correo = ? LIMIT 1');
+        $st->execute([$correoLimpio]);
         $fila = $st->fetch();
         if ($fila !== false) {
             return $fila;
         }
     } catch (PDOException $e) {
-        // Fallback sin MySQL: buscar en $ALUMNOS de includes/datos.php
     }
     global $ALUMNOS;
     if (isset($ALUMNOS) && is_array($ALUMNOS)) {
-        foreach ($ALUMNOS as $al) {
-            if (($al['dni'] ?? '') === $dniLimpio) {
+        foreach ($ALUMNOS as $idx => $al) {
+            if (strtolower(trim($al['correo'] ?? '')) === $correoLimpio) {
+                $al['id'] = $idx + 1;
                 return $al;
             }
         }
@@ -58,22 +73,81 @@ function buscarAlumnoPorDni($dni) {
     return false;
 }
 
+// Devuelve el alumno con ese DNI (array con id, nombre, correo, dni, clave_hash) o false si no existe.
+function buscarAlumnoPorDni($dni) {
+    $dniLimpio = trim($dni);
+    try {
+        $pdo = conectarBD();
+        asegurarTablasUsuarios($pdo);
+        $st = $pdo->prepare('SELECT id, nombre, correo, dni, clave_hash FROM alumnos WHERE dni = ? LIMIT 1');
+        $st->execute([$dniLimpio]);
+        $fila = $st->fetch();
+        if ($fila !== false) {
+            return $fila;
+        }
+    } catch (PDOException $e) {
+    }
+    global $ALUMNOS;
+    if (isset($ALUMNOS) && is_array($ALUMNOS)) {
+        foreach ($ALUMNOS as $idx => $al) {
+            if (($al['dni'] ?? '') === $dniLimpio) {
+                $al['id'] = $idx + 1;
+                return $al;
+            }
+        }
+    }
+    return false;
+}
+
+// Devuelve el alumno por su ID numérico auto-incrementable único en la base de datos
+function buscarAlumnoPorId($id) {
+    $idNum = (int)$id;
+    if ($idNum <= 0) {
+        return false;
+    }
+    try {
+        $pdo = conectarBD();
+        asegurarTablasUsuarios($pdo);
+        $st = $pdo->prepare('SELECT id, nombre, correo, dni, clave_hash FROM alumnos WHERE id = ? LIMIT 1');
+        $st->execute([$idNum]);
+        $fila = $st->fetch();
+        if ($fila !== false) {
+            return $fila;
+        }
+    } catch (PDOException $e) {
+    }
+    global $ALUMNOS;
+    if (isset($ALUMNOS) && is_array($ALUMNOS) && isset($ALUMNOS[$idNum - 1])) {
+        $al = $ALUMNOS[$idNum - 1];
+        $al['id'] = $idNum;
+        return $al;
+    }
+    return false;
+}
+
 // true si ya hay un alumno con ese correo O ese DNI.
 function existeAlumno($correo, $dni) {
-    $st = conectarBD()->prepare('SELECT 1 FROM alumnos WHERE correo = ? OR dni = ? LIMIT 1');
-    $st->execute([$correo, $dni]);
+    $pdo = conectarBD();
+    asegurarTablasUsuarios($pdo);
+    $st = $pdo->prepare('SELECT 1 FROM alumnos WHERE correo = ? OR dni = ? LIMIT 1');
+    $st->execute([strtolower(trim($correo)), trim($dni)]);
     return $st->fetchColumn() !== false;
 }
 
-// Inserta un alumno nuevo. La clave ya debe venir cifrada (password_hash).
+// Inserta un alumno nuevo. Devuelve el ID auto-generado único de la fila insertada.
 function crearAlumno($nombre, $correo, $dni, $claveHash) {
-    $st = conectarBD()->prepare('INSERT INTO alumnos (nombre, correo, dni, clave_hash) VALUES (?, ?, ?, ?)');
-    $st->execute([$nombre, $correo, $dni, $claveHash]);
+    $pdo = conectarBD();
+    asegurarTablasUsuarios($pdo);
+    $st = $pdo->prepare('INSERT INTO alumnos (nombre, correo, dni, clave_hash) VALUES (?, ?, ?, ?)');
+    $st->execute([trim($nombre), strtolower(trim($correo)), trim($dni), $claveHash]);
+    return (int) $pdo->lastInsertId();
 }
 
 // Actualiza la contraseña cifrada de un alumno identificado por su DNI.
 function actualizarClaveAlumno($dni, $claveHash) {
-    $st = conectarBD()->prepare('UPDATE alumnos SET clave_hash = ? WHERE dni = ?');
+    $pdo = conectarBD();
+    asegurarTablasUsuarios($pdo);
+    $st = $pdo->prepare('UPDATE alumnos SET clave_hash = ? WHERE dni = ?');
     return $st->execute([$claveHash, trim($dni)]);
 }
 
@@ -82,22 +156,79 @@ function actualizarClaveAlumno($dni, $claveHash) {
    PROFESORES
    --------------------------------------------------------------------- */
 
-// Devuelve todos los profesores (el login compara el código contra cada hash).
+// Devuelve todos los profesores con id, nombre, correo, codigo_hash
 function listarProfesores() {
-    return conectarBD()->query('SELECT nombre, correo, codigo_hash FROM profesores')->fetchAll();
+    try {
+        $pdo = conectarBD();
+        asegurarTablasUsuarios($pdo);
+        return $pdo->query('SELECT id, nombre, correo, codigo_hash FROM profesores ORDER BY id ASC')->fetchAll();
+    } catch (PDOException $e) {
+    }
+    global $PROFESORES;
+    if (isset($PROFESORES) && is_array($PROFESORES)) {
+        $lista = [];
+        foreach ($PROFESORES as $idx => $p) {
+            $p['id'] = $idx + 1;
+            $lista[] = $p;
+        }
+        return $lista;
+    }
+    return [];
+}
+
+// Devuelve el profesor por su ID único auto-incrementable
+function buscarProfesorPorId($id) {
+    $idNum = (int)$id;
+    if ($idNum <= 0) {
+        return false;
+    }
+    try {
+        $pdo = conectarBD();
+        asegurarTablasUsuarios($pdo);
+        $st = $pdo->prepare('SELECT id, nombre, correo, codigo_hash FROM profesores WHERE id = ? LIMIT 1');
+        $st->execute([$idNum]);
+        $fila = $st->fetch();
+        if ($fila !== false) {
+            return $fila;
+        }
+    } catch (PDOException $e) {
+    }
+    return false;
+}
+
+// Devuelve el profesor por correo
+function buscarProfesorPorCorreo($correo) {
+    $correoLimpio = strtolower(trim($correo));
+    try {
+        $pdo = conectarBD();
+        asegurarTablasUsuarios($pdo);
+        $st = $pdo->prepare('SELECT id, nombre, correo, codigo_hash FROM profesores WHERE correo = ? LIMIT 1');
+        $st->execute([$correoLimpio]);
+        $fila = $st->fetch();
+        if ($fila !== false) {
+            return $fila;
+        }
+    } catch (PDOException $e) {
+    }
+    return false;
 }
 
 // true si ya hay un profesor con ese correo.
 function existeProfesor($correo) {
-    $st = conectarBD()->prepare('SELECT 1 FROM profesores WHERE correo = ? LIMIT 1');
-    $st->execute([$correo]);
+    $pdo = conectarBD();
+    asegurarTablasUsuarios($pdo);
+    $st = $pdo->prepare('SELECT 1 FROM profesores WHERE correo = ? LIMIT 1');
+    $st->execute([strtolower(trim($correo))]);
     return $st->fetchColumn() !== false;
 }
 
-// Inserta un profesor nuevo. El código ya debe venir cifrado (password_hash).
+// Inserta un profesor nuevo y devuelve su ID numérico auto-generado único.
 function crearProfesor($nombre, $correo, $codigoHash) {
-    $st = conectarBD()->prepare('INSERT INTO profesores (nombre, correo, codigo_hash) VALUES (?, ?, ?)');
-    $st->execute([$nombre, $correo, $codigoHash]);
+    $pdo = conectarBD();
+    asegurarTablasUsuarios($pdo);
+    $st = $pdo->prepare('INSERT INTO profesores (nombre, correo, codigo_hash) VALUES (?, ?, ?)');
+    $st->execute([trim($nombre), strtolower(trim($correo)), $codigoHash]);
+    return (int) $pdo->lastInsertId();
 }
 
 

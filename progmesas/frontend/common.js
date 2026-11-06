@@ -174,9 +174,9 @@ async function cargarIdentidad() {
  */
 async function api(ruta, opciones = {}) {
     const token = leerToken();
-    // La cabecera X-Requested-With deja que api.php acepte la sesión del campus en pedidos que modifican datos (anti-CSRF)
-    const headers = { ...(opciones.headers || {}), 'X-Requested-With': 'progmesas' };
+    const headers = { ...(opciones.headers || {}) };
     if (token) headers.Authorization = 'Bearer ' + token;
+    headers['X-Requested-With'] = 'XMLHttpRequest';
     if (opciones.json !== undefined) {
         headers['Content-Type'] = 'application/json';
         opciones.body = JSON.stringify(opciones.json);

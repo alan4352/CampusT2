@@ -1,0 +1,6 @@
+# Proteger la base SQLite y el código interno, permitiendo servir los PDF de uploads/
+<FilesMatch "\.(sqlite|sqlite-wal|sqlite-shm|js|json|xlsx)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>

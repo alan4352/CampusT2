@@ -1,0 +1,20 @@
+# Dependencias
+node_modules/
+
+# Secretos (nunca subir a un repositorio)
+.env
+backend/clave.json
+backend/oauth.json
+backend/token.json
+
+# Archivos temporales de la base (la base y los PDF sí se versionan)
+backend/database.sqlite-*
+backend/data/asignaciones_importadas_*.xlsx
+
+# Archivos temporales
+*.log
+.DS_Store
+~$*.xlsx
+
+# Sitio de la demo (se genera en GitHub Actions)
+_site/

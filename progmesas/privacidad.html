@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Política de privacidad - ProgMesas</title>
+    <link rel="stylesheet" href="frontend/styles.css">
+    <link rel="icon" type="image/png" href="frontend/img/escudo.png">
+    <meta name="theme-color" content="#7a0000">
+    <script src="frontend/tema.js"></script>
+    <script src="frontend/marco.js" defer></script>
+    <style>
+        .politica { max-width: 820px; margin: 0 auto; line-height: 1.65; }
+        .politica h2 { margin-top: 2rem; }
+        .politica ul { padding-left: 1.4rem; }
+        .politica li { margin: .35rem 0; }
+        .politica a { color: var(--enlace); }
+        .politica .actualizado { opacity: .8; }
+    </style>
+</head>
+
+<body>
+
+    <a class="saltar" href="#contenido">Saltar al contenido</a>
+
+    <!-- ENCABEZADO EN EL CELULAR -->
+    <div class="mobile-header">
+        <img src="frontend/img/escudo.png" alt="" class="escudo-mobile" width="48" height="48">
+        <span class="institution-name-mobile">E.E.T. N°2 "Independencia"</span>
+        <button id="btnMenu" type="button" class="btn-menu" aria-controls="menuLateral" aria-expanded="false">
+            <span data-icono="menu"></span>Menú
+        </button>
+    </div>
+
+    <!-- MENÚ LATERAL -->
+    <aside id="menuLateral" class="sidebar" aria-label="Menú principal">
+        <div class="sidebar-content">
+            <button id="btnCerrarMenu" type="button" class="cerrar-menu" aria-label="Cerrar menú"><span data-icono="cerrar"></span></button>
+            <img src="frontend/img/escudo.png" alt="Escudo de la E.E.T. N°2" class="escudo-sidebar" width="100" height="100">
+            <p class="institution-name">E.E.T. N°2<br>"Independencia"</p>
+            <p class="sistema-nombre"><span data-icono="documento"></span>ProgMesas</p>
+            <p class="sistema-detalle">Programas de examen</p>
+            <div class="perfil">
+                <div class="perfil-avatar"><span data-icono="docente"></span></div>
+                <div class="perfil-info">
+                    <strong id="perfilNombre">Visitante</strong>
+                    <span id="perfilRol">Consulta pública</span>
+                </div>
+            </div>
+            <div class="nav-divider"></div>
+            <nav class="menu" aria-label="Secciones">
+                <a href="./" class="nav-link"><span data-icono="documento"></span>Programas</a>
+                <a id="btnDashboard" href="frontend/dashboard.html" class="nav-link hidden"><span data-icono="tablero"></span>Dashboard</a>
+                
+            </nav>
+            <div class="sidebar-pie">
+                <div class="nav-divider"></div>
+                <div id="lugarTema"></div>
+                <a href="privacidad.html" class="nav-link activo" aria-current="page" ><span data-icono="escudo"></span>Privacidad</a>
+                <a href="terminos.html" class="nav-link" ><span data-icono="lista"></span>Condiciones</a>
+            </div>
+        </div>
+    </aside>
+    <div id="veloMenu" class="velo" hidden></div>
+
+    <main id="contenido" class="contenido" tabindex="-1">
+        <header class="page-header">
+            <div>
+                <h1 id="tituloPagina"><span data-icono="escudo"></span>Política de privacidad</h1>
+                <p id="subtituloPagina">Qué datos usa ProgMesas y cómo usa Google Drive.</p>
+            </div>
+            <div class="page-header-extra"><span class="pill"><span data-icono="calendario"></span><span id="fechaHoy"></span></span></div>
+        </header>
+
+    <div class="container">
+        <article class="section-box politica">
+
+            <p class="actualizado">Última actualización: 3 de noviembre de 2026 (carga de programas de cualquier curso)</p>
+
+            <p><b>ProgMesas</b> es un sistema web de la Escuela Técnica N.º 2 "Independencia" para cargar, controlar y
+                consultar los programas de examen de cada materia. Esta política explica qué datos usa ProgMesas, para qué
+                los usa y, en particular, cómo usa los permisos de Google Drive que se le otorgan mediante Google OAuth.</p>
+
+            <h2>1. Responsables</h2>
+            <p>ProgMesas fue desarrollado por Alan Buzzatto y Valentino Rodriguez como Proyecto de Práctica Profesional
+                de la Escuela Técnica N.º 2 "Independencia". Para cualquier consulta sobre esta política o sobre tus datos
+                podés escribir a <a href="mailto:alanbuz43@gmail.com">alanbuz43@gmail.com</a>.</p>
+
+            <h2>2. Qué datos usa ProgMesas</h2>
+            <ul>
+                <li><b>Datos de la cuenta:</b> nombre, correo electrónico, rol (docente, asesora, preceptor/directivo o
+                    alumno) e identificador de usuario. Llegan desde el campus virtual de la escuela al iniciar sesión.</li>
+                <li><b>Vinculación docente:</b> el nombre con el que cada docente figura en la lista oficial de horarios y
+                    cómo se hizo esa vinculación (automática por coincidencia de nombre, elegida por el docente o corregida por la asesora).</li>
+                <li><b>Programas de examen:</b> los archivos PDF que suben los docentes o la asesora, con su materia,
+                    curso, año, docente, fecha de carga y la cuenta que lo subió.</li>
+                <li><b>Versiones anteriores:</b> cuando un programa se reemplaza, la versión anterior se conserva con su fecha y
+                    el nombre de quien lo reemplazó.</li>
+                <li><b>Registro de actividad:</b> qué acciones se hicieron en el sistema (subir, reemplazar, reutilizar o eliminar
+                    programas, cambiar vinculaciones o la fecha límite), quién las hizo y cuándo.</li>
+                <li><b>Registros técnicos:</b> fecha del último acceso de cada docente.</li>
+            </ul>
+            <p>ProgMesas no usa cookies de publicidad ni herramientas de seguimiento, y no recopila datos de alumnos más
+                allá de su identificación al iniciar sesión.</p>
+
+            <h2>3. Uso de Google Drive (Google OAuth)</h2>
+            <p>Los usuarios de ProgMesas <b>no</b> inician sesión con su cuenta de Google. Google OAuth se usa una sola vez,
+                cuando el administrador del sistema autoriza a ProgMesas a usar la cuenta de Google Drive de la escuela como
+                lugar de almacenamiento de los programas.</p>
+            <p>Con ese permiso, ProgMesas únicamente:</p>
+            <ul>
+                <li>crea carpetas ordenadas por año, curso y materia dentro de la carpeta de programas de la escuela;</li>
+                <li>sube los PDF de los programas de examen que cargan docentes y asesora;</li>
+                <li>configura cada programa como "cualquier persona con el enlace puede ver", para que alumnos y familias
+                    puedan consultarlo;</li>
+                <li>elimina un programa de Drive cuando la asesora lo borra (junto con sus versiones anteriores);</li>
+                <li>descarga los programas de un curso para armar el archivo ZIP que se ofrece en la página;</li>
+                <li>sube a Drive los programas que, por una falla de conexión, habían quedado guardados en el servidor.</li>
+            </ul>
+            <p>ProgMesas no lee, modifica, descarga ni comparte ningún otro archivo de la cuenta de Google. No accede a
+                Gmail, contactos, calendario ni a ningún otro servicio de Google.</p>
+            <p>El token de acceso que entrega Google se guarda sólo en el servidor de ProgMesas, no se muestra a los
+                usuarios y no se comparte con nadie. El permiso se puede revocar en cualquier momento desde
+                <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a>;
+                en ese caso los programas nuevos se guardan en el servidor de la escuela.</p>
+
+            <h2>4. Uso limitado de los datos de Google</h2>
+            <p>El uso y la transferencia a cualquier otra aplicación de la información recibida de las API de Google se
+                ajustan a la <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Política
+                de Datos del Usuario de los Servicios de API de Google</a>, incluidos los requisitos de Uso Limitado.
+                En particular, los datos obtenidos de Google:</p>
+            <ul>
+                <li>se usan sólo para guardar y publicar los programas de examen dentro de ProgMesas;</li>
+                <li>no se venden ni se transfieren a terceros;</li>
+                <li>no se usan para publicidad ni para entrenar modelos de inteligencia artificial;</li>
+                <li>no son leídos por personas, salvo que sea necesario por seguridad, para cumplir la ley o con el
+                    consentimiento expreso del usuario.</li>
+            </ul>
+
+            <h2>5. Para qué se usan los datos</h2>
+            <ul>
+                <li>Mostrarle a cada docente sus materias y registrar qué programas cargó.</li>
+                <li>Mostrar a la asesoría pedagógica qué programas fueron entregados y cuáles faltan.</li>
+                <li>Publicar los programas para que alumnos y familias los consulten.</li>
+                <li>Saber quién hizo cada cambio (registro de actividad) y poder recuperar una versión anterior de un programa.</li>
+            </ul>
+            <p>Los programas de examen, con su materia, curso y docente, son información pública de la escuela y se
+                muestran a cualquier visitante. Los correos electrónicos y los datos de las cuentas sólo los ven la asesora y, en el registro
+                de actividad, los preceptores y directivos. La asesora puede usar el correo de un docente para recordarle,
+                desde su propio programa de correo, los programas que le faltan entregar.</p>
+
+            <h2>6. Dónde se guardan y por cuánto tiempo</h2>
+            <p>Los datos se guardan en el servidor de ProgMesas y los PDF en la cuenta de Google Drive de la escuela.
+                Se conservan mientras la escuela use el sistema o hasta que la asesora los elimine. Los programas de años
+                anteriores y las versiones reemplazadas se conservan como registro histórico. Las copias de seguridad se guardan en el
+                servidor de la escuela y se borran solas pasado un tiempo (por defecto, se conservan las últimas 14).</p>
+
+            <h2>7. Tus derechos</h2>
+            <p>De acuerdo con la Ley 25.326 de Protección de los Datos Personales, podés pedir acceder a tus datos,
+                corregirlos o eliminarlos escribiendo al correo de contacto. La Agencia de Acceso a la Información Pública,
+                órgano de control de la Ley 25.326, atiende las denuncias y reclamos relacionados con el incumplimiento
+                de las normas sobre protección de datos personales.</p>
+
+            <h2>8. Seguridad</h2>
+            <p>Las credenciales de Google y las claves del sistema no se guardan en el repositorio de código. Los
+                accesos se controlan por rol, sólo se aceptan archivos PDF válidos y todo el contenido que cargan los
+                usuarios se filtra antes de mostrarse.</p>
+
+            <h2>9. Cambios en esta política</h2>
+            <p>Si esta política cambia, se publicará la nueva versión en esta misma página con su fecha de actualización.</p>
+
+        </article>
+    </div>
+
+    <footer class="pie">
+        <a href="privacidad.html">Política de privacidad</a> · <a href="terminos.html">Condiciones del servicio</a>
+    </footer>
+    </main>
+
+    <script src="frontend/common.js"></script>
+</body>
+</html>

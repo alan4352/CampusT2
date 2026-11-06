@@ -1,0 +1,3327 @@
+{
+  "total": 116,
+  "profesores": [
+    "Acevedo",
+    "Acosta Blanca",
+    "Aguilar Lorena",
+    "Aguirre Roassio Lucrecia",
+    "Alanís Alejandro",
+    "Almada Evelina",
+    "Almirón Leonardo",
+    "Almirón Lescano",
+    "Almirón Lourdes",
+    "Anderson D.",
+    "Anderson F.",
+    "Antonelli",
+    "Antonelli J.",
+    "Areguatti",
+    "Bacigaluppe Viviana",
+    "Báez N.",
+    "Báez Olga",
+    "Bailoni C.",
+    "Baldesari",
+    "Banegas Delia",
+    "Batalla",
+    "Begue José Luis",
+    "Benavidez Casandra",
+    "Benítez Cristina",
+    "Benítez Emanuel",
+    "Benítez Juan",
+    "Benítez P.",
+    "Berterame",
+    "Blanc",
+    "Bonin",
+    "Bourbotte Roberto",
+    "Cadario",
+    "Capeche",
+    "Cebrian",
+    "Coali Bernardita",
+    "Compa Cristina",
+    "Debona",
+    "Delduca",
+    "Deruder Mariela",
+    "Diaz",
+    "Duarte",
+    "Encina",
+    "Escudero",
+    "Farher Micaela",
+    "Fernandez Lucrecia",
+    "Ferreyra Dina",
+    "Gallardo S.",
+    "Gallegos G.",
+    "Galvani Gisela",
+    "Garcia",
+    "Garnier R.",
+    "Gilardoni Angie",
+    "Gob",
+    "Godoy Jorge",
+    "Godoy Lorena",
+    "Gomez Maria José",
+    "Gonzalez",
+    "Gonzalez M.",
+    "Gonzalez Noble Angelina",
+    "Grimberg Valeria",
+    "Guerrero Marcela",
+    "Guzmán H.",
+    "La Paz Juan Eduardo",
+    "Larocca",
+    "Lasco",
+    "Lechini",
+    "Leiva",
+    "Leonardelli",
+    "Lima L.",
+    "López Natalia",
+    "Martín",
+    "Martinez Hugo",
+    "Maschio Mauro",
+    "Mattiassi",
+    "Molinari Bernarda",
+    "Muchiutti",
+    "Nolli",
+    "Olivera Geier",
+    "Olivieri",
+    "Olmos Sabina",
+    "Ortiz Aubone Ileana",
+    "Otaegui",
+    "Palacio A.",
+    "Palacio Viviana",
+    "Parras",
+    "Peralta",
+    "Perez Maria Soledad",
+    "Ponti Luis",
+    "Quinodoz",
+    "Ramirez",
+    "Ramos Barbara",
+    "Reymond Patricia",
+    "Rojas",
+    "Rojas A.",
+    "Rojas C.",
+    "Roldan Julieta",
+    "Romero Libera",
+    "Roude Juan",
+    "Ruiz Diaz Flavia",
+    "Russo",
+    "Sanchez German",
+    "Saporitti",
+    "Segovia Miguel",
+    "Sgüerzo",
+    "Siarra R.",
+    "Siarra Vanina",
+    "Siegrist Soledad",
+    "Sosa Mariela",
+    "Soto Rocio",
+    "Tamburo Lorena",
+    "Tito",
+    "Toledo Andrea",
+    "Trabichet",
+    "Valerio",
+    "Velazquez Liz",
+    "Villalba Sara"
+  ],
+  "detallePorProfesor": {
+    "Acevedo": [
+      {
+        "materia": "Lengua",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Geografía",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Historia",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Lengua",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Geografía",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Historia",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      }
+    ],
+    "Acosta Blanca": [
+      {
+        "materia": "Biología",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Aguilar Lorena": [
+      {
+        "materia": "Historia",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Historia Econ. Soc. Univ.",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      }
+    ],
+    "Aguirre Roassio Lucrecia": [
+      {
+        "materia": "Taller de Gastronomía (Contraturno)",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Taller de Gastronomía (Contraturno)",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Taller de Gastronomía (Contraturno)",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Alanís Alejandro": [
+      {
+        "materia": "Dibujo Técnico",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Físico Química",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Dibujo Técnico",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Física",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Física",
+        "curso": "4° 1° TAE",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Química",
+        "curso": "4° 1° TAE",
+        "turno": "Tarde"
+      }
+    ],
+    "Almada Evelina": [
+      {
+        "materia": "Tecnología Comercial",
+        "curso": "7° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Técnica Tributaria e Impositiva",
+        "curso": "7° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Tecnología de Gestión",
+        "curso": "7° 1° TG",
+        "turno": "Mañana"
+      }
+    ],
+    "Almirón Leonardo": [
+      {
+        "materia": "Educación Musical",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Educación Musical",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Almirón Lescano": [
+      {
+        "materia": "Educación Musical",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      }
+    ],
+    "Almirón Lourdes": [
+      {
+        "materia": "Matemática",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Biología",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Físico Química",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Educación Musical",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Anderson D.": [
+      {
+        "materia": "Física",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Anderson F.": [
+      {
+        "materia": "Dibujo Técnico",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Dibujo Técnico",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Física",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Física",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Antonelli": [
+      {
+        "materia": "Historia",
+        "curso": "4° 1° TAE",
+        "turno": "Tarde"
+      }
+    ],
+    "Antonelli J.": [
+      {
+        "materia": "Lengua y Literatura",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Areguatti": [
+      {
+        "materia": "Lógica",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Análisis de Sistemas",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Algoritmos y Estructuras por Computadora",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      }
+    ],
+    "Bacigaluppe Viviana": [
+      {
+        "materia": "Taller de Computación (Contraturno)",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Taller de Computación (Contraturno)",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "TIC",
+        "curso": "4° 1° TAE",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Sistemas de Procesamiento de Datos",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Análisis de Sistemas",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      }
+    ],
+    "Báez N.": [
+      {
+        "materia": "Sociología de las Organizaciones",
+        "curso": "7° 1° TG",
+        "turno": "Mañana"
+      }
+    ],
+    "Báez Olga": [
+      {
+        "materia": "Práctica Contable (Contraturno)",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Organización Empresarial y Leg. Trab.",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Técnica Bancaria y Seguros",
+        "curso": "7° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Contabilidad",
+        "curso": "7° 1° TG",
+        "turno": "Mañana"
+      }
+    ],
+    "Bailoni C.": [
+      {
+        "materia": "Geografía",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Baldesari": [
+      {
+        "materia": "Físico Química",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Físico Química",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Física",
+        "curso": "4° 1° TAE",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Química",
+        "curso": "4° 1° TAE",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Química",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Química Aplicada",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Banegas Delia": [
+      {
+        "materia": "Matemática",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Batalla": [
+      {
+        "materia": "Educación Tecnológica",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Economía",
+        "curso": "4° 1° TAE",
+        "turno": "Tarde"
+      }
+    ],
+    "Begue José Luis": [
+      {
+        "materia": "Educación Musical",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Educación Musical",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Benavidez Casandra": [
+      {
+        "materia": "Matemática",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Matemática",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Matemática",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Matemática",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Matemática I",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      }
+    ],
+    "Benítez Cristina": [
+      {
+        "materia": "Biología",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Benítez Emanuel": [
+      {
+        "materia": "Contabilidad de Costos",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Tecnología de Gestión",
+        "curso": "7° 1° TG",
+        "turno": "Mañana"
+      }
+    ],
+    "Benítez Juan": [
+      {
+        "materia": "Formación Ética y Ciudadana",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Seguridad e Higiene Industrial",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Benítez P.": [
+      {
+        "materia": "TIC",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Programación I",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      }
+    ],
+    "Berterame": [
+      {
+        "materia": "Lengua",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Lengua",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Blanc": [
+      {
+        "materia": "Geografía",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Bonin": [
+      {
+        "materia": "Taller de Gastronomía (Contraturno)",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Bourbotte Roberto": [
+      {
+        "materia": "Física",
+        "curso": "4° 1° TAE",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Tecnología de los Procesos Productivos",
+        "curso": "7° 1° TG",
+        "turno": "Mañana"
+      }
+    ],
+    "Cadario": [
+      {
+        "materia": "Dibujo Aplicado",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Capeche": [
+      {
+        "materia": "Matemática I",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Matemática III",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      }
+    ],
+    "Cebrian": [
+      {
+        "materia": "Economía",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Formación Ética y Ciudadana",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Coali Bernardita": [
+      {
+        "materia": "Organización Empresarial (Contraturno)",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Organización Empresarial (Contraturno)",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Introducción a la Economía Política",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Dirección y Administración de Personal",
+        "curso": "7° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Compa Cristina": [
+      {
+        "materia": "Dibujo Técnico",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Debona": [
+      {
+        "materia": "Geografía",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Geografía",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Geografía Reg. Arg.",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      }
+    ],
+    "Delduca": [
+      {
+        "materia": "Sistemas de Procesamiento de Datos",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Computación III (Contraturno)",
+        "curso": "7° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Deruder Mariela": [
+      {
+        "materia": "Taller de Gastronomía (Contraturno)",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      }
+    ],
+    "Diaz": [
+      {
+        "materia": "Computación / Elem. Computación (Contraturno)",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Contabilidad I",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      }
+    ],
+    "Duarte": [
+      {
+        "materia": "Informática",
+        "curso": "7° 1° TG",
+        "turno": "Mañana"
+      }
+    ],
+    "Encina": [
+      {
+        "materia": "Inglés",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      }
+    ],
+    "Escudero": [
+      {
+        "materia": "Computación / Elem. Computación (Contraturno)",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Farher Micaela": [
+      {
+        "materia": "Formación Ética y Ciudadana",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      }
+    ],
+    "Fernandez Lucrecia": [
+      {
+        "materia": "Matemática",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Biología",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Físico Química",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Matemática",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Biología",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Físico Química",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      }
+    ],
+    "Ferreyra Dina": [
+      {
+        "materia": "Lengua y Literatura",
+        "curso": "4° 1° TAE",
+        "turno": "Tarde"
+      }
+    ],
+    "Gallardo S.": [
+      {
+        "materia": "Geografía",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Gallegos G.": [
+      {
+        "materia": "Lógica",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Interpretación de Balance",
+        "curso": "7° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Galvani Gisela": [
+      {
+        "materia": "Educación Tecnológica",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Educación Tecnológica",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Francés",
+        "curso": "7° 1° TG",
+        "turno": "Mañana"
+      }
+    ],
+    "Garcia": [
+      {
+        "materia": "Matemática",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Matemática",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Matemática",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Garnier R.": [
+      {
+        "materia": "Dibujo Técnico",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Dibujo Técnico",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Gilardoni Angie": [
+      {
+        "materia": "Formación Ética y Ciudadana",
+        "curso": "4° 1° TAE",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Geografía",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Gob": [
+      {
+        "materia": "Educación Musical",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      }
+    ],
+    "Godoy Jorge": [
+      {
+        "materia": "Organización de la Producción II",
+        "curso": "7° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Godoy Lorena": [
+      {
+        "materia": "Taller de Gastronomía (Contraturno)",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Química Aplicada",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Protocolo y Ceremonial",
+        "curso": "7° 1° TG",
+        "turno": "Mañana"
+      }
+    ],
+    "Gomez Maria José": [
+      {
+        "materia": "Lengua",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Gonzalez": [
+      {
+        "materia": "Formación Ética y Ciudadana",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Investigación de Mercado",
+        "curso": "7° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Gonzalez M.": [
+      {
+        "materia": "TIC",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Gonzalez Noble Angelina": [
+      {
+        "materia": "Lengua",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Geografía",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Historia",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      }
+    ],
+    "Grimberg Valeria": [
+      {
+        "materia": "Lengua",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Cátedra Compartida (Lengua - Inglés)",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Geografía",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Historia",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Lengua",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Cátedra Compartida (Lengua - Inglés)",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Geografía",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Historia",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      }
+    ],
+    "Guerrero Marcela": [
+      {
+        "materia": "Artes Visuales",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Artes Visuales",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Artes Visuales",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Guzmán H.": [
+      {
+        "materia": "Contabilidad de Costos",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Interpretación de Balance",
+        "curso": "7° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Costos",
+        "curso": "7° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Nociones de Auditoría (Contraturno)",
+        "curso": "7° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "La Paz Juan Eduardo": [
+      {
+        "materia": "Dibujo Técnico",
+        "curso": "4° 1° TAE",
+        "turno": "Tarde"
+      }
+    ],
+    "Larocca": [
+      {
+        "materia": "Geografía",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Lasco": [
+      {
+        "materia": "Química",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Lechini": [
+      {
+        "materia": "Programación III",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Algoritmos y Estructuras por Computadora",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Simulación",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Investigación Operativa",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      }
+    ],
+    "Leiva": [
+      {
+        "materia": "Dibujo Técnico",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Leonardelli": [
+      {
+        "materia": "Seguridad e Higiene Industrial",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Lima L.": [
+      {
+        "materia": "Lengua y Literatura",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "López Natalia": [
+      {
+        "materia": "Práctica Contable (Contraturno)",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Economía",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Nociones de Administración (Contraturno)",
+        "curso": "7° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Martín": [
+      {
+        "materia": "Dibujo Técnico",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Dibujo Técnico",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Martinez Hugo": [
+      {
+        "materia": "Investigación Micro y Macroeconómica (Contraturno)",
+        "curso": "7° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Maschio Mauro": [
+      {
+        "materia": "Educación Física (Contraturno)",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Educación Física (Contraturno)",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Educación Física (Contraturno)",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Educación Física (Contraturno)",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Educación Física (Contraturno)",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Educación Física (Contraturno)",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      }
+    ],
+    "Mattiassi": [
+      {
+        "materia": "Inglés",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Cátedra Compartida (Lengua - Inglés)",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Inglés",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Cátedra Compartida (Lengua - Inglés)",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Inglés",
+        "curso": "4° 1° TAE",
+        "turno": "Tarde"
+      }
+    ],
+    "Molinari Bernarda": [
+      {
+        "materia": "Biología",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Biología",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Biología",
+        "curso": "4° 1° TAE",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Biología",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Biología",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Muchiutti": [
+      {
+        "materia": "Historia",
+        "curso": "4° 1° TAE",
+        "turno": "Tarde"
+      }
+    ],
+    "Nolli": [
+      {
+        "materia": "Dibujo Técnico",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      }
+    ],
+    "Olivera Geier": [
+      {
+        "materia": "Historia",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Formación Ética y Ciudadana",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Olivieri": [
+      {
+        "materia": "Tutoría",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Tutoría",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Tutoría",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Olmos Sabina": [
+      {
+        "materia": "Artes Visuales",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Dibujo Aplicado",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Ortiz Aubone Ileana": [
+      {
+        "materia": "Taller de Computación (Contraturno)",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Taller de Computación (Contraturno)",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Otaegui": [
+      {
+        "materia": "Inglés",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Inglés",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Inglés",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Inglés Técnico I",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Inglés Técnico (Contraturno)",
+        "curso": "7° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Inglés",
+        "curso": "7° 1° TG",
+        "turno": "Mañana"
+      }
+    ],
+    "Palacio A.": [
+      {
+        "materia": "Historia",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Palacio Viviana": [
+      {
+        "materia": "Dibujo Técnico",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Taller de Computación (Contraturno)",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Historia",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Historia",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Formación Ética y Ciudadana",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Lógica",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      }
+    ],
+    "Parras": [
+      {
+        "materia": "Electrónica y Tec. Digitales",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      }
+    ],
+    "Peralta": [
+      {
+        "materia": "Sociología de las Organizaciones",
+        "curso": "7° 1° TG",
+        "turno": "Mañana"
+      }
+    ],
+    "Perez Maria Soledad": [
+      {
+        "materia": "Tecnología de la Gestión",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Ponti Luis": [
+      {
+        "materia": "Taller de Computación (Contraturno)",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Laboratorio I (Contraturno)",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Informática",
+        "curso": "7° 1° TG",
+        "turno": "Mañana"
+      }
+    ],
+    "Quinodoz": [
+      {
+        "materia": "Nociones de Auditoría (Contraturno)",
+        "curso": "7° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Ramirez": [
+      {
+        "materia": "Educación Musical",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Música",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Ramos Barbara": [
+      {
+        "materia": "Educación Física (Contraturno)",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Educación Física (Contraturno)",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Educación Física (Contraturno)",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Reymond Patricia": [
+      {
+        "materia": "Geografía",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Rojas": [
+      {
+        "materia": "Matemática I",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Electrónica y Tec. Digitales",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Matemática III",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Protocolo y Ceremonial",
+        "curso": "7° 1° TG",
+        "turno": "Mañana"
+      }
+    ],
+    "Rojas A.": [
+      {
+        "materia": "Investigación de Mercado",
+        "curso": "7° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Rojas C.": [
+      {
+        "materia": "Economía",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Roldan Julieta": [
+      {
+        "materia": "Tutoría",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Romero Libera": [
+      {
+        "materia": "Derecho Social",
+        "curso": "7° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Roude Juan": [
+      {
+        "materia": "TIC",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Programación I",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Sistemas de Procesamiento de Datos",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Proyecto y Práctica Profesionalizante (Contraturno)",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Proyecto y Práctica Profesionalizante (Contraturno)",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      }
+    ],
+    "Ruiz Diaz Flavia": [
+      {
+        "materia": "Matemática",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      }
+    ],
+    "Russo": [
+      {
+        "materia": "Economía",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Economía",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Sociología de las Organizaciones",
+        "curso": "7° 1° TG",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Marco Jurídico de los Procesos",
+        "curso": "7° 1° TG",
+        "turno": "Mañana"
+      }
+    ],
+    "Sanchez German": [
+      {
+        "materia": "Física",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Saporitti": [
+      {
+        "materia": "TIC",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Programación III",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Algoritmos y Estructuras por Computadora",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Laboratorio III (Contraturno)",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      }
+    ],
+    "Segovia Miguel": [
+      {
+        "materia": "Formación Ética y Ciudadana",
+        "curso": "1° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Formación Ética y Ciudadana",
+        "curso": "1° 2°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Formación Ética y Ciudadana",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Formación Ética y Ciudadana",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Formación Ética y Ciudadana",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Formación Ética y Ciudadana",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Ética y Deontología Profesional",
+        "curso": "7° 1° TG",
+        "turno": "Mañana"
+      }
+    ],
+    "Sgüerzo": [
+      {
+        "materia": "Matemática",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Siarra R.": [
+      {
+        "materia": "Historia",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Siarra Vanina": [
+      {
+        "materia": "Tecnología",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Historia",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Siegrist Soledad": [
+      {
+        "materia": "Tutoría",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      }
+    ],
+    "Sosa Mariela": [
+      {
+        "materia": "Inglés",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Inglés",
+        "curso": "4° 2° TAE",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Inglés",
+        "curso": "4° 1° TG",
+        "turno": "Tarde"
+      }
+    ],
+    "Soto Rocio": [
+      {
+        "materia": "Organización Empresarial (Contraturno)",
+        "curso": "3° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Tamburo Lorena": [
+      {
+        "materia": "Organización Empresarial (Contraturno)",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Organización Empresarial (Contraturno)",
+        "curso": "2° 1°",
+        "turno": "Mañana"
+      }
+    ],
+    "Tito": [
+      {
+        "materia": "Educación Física (Contraturno)",
+        "curso": "7° 2° TAE",
+        "turno": "Mañana"
+      }
+    ],
+    "Toledo Andrea": [
+      {
+        "materia": "Matemática",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Biología",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Físico Química",
+        "curso": "1° 3°",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Matemática",
+        "curso": "4° 1° TAE",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Matemática",
+        "curso": "7° 1° TG",
+        "turno": "Mañana"
+      }
+    ],
+    "Trabichet": [
+      {
+        "materia": "Geografía",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Geografía Reg. Arg.",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      }
+    ],
+    "Valerio": [
+      {
+        "materia": "Inglés Técnico III",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      }
+    ],
+    "Velazquez Liz": [
+      {
+        "materia": "Psicología Aplicada a la Empresa",
+        "curso": "7° 1° TC",
+        "turno": "Mañana"
+      }
+    ],
+    "Villalba Sara": [
+      {
+        "materia": "Lengua y Literatura",
+        "curso": "5° 1° TG",
+        "turno": "Tarde"
+      },
+      {
+        "materia": "Lengua y Literatura",
+        "curso": "5° 1° TC",
+        "turno": "Mañana"
+      },
+      {
+        "materia": "Lengua y Literatura",
+        "curso": "7° 1° TG",
+        "turno": "Mañana"
+      }
+    ]
+  },
+  "asignaciones": [
+    {
+      "profesor": "Acevedo",
+      "materia": "Lengua",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Grimberg Valeria",
+      "materia": "Lengua",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Fernandez Lucrecia",
+      "materia": "Matemática",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Mattiassi",
+      "materia": "Inglés",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Grimberg Valeria",
+      "materia": "Cátedra Compartida (Lengua - Inglés)",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Mattiassi",
+      "materia": "Cátedra Compartida (Lengua - Inglés)",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Fernandez Lucrecia",
+      "materia": "Biología",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Fernandez Lucrecia",
+      "materia": "Físico Química",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Acevedo",
+      "materia": "Geografía",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Grimberg Valeria",
+      "materia": "Geografía",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Acevedo",
+      "materia": "Historia",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Grimberg Valeria",
+      "materia": "Historia",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Segovia Miguel",
+      "materia": "Formación Ética y Ciudadana",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Begue José Luis",
+      "materia": "Educación Musical",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Guerrero Marcela",
+      "materia": "Artes Visuales",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Galvani Gisela",
+      "materia": "Educación Tecnológica",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Martín",
+      "materia": "Dibujo Técnico",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Alanís Alejandro",
+      "materia": "Dibujo Técnico",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Leiva",
+      "materia": "Dibujo Técnico",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Olivieri",
+      "materia": "Tutoría",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Bacigaluppe Viviana",
+      "materia": "Taller de Computación (Contraturno)",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Aguirre Roassio Lucrecia",
+      "materia": "Taller de Gastronomía (Contraturno)",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Coali Bernardita",
+      "materia": "Organización Empresarial (Contraturno)",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Ramos Barbara",
+      "materia": "Educación Física (Contraturno)",
+      "curso": "1° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Acevedo",
+      "materia": "Lengua",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Grimberg Valeria",
+      "materia": "Lengua",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Fernandez Lucrecia",
+      "materia": "Matemática",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Mattiassi",
+      "materia": "Inglés",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Grimberg Valeria",
+      "materia": "Cátedra Compartida (Lengua - Inglés)",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Mattiassi",
+      "materia": "Cátedra Compartida (Lengua - Inglés)",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Fernandez Lucrecia",
+      "materia": "Biología",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Fernandez Lucrecia",
+      "materia": "Físico Química",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Acevedo",
+      "materia": "Geografía",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Grimberg Valeria",
+      "materia": "Geografía",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Acevedo",
+      "materia": "Historia",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Grimberg Valeria",
+      "materia": "Historia",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Segovia Miguel",
+      "materia": "Formación Ética y Ciudadana",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Anderson F.",
+      "materia": "Dibujo Técnico",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Palacio Viviana",
+      "materia": "Dibujo Técnico",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Olivieri",
+      "materia": "Tutoría",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Bacigaluppe Viviana",
+      "materia": "Taller de Computación (Contraturno)",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Aguirre Roassio Lucrecia",
+      "materia": "Taller de Gastronomía (Contraturno)",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Coali Bernardita",
+      "materia": "Organización Empresarial (Contraturno)",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Maschio Mauro",
+      "materia": "Educación Física (Contraturno)",
+      "curso": "1° 2°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Gonzalez Noble Angelina",
+      "materia": "Lengua",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Toledo Andrea",
+      "materia": "Matemática",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Ruiz Diaz Flavia",
+      "materia": "Matemática",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Almirón Lourdes",
+      "materia": "Matemática",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Encina",
+      "materia": "Inglés",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Toledo Andrea",
+      "materia": "Biología",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Almirón Lourdes",
+      "materia": "Biología",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Toledo Andrea",
+      "materia": "Físico Química",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Almirón Lourdes",
+      "materia": "Físico Química",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Gonzalez Noble Angelina",
+      "materia": "Geografía",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Gonzalez Noble Angelina",
+      "materia": "Historia",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Farher Micaela",
+      "materia": "Formación Ética y Ciudadana",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Gob",
+      "materia": "Educación Musical",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Almirón Leonardo",
+      "materia": "Educación Musical",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Almirón Lescano",
+      "materia": "Educación Musical",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Guerrero Marcela",
+      "materia": "Artes Visuales",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Galvani Gisela",
+      "materia": "Educación Tecnológica",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Anderson F.",
+      "materia": "Dibujo Técnico",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Nolli",
+      "materia": "Dibujo Técnico",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Siegrist Soledad",
+      "materia": "Tutoría",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Ortiz Aubone Ileana",
+      "materia": "Taller de Computación (Contraturno)",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Deruder Mariela",
+      "materia": "Taller de Gastronomía (Contraturno)",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Tamburo Lorena",
+      "materia": "Organización Empresarial (Contraturno)",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Ramos Barbara",
+      "materia": "Educación Física (Contraturno)",
+      "curso": "1° 3°",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Gomez Maria José",
+      "materia": "Lengua",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Banegas Delia",
+      "materia": "Matemática",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Otaegui",
+      "materia": "Inglés",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Benítez Cristina",
+      "materia": "Biología",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Baldesari",
+      "materia": "Físico Química",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Alanís Alejandro",
+      "materia": "Físico Química",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Gallardo S.",
+      "materia": "Geografía",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Aguilar Lorena",
+      "materia": "Historia",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Segovia Miguel",
+      "materia": "Formación Ética y Ciudadana",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Batalla",
+      "materia": "Educación Tecnológica",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Martín",
+      "materia": "Dibujo Técnico",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Compa Cristina",
+      "materia": "Dibujo Técnico",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Ramirez",
+      "materia": "Educación Musical",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Almirón Lourdes",
+      "materia": "Educación Musical",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Olmos Sabina",
+      "materia": "Artes Visuales",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Olivieri",
+      "materia": "Tutoría",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Ortiz Aubone Ileana",
+      "materia": "Taller de Computación (Contraturno)",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Aguirre Roassio Lucrecia",
+      "materia": "Taller de Gastronomía (Contraturno)",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Tamburo Lorena",
+      "materia": "Organización Empresarial (Contraturno)",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Maschio Mauro",
+      "materia": "Educación Física (Contraturno)",
+      "curso": "2° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Berterame",
+      "materia": "Lengua",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Garcia",
+      "materia": "Matemática",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Benavidez Casandra",
+      "materia": "Matemática",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Sosa Mariela",
+      "materia": "Inglés",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Molinari Bernarda",
+      "materia": "Biología",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Baldesari",
+      "materia": "Físico Química",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Bailoni C.",
+      "materia": "Geografía",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Debona",
+      "materia": "Geografía",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Olivera Geier",
+      "materia": "Historia",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Segovia Miguel",
+      "materia": "Formación Ética y Ciudadana",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Siarra Vanina",
+      "materia": "Tecnología",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Alanís Alejandro",
+      "materia": "Dibujo Técnico",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Almirón Leonardo",
+      "materia": "Educación Musical",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Begue José Luis",
+      "materia": "Educación Musical",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Guerrero Marcela",
+      "materia": "Artes Visuales",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Roldan Julieta",
+      "materia": "Tutoría",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Ponti Luis",
+      "materia": "Taller de Computación (Contraturno)",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Palacio Viviana",
+      "materia": "Taller de Computación (Contraturno)",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Bonin",
+      "materia": "Taller de Gastronomía (Contraturno)",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Soto Rocio",
+      "materia": "Organización Empresarial (Contraturno)",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Maschio Mauro",
+      "materia": "Educación Física (Contraturno)",
+      "curso": "3° 1°",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Garcia",
+      "materia": "Matemática",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Benavidez Casandra",
+      "materia": "Matemática",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Berterame",
+      "materia": "Lengua",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Sosa Mariela",
+      "materia": "Inglés",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Anderson F.",
+      "materia": "Física",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Alanís Alejandro",
+      "materia": "Física",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Sanchez German",
+      "materia": "Física",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Lasco",
+      "materia": "Química",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Molinari Bernarda",
+      "materia": "Biología",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Siarra Vanina",
+      "materia": "Historia",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Palacio Viviana",
+      "materia": "Historia",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Reymond Patricia",
+      "materia": "Geografía",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Russo",
+      "materia": "Economía",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Cebrian",
+      "materia": "Economía",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Segovia Miguel",
+      "materia": "Formación Ética y Ciudadana",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Garnier R.",
+      "materia": "Dibujo Técnico",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Benítez P.",
+      "materia": "TIC",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Gonzalez M.",
+      "materia": "TIC",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "López Natalia",
+      "materia": "Práctica Contable (Contraturno)",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Diaz",
+      "materia": "Computación / Elem. Computación (Contraturno)",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Escudero",
+      "materia": "Computación / Elem. Computación (Contraturno)",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Ramos Barbara",
+      "materia": "Educación Física (Contraturno)",
+      "curso": "4° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Toledo Andrea",
+      "materia": "Matemática",
+      "curso": "4° 1° TAE",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Ferreyra Dina",
+      "materia": "Lengua y Literatura",
+      "curso": "4° 1° TAE",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Mattiassi",
+      "materia": "Inglés",
+      "curso": "4° 1° TAE",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Bourbotte Roberto",
+      "materia": "Física",
+      "curso": "4° 1° TAE",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Baldesari",
+      "materia": "Física",
+      "curso": "4° 1° TAE",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Alanís Alejandro",
+      "materia": "Física",
+      "curso": "4° 1° TAE",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Baldesari",
+      "materia": "Química",
+      "curso": "4° 1° TAE",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Alanís Alejandro",
+      "materia": "Química",
+      "curso": "4° 1° TAE",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Molinari Bernarda",
+      "materia": "Biología",
+      "curso": "4° 1° TAE",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Antonelli",
+      "materia": "Historia",
+      "curso": "4° 1° TAE",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Muchiutti",
+      "materia": "Historia",
+      "curso": "4° 1° TAE",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Batalla",
+      "materia": "Economía",
+      "curso": "4° 1° TAE",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Gilardoni Angie",
+      "materia": "Formación Ética y Ciudadana",
+      "curso": "4° 1° TAE",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "La Paz Juan Eduardo",
+      "materia": "Dibujo Técnico",
+      "curso": "4° 1° TAE",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Bacigaluppe Viviana",
+      "materia": "TIC",
+      "curso": "4° 1° TAE",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Garcia",
+      "materia": "Matemática",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Benavidez Casandra",
+      "materia": "Matemática",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Antonelli J.",
+      "materia": "Lengua y Literatura",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Lima L.",
+      "materia": "Lengua y Literatura",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Sosa Mariela",
+      "materia": "Inglés",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Anderson F.",
+      "materia": "Física",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Anderson D.",
+      "materia": "Física",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Baldesari",
+      "materia": "Química",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Molinari Bernarda",
+      "materia": "Biología",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Acosta Blanca",
+      "materia": "Biología",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Blanc",
+      "materia": "Geografía",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Larocca",
+      "materia": "Geografía",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Debona",
+      "materia": "Geografía",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Siarra R.",
+      "materia": "Historia",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Palacio A.",
+      "materia": "Historia",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Russo",
+      "materia": "Economía",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Rojas C.",
+      "materia": "Economía",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Gonzalez",
+      "materia": "Formación Ética y Ciudadana",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Olivera Geier",
+      "materia": "Formación Ética y Ciudadana",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Garnier R.",
+      "materia": "Dibujo Técnico",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Roude Juan",
+      "materia": "TIC",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Saporitti",
+      "materia": "TIC",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Godoy Lorena",
+      "materia": "Taller de Gastronomía (Contraturno)",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Báez Olga",
+      "materia": "Práctica Contable (Contraturno)",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Maschio Mauro",
+      "materia": "Educación Física (Contraturno)",
+      "curso": "4° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Sgüerzo",
+      "materia": "Matemática",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Benavidez Casandra",
+      "materia": "Matemática",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Villalba Sara",
+      "materia": "Lengua y Literatura",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Otaegui",
+      "materia": "Inglés",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Trabichet",
+      "materia": "Geografía",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Gilardoni Angie",
+      "materia": "Geografía",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Palacio Viviana",
+      "materia": "Historia",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Molinari Bernarda",
+      "materia": "Biología",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "López Natalia",
+      "materia": "Economía",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Benítez Juan",
+      "materia": "Formación Ética y Ciudadana",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Palacio Viviana",
+      "materia": "Formación Ética y Ciudadana",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Cebrian",
+      "materia": "Formación Ética y Ciudadana",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Baldesari",
+      "materia": "Química Aplicada",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Godoy Lorena",
+      "materia": "Química Aplicada",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Olmos Sabina",
+      "materia": "Dibujo Aplicado",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Cadario",
+      "materia": "Dibujo Aplicado",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Ramirez",
+      "materia": "Música",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Perez Maria Soledad",
+      "materia": "Tecnología de la Gestión",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Benítez Juan",
+      "materia": "Seguridad e Higiene Industrial",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Leonardelli",
+      "materia": "Seguridad e Higiene Industrial",
+      "curso": "5° 1° TG",
+      "turno": "Tarde"
+    },
+    {
+      "profesor": "Rojas",
+      "materia": "Matemática I",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Capeche",
+      "materia": "Matemática I",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Benavidez Casandra",
+      "materia": "Matemática I",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Areguatti",
+      "materia": "Lógica",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Palacio Viviana",
+      "materia": "Lógica",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Gallegos G.",
+      "materia": "Lógica",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Báez Olga",
+      "materia": "Organización Empresarial y Leg. Trab.",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Roude Juan",
+      "materia": "Programación I",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Benítez P.",
+      "materia": "Programación I",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Villalba Sara",
+      "materia": "Lengua y Literatura",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Parras",
+      "materia": "Electrónica y Tec. Digitales",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Rojas",
+      "materia": "Electrónica y Tec. Digitales",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Otaegui",
+      "materia": "Inglés",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Diaz",
+      "materia": "Contabilidad I",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Trabichet",
+      "materia": "Geografía Reg. Arg.",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Debona",
+      "materia": "Geografía Reg. Arg.",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Aguilar Lorena",
+      "materia": "Historia Econ. Soc. Univ.",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Segovia Miguel",
+      "materia": "Formación Ética y Ciudadana",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Otaegui",
+      "materia": "Inglés Técnico I",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Roude Juan",
+      "materia": "Sistemas de Procesamiento de Datos",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Delduca",
+      "materia": "Sistemas de Procesamiento de Datos",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Bacigaluppe Viviana",
+      "materia": "Sistemas de Procesamiento de Datos",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Ponti Luis",
+      "materia": "Laboratorio I (Contraturno)",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Roude Juan",
+      "materia": "Proyecto y Práctica Profesionalizante (Contraturno)",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Maschio Mauro",
+      "materia": "Educación Física (Contraturno)",
+      "curso": "5° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Rojas",
+      "materia": "Matemática III",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Capeche",
+      "materia": "Matemática III",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Valerio",
+      "materia": "Inglés Técnico III",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Lechini",
+      "materia": "Programación III",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Saporitti",
+      "materia": "Programación III",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Areguatti",
+      "materia": "Análisis de Sistemas",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Bacigaluppe Viviana",
+      "materia": "Análisis de Sistemas",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Lechini",
+      "materia": "Algoritmos y Estructuras por Computadora",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Areguatti",
+      "materia": "Algoritmos y Estructuras por Computadora",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Saporitti",
+      "materia": "Algoritmos y Estructuras por Computadora",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Lechini",
+      "materia": "Simulación",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Lechini",
+      "materia": "Investigación Operativa",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Coali Bernardita",
+      "materia": "Introducción a la Economía Política",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Velazquez Liz",
+      "materia": "Psicología Aplicada a la Empresa",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Guzmán H.",
+      "materia": "Contabilidad de Costos",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Benítez Emanuel",
+      "materia": "Contabilidad de Costos",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Saporitti",
+      "materia": "Laboratorio III (Contraturno)",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Roude Juan",
+      "materia": "Proyecto y Práctica Profesionalizante (Contraturno)",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Maschio Mauro",
+      "materia": "Educación Física (Contraturno)",
+      "curso": "7° 1° TC",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Almada Evelina",
+      "materia": "Tecnología Comercial",
+      "curso": "7° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Guzmán H.",
+      "materia": "Interpretación de Balance",
+      "curso": "7° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Gallegos G.",
+      "materia": "Interpretación de Balance",
+      "curso": "7° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Coali Bernardita",
+      "materia": "Dirección y Administración de Personal",
+      "curso": "7° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Romero Libera",
+      "materia": "Derecho Social",
+      "curso": "7° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Godoy Jorge",
+      "materia": "Organización de la Producción II",
+      "curso": "7° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Almada Evelina",
+      "materia": "Técnica Tributaria e Impositiva",
+      "curso": "7° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Gonzalez",
+      "materia": "Investigación de Mercado",
+      "curso": "7° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Rojas A.",
+      "materia": "Investigación de Mercado",
+      "curso": "7° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Báez Olga",
+      "materia": "Técnica Bancaria y Seguros",
+      "curso": "7° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Guzmán H.",
+      "materia": "Costos",
+      "curso": "7° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Martinez Hugo",
+      "materia": "Investigación Micro y Macroeconómica (Contraturno)",
+      "curso": "7° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Guzmán H.",
+      "materia": "Nociones de Auditoría (Contraturno)",
+      "curso": "7° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Quinodoz",
+      "materia": "Nociones de Auditoría (Contraturno)",
+      "curso": "7° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Delduca",
+      "materia": "Computación III (Contraturno)",
+      "curso": "7° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Otaegui",
+      "materia": "Inglés Técnico (Contraturno)",
+      "curso": "7° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "López Natalia",
+      "materia": "Nociones de Administración (Contraturno)",
+      "curso": "7° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Tito",
+      "materia": "Educación Física (Contraturno)",
+      "curso": "7° 2° TAE",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Báez Olga",
+      "materia": "Contabilidad",
+      "curso": "7° 1° TG",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Bourbotte Roberto",
+      "materia": "Tecnología de los Procesos Productivos",
+      "curso": "7° 1° TG",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Almada Evelina",
+      "materia": "Tecnología de Gestión",
+      "curso": "7° 1° TG",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Benítez Emanuel",
+      "materia": "Tecnología de Gestión",
+      "curso": "7° 1° TG",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Báez N.",
+      "materia": "Sociología de las Organizaciones",
+      "curso": "7° 1° TG",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Russo",
+      "materia": "Sociología de las Organizaciones",
+      "curso": "7° 1° TG",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Peralta",
+      "materia": "Sociología de las Organizaciones",
+      "curso": "7° 1° TG",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Russo",
+      "materia": "Marco Jurídico de los Procesos",
+      "curso": "7° 1° TG",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Segovia Miguel",
+      "materia": "Ética y Deontología Profesional",
+      "curso": "7° 1° TG",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Godoy Lorena",
+      "materia": "Protocolo y Ceremonial",
+      "curso": "7° 1° TG",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Rojas",
+      "materia": "Protocolo y Ceremonial",
+      "curso": "7° 1° TG",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Ponti Luis",
+      "materia": "Informática",
+      "curso": "7° 1° TG",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Duarte",
+      "materia": "Informática",
+      "curso": "7° 1° TG",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Galvani Gisela",
+      "materia": "Francés",
+      "curso": "7° 1° TG",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Otaegui",
+      "materia": "Inglés",
+      "curso": "7° 1° TG",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Toledo Andrea",
+      "materia": "Matemática",
+      "curso": "7° 1° TG",
+      "turno": "Mañana"
+    },
+    {
+      "profesor": "Villalba Sara",
+      "materia": "Lengua y Literatura",
+      "curso": "7° 1° TG",
+      "turno": "Mañana"
+    }
+  ]
+}

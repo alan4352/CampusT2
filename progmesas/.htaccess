@@ -1,0 +1,12 @@
+# Configuración de Apache para ProgMesas (Programa de Exámenes) en XAMPP
+DirectoryIndex index.php index.html
+
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+
+<FilesMatch "^(\.env|package(-lock)?\.json)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>

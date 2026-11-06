@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Asesora - ProgMesas</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="img/escudo.png">
+    <meta name="theme-color" content="#7a0000">
+    <script src="tema.js"></script>
+    <script src="marco.js" defer></script>
+</head>
+
+<body>
+
+    <a class="saltar" href="#contenido">Saltar al contenido</a>
+
+    <!-- ENCABEZADO EN EL CELULAR -->
+    <div class="mobile-header">
+        <img src="../frontend/img/escudo.png" alt="" class="escudo-mobile" width="48" height="48">
+        <span class="institution-name-mobile">E.E.T. N°2 "Independencia"</span>
+        <button id="btnMenu" type="button" class="btn-menu" aria-controls="menuLateral" aria-expanded="false">
+            <span data-icono="menu"></span>Menú
+        </button>
+    </div>
+
+    <!-- MENÚ LATERAL -->
+    <aside id="menuLateral" class="sidebar" aria-label="Menú principal">
+        <div class="sidebar-content">
+            <button id="btnCerrarMenu" type="button" class="cerrar-menu" aria-label="Cerrar menú"><span data-icono="cerrar"></span></button>
+            <img src="../frontend/img/escudo.png" alt="Escudo de la E.E.T. N°2" class="escudo-sidebar" width="100" height="100">
+            <p class="institution-name">E.E.T. N°2<br>"Independencia"</p>
+            <p class="sistema-nombre"><span data-icono="documento"></span>ProgMesas</p>
+            <p class="sistema-detalle">Programas de examen</p>
+            <div class="perfil">
+                <div class="perfil-avatar"><span data-icono="docente"></span></div>
+                <div class="perfil-info">
+                    <strong id="perfilNombre">Visitante</strong>
+                    <span id="perfilRol">Consulta pública</span>
+                </div>
+            </div>
+            <div class="nav-divider"></div>
+            <nav class="menu" aria-label="Secciones">
+                <a href="../" class="nav-link"><span data-icono="documento"></span>Programas</a>
+                <a id="btnDashboard" href="../frontend/dashboard.html" class="nav-link activo" aria-current="page"><span data-icono="tablero"></span>Dashboard</a>
+                <a id="btnVolverCampus" href="#" class="nav-link hidden"><span data-icono="volver"></span>Volver al campus</a>
+                <button id="btnLogout" type="button" class="nav-link nav-salir"><span data-icono="salir"></span>Cerrar sesión</button>
+            </nav>
+            <div class="sidebar-pie">
+                <div class="nav-divider"></div>
+                <div id="lugarTema"></div>
+                <a href="../privacidad.html" class="nav-link" ><span data-icono="escudo"></span>Privacidad</a>
+                <a href="../terminos.html" class="nav-link" ><span data-icono="lista"></span>Condiciones</a>
+            </div>
+        </div>
+    </aside>
+    <div id="veloMenu" class="velo" hidden></div>
+
+    <main id="contenido" class="contenido" tabindex="-1">
+        <header class="page-header">
+            <div>
+                <h1 id="tituloDashboard"><span data-icono="tablero"></span>Dashboard Asesora</h1>
+                <p id="subtituloDashboard">Control de entrega de los programas de examen.</p>
+            </div>
+            <div class="page-header-extra"><label class="pill selector-anio" for="anioDashboard"><span data-icono="calendario"></span>Año <select id="anioDashboard" class="select-pill"></select></label></div>
+        </header>
+
+    <div class="container">
+
+        <div id="toast-container" aria-live="polite"></div>
+
+        <div id="estadoSistema"></div>
+
+        <section class="section-box">
+            <h2><span data-icono="porcentaje"></span>Cobertura general</h2>
+            <div id="fechaLimite" class="fecha-limite"></div>
+            <div id="dashboardResumen" class="dashboard-grid"></div>
+        </section>
+
+        <details open class="collapsible-box">
+            <summary><span class="summary-titulo"><span data-icono="pendiente"></span>Notificaciones y alertas</span></summary>
+            <div class="collapsible-content">
+                <div id="notificaciones"></div>
+            </div>
+        </details>
+
+        <details open class="collapsible-box">
+            <summary><span class="summary-titulo"><span data-icono="curso"></span>Estado por curso</span></summary>
+            <div class="collapsible-content">
+                <div id="estadoCursos"></div>
+            </div>
+        </details>
+
+        <details class="collapsible-box">
+            <summary><span class="summary-titulo"><span data-icono="docente"></span>Estado por docente</span></summary>
+            <div class="collapsible-content">
+                <input id="busquedaDocente" class="form-control campo-busqueda" placeholder="Buscar docente…" aria-label="Buscar docente">
+                <div id="estadoProfesores"></div>
+            </div>
+        </details>
+
+        <details open class="collapsible-box">
+            <summary><span class="summary-titulo"><span data-icono="reloj"></span>Programas pendientes</span></summary>
+            <div class="collapsible-content">
+                <div class="filtros">
+                    <input id="busquedaFaltantes" class="form-control" placeholder="Buscar por docente, materia o curso…" aria-label="Buscar pendientes">
+                    <select id="filtroProfesorFaltantes" class="form-select" aria-label="Docente"></select>
+                    <select id="filtroMateriaFaltantes" class="form-select" aria-label="Materia"></select>
+                    <select id="filtroCursoFaltantes" class="form-select" aria-label="Curso"></select>
+                </div>
+                <div class="botones-fila">
+                    <button type="button" id="btnExportar" class="btn-secondary-auth btn-chico"><span data-icono="descargar"></span>Descargar pendientes (CSV)</button>
+                    <button type="button" id="btnCorreos" class="btn-secondary-auth btn-chico"><span data-icono="correo"></span>Copiar correos de los docentes con pendientes</button>
+                </div>
+                <div id="faltantes"></div>
+            </div>
+        </details>
+
+        <details open class="collapsible-box">
+            <summary><span class="summary-titulo"><span data-icono="escudo"></span>Cuentas de docentes</span> <small id="resumenCuentas" class="resumen-summary"></small></summary>
+            <div class="collapsible-content">
+                <p class="texto-suave">Las cuentas vienen verificadas del sistema principal. Si el nombre de la cuenta coincide con la
+                    lista de horarios se vinculan solas; si no, cada docente elige su nombre la primera vez que entra.
+                    Desde acá podés asignar, corregir o desvincular un nombre.</p>
+                <datalist id="listaDocentesLibres"></datalist>
+                <div id="panelDocentes"></div>
+            </div>
+        </details>
+
+        <details class="collapsible-box" id="seccionRegistro">
+            <summary><span class="summary-titulo"><span data-icono="historial"></span>Registro de actividad</span></summary>
+            <div class="collapsible-content">
+                <p class="texto-suave">Quién subió, reemplazó, reutilizó o eliminó programas, quién cambió vinculaciones de docentes y
+                    la fecha límite, y las tareas automáticas (copias de seguridad, paso a Drive).</p>
+                <input id="busquedaRegistro" class="form-control campo-busqueda" placeholder="Buscar por persona, materia, curso o acción…" aria-label="Buscar en el registro">
+                <div id="registro"></div>
+            </div>
+        </details>
+
+        <details open class="collapsible-box">
+            <summary><span class="summary-titulo"><span data-icono="documento"></span>Últimos programas cargados</span></summary>
+            <div class="collapsible-content">
+                <div id="ultimosProgramas"></div>
+            </div>
+        </details>
+
+    </div>
+    </main>
+
+    <script src="common.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>

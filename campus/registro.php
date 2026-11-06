@@ -59,12 +59,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $clave = bin2hex(random_bytes(4));
 
                     // Guardamos en la BD con la contraseña CIFRADA
-                    crearAlumno($nombre, $correo, $dni, password_hash($clave, PASSWORD_DEFAULT));
+                    $nuevoId = crearAlumno($nombre, $correo, $dni, password_hash($clave, PASSWORD_DEFAULT));
 
                     // Redirigimos a login.php para iniciar sesión directamente con la clave generada
                     $_SESSION['mensaje_exito'] = [
                         'tipo'    => 'registro',
                         'rol'     => 'alumno',
+                        'id'      => $nuevoId,
                         'dni'     => $dni,
                         'clave'   => $clave,
                         'mensaje' => '¡Registro exitoso! Su cuenta ha sido creada.'
@@ -85,19 +86,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     /* -------------------- REGISTRO DE PROFESOR -------------------- */
     elseif ($tipo === 'profesor') {
 
+        $dni          = preg_replace('/\D/', '', $_POST['dni'] ?? '');
         $claveEscuela = trim($_POST['clave_escuela'] ?? '');
 
-        if (CLAVE_REGISTRO_PROFESOR !== '' && !hash_equals(CLAVE_REGISTRO_PROFESOR, $claveEscuela)) {
+        if ($dni === '' || !preg_match('/^\d{7,8}$/', $dni)) {
+            $error = 'El DNI debe tener 7 u 8 números válidos.';
+        } elseif (CLAVE_REGISTRO_PROFESOR !== '' && !hash_equals(CLAVE_REGISTRO_PROFESOR, $claveEscuela)) {
             $error = 'La clave de la escuela no es correcta.';
         } else {
             try {
-                if (existeProfesor($correo)) {
+                if (existeProfesorPorDni($dni)) {
+                    $error = 'Ya existe un profesor registrado con ese DNI (' . e($dni) . ').';
+                } elseif (existeProfesor($correo)) {
                     $error = 'Ya existe un profesor registrado con ese correo.';
                 } else {
                     // Código tipo PROF-4F9A2C
                     $codigo = 'PROF-' . strtoupper(bin2hex(random_bytes(3)));
 
-                    crearProfesor($nombre, $correo, password_hash($codigo, PASSWORD_DEFAULT));
+                    $nuevoIdProf = crearProfesor($nombre, $correo, password_hash($codigo, PASSWORD_DEFAULT), $dni);
 
                     $mensaje = "Hola $nombre,\n\nSu registro como profesor fue exitoso.\n\n"
                              . "Su código de acceso es: $codigo\n\n"
@@ -107,6 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['mensaje_exito'] = [
                         'tipo'    => 'registro',
                         'rol'     => 'profesor',
+                        'id'      => $nuevoIdProf,
                         'codigo'  => $codigo,
                         'mensaje' => '¡Registro exitoso! Su cuenta de profesor ha sido creada.'
                     ];
@@ -116,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (PDOException $ex) {
                 error_log('Error de BD en registro (profesor): ' . $ex->getMessage());
                 $error = ($ex->getCode() === '23000')
-                    ? 'Ya existe un profesor registrado con ese correo.'
+                    ? 'Ya existe un profesor registrado con ese correo o DNI.'
                     : 'No se pudo guardar el registro en la base de datos.';
             }
         }
@@ -194,10 +201,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <input type="hidden" name="tipo" value="profesor">
 
         <label for="p-nombre">Nombre y apellido</label>
-        <input type="text" id="p-nombre" name="nombre" required>
+        <input type="text" id="p-nombre" name="nombre" value="<?php echo ($tipo === 'profesor') ? e($nombre) : ''; ?>" required>
+
+        <label for="p-dni">D.N.I.</label>
+        <input type="text" id="p-dni" name="dni" value="<?php echo ($tipo === 'profesor') ? e($dni) : ''; ?>" inputmode="numeric" pattern="[0-9]*" maxlength="8" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Ej. 28456123 (sin puntos)" required>
 
         <label for="p-correo">Correo</label>
-        <input type="email" id="p-correo" name="correo" required>
+        <input type="email" id="p-correo" name="correo" value="<?php echo ($tipo === 'profesor') ? e($correo) : ''; ?>" required>
 
         <label for="p-clave">Clave de la escuela</label>
         <input type="password" id="p-clave" name="clave_escuela">
@@ -206,10 +216,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <button type="submit" class="boton">Registrarme</button>
     </form>
 
-    <!-- ACCIONES: INGRESO, AYUDA Y VOLVER -->
+    <!-- ACCIONES: INGRESO Y VOLVER -->
     <div class="login__acciones">
         <a href="login.php" class="boton boton--secundario">¿Ya tiene cuenta? Ingrese aquí</a>
-        <a href="ayuda.php" class="boton boton--gris">❓ ¿Necesitas ayuda para registrarte?</a>
         <a href="index.php" class="boton boton--oscuro">← Volver al inicio</a>
     </div>
 </main>

@@ -354,10 +354,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <button type="submit" class="boton" style="margin-top: 1.25rem; width: 100%;">Ingresar</button>
     </form>
 
-    <!-- ACCIONES: REGISTRO, RECUPERACIÓN Y VOLVER -->
+    <!-- ACCIONES: REGISTRO Y VOLVER -->
     <div class="login__acciones" style="margin-top: 1.5rem;">
         <a href="registro.php" class="boton boton--secundario">¿Primera vez? Regístrese aquí</a>
-        <a href="recuperar.php" class="boton boton--gris">¿Olvidó su contraseña? Solicitar nueva en la institución</a>
         <a href="index.php" class="boton boton--oscuro">← Volver al inicio</a>
     </div>
 </main>

@@ -19,12 +19,21 @@ function conectarBD() {
             $dsn = 'mysql:host=' . DB_HOST . ';port=' . DB_PORT
                  . ';dbname=' . DB_NAME . ';charset=utf8mb4';
 
-            $pdo = new PDO($dsn, DB_USER, DB_PASS, [
+            $opciones = [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,   // errores como excepciones
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,         // filas como arrays
                 PDO::ATTR_EMULATE_PREPARES   => false,                    // consultas preparadas reales
                 PDO::ATTR_TIMEOUT            => 2,                        // timeout corto si no responde la IP
-            ]);
+            ];
+            // Base en la nube (por ejemplo en Render): conexión cifrada. Con el certificado del proveedor
+            // (DB_SSL_CA) se verifica el servidor; sin él, la conexión va cifrada pero sin verificar.
+            if (defined('DB_SSL') && DB_SSL) {
+                $ca = (defined('DB_SSL_CA') && DB_SSL_CA !== '') ? DB_SSL_CA : '/etc/ssl/certs/ca-certificates.crt';
+                $opciones[PDO::MYSQL_ATTR_SSL_CA] = $ca;
+                $opciones[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = defined('DB_SSL_CA') && DB_SSL_CA !== '';
+                $opciones[PDO::ATTR_TIMEOUT] = 10;
+            }
+            $pdo = new PDO($dsn, DB_USER, DB_PASS, $opciones);
         } catch (PDOException $e) {
             // 2) Si la IP remota no responde (ej. al cambiar de Wi-Fi), usamos el MySQL local de XAMPP
             if (DB_HOST !== '127.0.0.1' && DB_HOST !== 'localhost') {

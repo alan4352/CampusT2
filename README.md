@@ -26,3 +26,26 @@ principal y da el inicio de sesión; los demás sistemas son subpáginas que usa
 
 `config.php`, `progmesas/.env` y los datos de `campus/data/` (usuarios y correos del modo prueba) no se suben al
 repositorio: tienen contraseñas y datos personales.
+
+## Publicar en Render (gratis, con MySQL en Aiven)
+
+Render no tiene PHP ni MySQL propios: el campus corre en un contenedor Docker (`Dockerfile`) y la base va en otro
+proveedor. Con el plan gratis de Render, lo que se guarda en el servidor (la base y los PDF de ProgMesas, los correos
+simulados) se borra cada vez que el servicio se reinicia, y el servicio se duerme a los 15 minutos sin visitas.
+
+1. **Base de datos.** En [aiven.io](https://aiven.io) crear un servicio **MySQL** con el plan gratis. Anotar host,
+   puerto, usuario, contraseña y base (`defaultdb`), y descargar el certificado **CA certificate**.
+2. **Render.** En render.com → **New → Blueprint** → elegir este repositorio. `render.yaml` crea el servicio web y pide:
+
+   | Variable | Valor |
+   |---|---|
+   | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` | Los datos de Aiven |
+   | `DB_SSL_CA` | El texto completo del certificado de Aiven (opcional: sin él la conexión va cifrada pero sin verificar) |
+   | `CLAVE_REGISTRO_PROFESOR` | La clave que piden los profesores para registrarse |
+
+   `PROGMESAS_SECRETO` la genera Render sola; `DB_SSL` y `MODO_PRUEBA` ya vienen en `true`.
+3. Al arrancar, el contenedor crea las tablas `alumnos` y `profesores` (`docker/crear_tablas.php`); las de
+   preinscripciones, proyectores y ProgMesas se crean solas al usarse.
+
+Para probar el contenedor en la compu: `docker build -t campust2 .` y
+`docker run -p 8080:80 -e DB_HOST=... -e DB_USER=... -e DB_PASS=... campust2`.

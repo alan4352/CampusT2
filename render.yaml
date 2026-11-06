@@ -1,0 +1,29 @@
+# Render: New → Blueprint → elegir este repositorio. Crea el campus como servicio web gratis (Docker).
+# La base MySQL va en otro proveedor (por ejemplo Aiven, plan gratis): sus datos se cargan abajo.
+services:
+  - type: web
+    name: campust2
+    runtime: docker
+    plan: free
+    healthCheckPath: /campus/index.php
+    envVars:
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASS
+        sync: false
+      - key: DB_SSL
+        value: "true"
+      - key: DB_SSL_CA
+        sync: false
+      - key: CLAVE_REGISTRO_PROFESOR
+        sync: false
+      - key: PROGMESAS_SECRETO
+        generateValue: true
+      - key: MODO_PRUEBA
+        value: "true"

@@ -1,32 +1,31 @@
 <?php
 /* =====================================================================
    ARCHIVO: login.php
-   PARA QUÉ SIRVE: muestra el formulario de acceso y VALIDA los datos
-   cuando el usuario lo envía. Alumnos y profesores se consultan en la
-   base de datos MySQL; los directivos siguen definidos en includes/datos.php.
+   PARA QUÉ SIRVE: Formulario unificado de acceso al Campus Virtual.
+   Permite ingresar a Alumnos, Profesores y Directivos desde un único
+   formulario inteligente, detectando automáticamente el tipo de usuario
+   según el identificador (DNI, correo electrónico o código PROF-).
    ===================================================================== */
 
 require_once 'includes/sesion.php';
-require_once 'includes/datos.php';      // Aquí están los DIRECTIVOS
-require_once 'includes/usuarios.php';   // Funciones que consultan la base de datos
+require_once 'includes/datos.php';      // Directivos institucionales
+require_once 'includes/usuarios.php';   // Alumnos y profesores en MySQL
 
-// A dónde ir después de ingresar: al panel, o al módulo que se estaba abriendo
-// (por ejemplo programas.php guarda 'programas.php' en $_SESSION['volver_a']).
+// Destino tras el inicio de sesión exitoso
 function destinoTrasLogin() {
     $destino = $_SESSION['volver_a'] ?? 'dashboard.php';
     unset($_SESSION['volver_a']);
     return preg_match('/^[a-z_]+\.php$/', $destino) ? $destino : 'dashboard.php';
 }
 
-// Si ya inició sesión, no tiene sentido mostrar el login
+// Si ya inició sesión, redirigimos a su destino correspondiente
 if (estaLogueado()) {
     header('Location: ' . destinoTrasLogin());
     exit;
 }
 
 $error = '';
-$rolElegido = 'alumno';
-$dniPrellenado = '';
+$identificadorPrellenado = '';
 $mensajeExito = null;
 
 // Control de intentos fallidos (Rate Limiting contra ataques de fuerza bruta)
@@ -49,144 +48,180 @@ $ahora = time();
 $bloqueadoHasta = max($rateData['bloqueado_hasta'] ?? 0, $_SESSION['login_bloqueado_hasta'] ?? 0);
 $estaBloqueado = ($bloqueadoHasta > $ahora);
 
-// Si venimos de un registro o recuperación de contraseña, recuperamos el mensaje
+// Si venimos de un registro o recuperación, precargamos el identificador
 if (isset($_SESSION['mensaje_exito'])) {
     $mensajeExito = $_SESSION['mensaje_exito'];
     unset($_SESSION['mensaje_exito']);
 
-    if (!empty($mensajeExito['rol'])) {
-        $rolElegido = $mensajeExito['rol'];
-    }
     if (!empty($mensajeExito['dni'])) {
-        $dniPrellenado = $mensajeExito['dni'];
+        $identificadorPrellenado = $mensajeExito['dni'];
+    } elseif (!empty($mensajeExito['codigo'])) {
+        $identificadorPrellenado = $mensajeExito['codigo'];
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Funciones auxiliares para iniciar sesión de forma consistente según el rol
+function iniciarSesionAlumno(array $alumno, string $rateLimitFile): void {
+    unset($_SESSION['login_intentos'], $_SESSION['login_bloqueado_hasta']);
+    if (file_exists($rateLimitFile)) { @unlink($rateLimitFile); }
 
-    $rolElegido = $_POST['rol'] ?? '';
+    session_regenerate_id(true);
+    $_SESSION['rol']        = 'alumno';
+    $_SESSION['usuario_id'] = (int) ($alumno['id'] ?? 0);
+    $_SESSION['user_id']    = (int) ($alumno['id'] ?? 0);
+    $_SESSION['nombre']     = $alumno['nombre'];
+    $_SESSION['dni']        = $alumno['dni'];
+    $_SESSION['correo']     = $alumno['correo'] ?? '';
+    $_SESSION['email']      = $alumno['correo'] ?? '';
+    $_SESSION['id']         = (int) ($alumno['id'] ?? 0);
+    header('Location: ' . destinoTrasLogin());
+    exit;
+}
+
+function iniciarSesionProfesor(array $profesor, string $rateLimitFile): void {
+    unset($_SESSION['login_intentos'], $_SESSION['login_bloqueado_hasta']);
+    if (file_exists($rateLimitFile)) { @unlink($rateLimitFile); }
+
+    session_regenerate_id(true);
+    $_SESSION['rol']        = 'profesor';
+    $_SESSION['usuario_id'] = (int) ($profesor['id'] ?? 0);
+    $_SESSION['user_id']    = (int) ($profesor['id'] ?? 0);
+    $_SESSION['nombre']     = $profesor['nombre'];
+    $_SESSION['dni']        = $profesor['dni'] ?? '';
+    $_SESSION['correo']     = $profesor['correo'] ?? '';
+    $_SESSION['email']      = $profesor['correo'] ?? '';
+    $_SESSION['id']         = (int) ($profesor['id'] ?? 0);
+    header('Location: ' . destinoTrasLogin());
+    exit;
+}
+
+function iniciarSesionDirectivo(array $directivo, string $rateLimitFile): void {
+    unset($_SESSION['login_intentos'], $_SESSION['login_bloqueado_hasta']);
+    if (file_exists($rateLimitFile)) { @unlink($rateLimitFile); }
+
+    session_regenerate_id(true);
+    $_SESSION['rol']        = 'directivo';
+    $_SESSION['usuario_id'] = 'directivo:' . strtolower($directivo['correo']);
+    $_SESSION['user_id']    = 'directivo:' . strtolower($directivo['correo']);
+    $_SESSION['nombre']     = $directivo['nombre'];
+    $_SESSION['correo']     = $directivo['correo'];
+    $_SESSION['email']      = $directivo['correo'];
+    $_SESSION['id']         = 'directivo:' . strtolower($directivo['correo']);
+    header('Location: ' . destinoTrasLogin());
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $identificador = trim($_POST['identificador'] ?? $_POST['dni'] ?? $_POST['correo'] ?? $_POST['codigo'] ?? '');
+    $clave         = $_POST['clave'] ?? '';
+
+    $identificadorPrellenado = $identificador;
 
     if ($estaBloqueado) {
         $minutosRestantes = max(1, (int) ceil(($bloqueadoHasta - $ahora) / 60));
         $error = "Demasiados intentos fallidos. Por seguridad, el acceso ha sido bloqueado temporalmente. Intente nuevamente en {$minutosRestantes} minuto(s).";
+    } elseif ($identificador === '') {
+        $error = 'Por favor, ingrese su DNI, correo electrónico o código de profesor.';
     } else {
+        try {
+            $autenticado = false;
 
-    try {
-
-        /* ---------- CASO A: ALUMNO (DNI + contraseña) ---------- */
-        if ($rolElegido === 'alumno') {
-
-            $dni   = preg_replace('/\D/', '', $_POST['dni'] ?? '');
-            $clave = $_POST['clave'] ?? '';
-
-            // Buscamos al alumno por DNI en la base de datos
-            $alumno = buscarAlumnoPorDni($dni);
-
-            // Verificamos contraseña (password_verify compara con el hash)
-            if ($alumno && password_verify($clave, $alumno['clave_hash'])) {
-
-                // Login exitoso: restablecemos el contador de intentos
-                unset($_SESSION['login_intentos'], $_SESSION['login_bloqueado_hasta']);
-                if (file_exists($rateLimitFile)) { @unlink($rateLimitFile); }
-
-                session_regenerate_id(true);
-                $_SESSION['rol']        = 'alumno';
-                $_SESSION['usuario_id'] = (int) ($alumno['id'] ?? 0);
-                $_SESSION['user_id']    = (int) ($alumno['id'] ?? 0);
-                $_SESSION['nombre']     = $alumno['nombre'];
-                $_SESSION['dni']        = $alumno['dni'];
-                $_SESSION['correo']     = $alumno['correo'] ?? '';
-                $_SESSION['email']      = $alumno['correo'] ?? '';
-                $_SESSION['id']         = (int) ($alumno['id'] ?? 0);
-                header('Location: ' . destinoTrasLogin());
-                exit;
+            /* =================================================================
+               1. DETECCIÓN POR CÓDIGO DE PROFESOR (PROF-...)
+               ================================================================= */
+            $codigoCandidato = '';
+            if (stripos($identificador, 'PROF-') === 0) {
+                $codigoCandidato = strtoupper($identificador);
+            } elseif (stripos($clave, 'PROF-') === 0) {
+                $codigoCandidato = strtoupper($clave);
             }
-            $error = 'DNI o contraseña incorrectos.';
-        }
 
-        /* ---------- CASO B: PROFESOR (solo código) ---------- */
-        elseif ($rolElegido === 'profesor') {
-
-            $codigo = strtoupper(trim($_POST['codigo'] ?? ''));
-
-            if ($codigo !== '') {
-                // El código está cifrado, así que se compara contra cada profesor
+            if ($codigoCandidato !== '') {
                 foreach (listarProfesores() as $profesor) {
-                    if (password_verify($codigo, $profesor['codigo_hash'])) {
-                        // Login exitoso: restablecemos el contador de intentos
-                        unset($_SESSION['login_intentos'], $_SESSION['login_bloqueado_hasta']);
-                        if (file_exists($rateLimitFile)) { @unlink($rateLimitFile); }
-
-                        session_regenerate_id(true);
-                        $_SESSION['rol']        = 'profesor';
-                        $_SESSION['usuario_id'] = (int) ($profesor['id'] ?? 0);
-                        $_SESSION['user_id']    = (int) ($profesor['id'] ?? 0);
-                        $_SESSION['nombre']     = $profesor['nombre'];
-                        $_SESSION['dni']        = $profesor['dni'] ?? '';
-                        $_SESSION['correo']     = $profesor['correo'] ?? '';
-                        $_SESSION['email']      = $profesor['correo'] ?? '';
-                        $_SESSION['id']         = (int) ($profesor['id'] ?? 0);
-                        header('Location: ' . destinoTrasLogin());
-                        exit;
+                    if (password_verify($codigoCandidato, $profesor['codigo_hash'])) {
+                        iniciarSesionProfesor($profesor, $rateLimitFile);
                     }
                 }
             }
-            $error = 'Código de profesor no válido.';
-        }
 
-        /* ---------- CASO C: DIRECTIVO (definidos en datos.php) ---------- */
-        elseif ($rolElegido === 'directivo') {
+            /* =================================================================
+               2. DETECCIÓN POR CORREO ELECTRÓNICO (contiene @)
+               ================================================================= */
+            if (!$autenticado && strpos($identificador, '@') !== false) {
+                $correoLimpio = strtolower($identificador);
 
-            $correo = trim($_POST['correo'] ?? '');
-            $clave  = $_POST['clave'] ?? '';
+                // A) Verificar si es Directivo
+                foreach ($DIRECTIVOS as $directivo) {
+                    if (strtolower($directivo['correo']) === $correoLimpio && password_verify($clave, $directivo['clave_hash'])) {
+                        iniciarSesionDirectivo($directivo, $rateLimitFile);
+                    }
+                }
 
-            foreach ($DIRECTIVOS as $directivo) {
-                if (strtolower($correo) === strtolower($directivo['correo'])
-                    && password_verify($clave, $directivo['clave_hash'])) {
+                // B) Verificar si es Profesor por correo
+                $prof = buscarProfesorPorCorreo($correoLimpio);
+                if ($prof && password_verify($clave, $prof['codigo_hash'])) {
+                    iniciarSesionProfesor($prof, $rateLimitFile);
+                }
 
-                    // Login exitoso: restablecemos el contador de intentos
-                    unset($_SESSION['login_intentos'], $_SESSION['login_bloqueado_hasta']);
-                    if (file_exists($rateLimitFile)) { @unlink($rateLimitFile); }
-
-                    session_regenerate_id(true);
-                    $_SESSION['rol']        = 'directivo';
-                    $_SESSION['usuario_id'] = 'directivo:' . strtolower($directivo['correo']);
-                    $_SESSION['user_id']    = 'directivo:' . strtolower($directivo['correo']);
-                    $_SESSION['nombre']     = $directivo['nombre'];
-                    $_SESSION['correo']     = $directivo['correo'];
-                    $_SESSION['email']      = $directivo['correo'];
-                    $_SESSION['id']         = 'directivo:' . strtolower($directivo['correo']);
-                    header('Location: ' . destinoTrasLogin());
-                    exit;
+                // C) Verificar si es Alumno por correo
+                $alumnoCorreo = buscarAlumnoPorCorreo($correoLimpio);
+                if ($alumnoCorreo && password_verify($clave, $alumnoCorreo['clave_hash'])) {
+                    iniciarSesionAlumno($alumnoCorreo, $rateLimitFile);
                 }
             }
-            $error = 'Correo o contraseña incorrectos.';
+
+            /* =================================================================
+               3. DETECCIÓN POR DNI (secuencia numérica de 7 u 8 dígitos)
+               ================================================================= */
+            $dniLimpio = preg_replace('/\D/', '', $identificador);
+            if (!$autenticado && $dniLimpio !== '' && strlen($dniLimpio) >= 7 && strlen($dniLimpio) <= 9) {
+                // A) Buscar en Alumnos por DNI
+                $alumno = buscarAlumnoPorDni($dniLimpio);
+                if ($alumno && password_verify($clave, $alumno['clave_hash'])) {
+                    iniciarSesionAlumno($alumno, $rateLimitFile);
+                }
+
+                // B) Buscar en Profesores por DNI (con código o contraseña)
+                $profDni = buscarProfesorPorDni($dniLimpio);
+                if ($profDni && password_verify($clave, $profDni['codigo_hash'])) {
+                    iniciarSesionProfesor($profDni, $rateLimitFile);
+                }
+            }
+
+            /* =================================================================
+               4. CASO DE RESPALDO: Código de profesor sin prefijo o directo
+               ================================================================= */
+            if (!$autenticado && $clave === '' && strlen($identificador) >= 4) {
+                $posibleCodigo = strtoupper($identificador);
+                foreach (listarProfesores() as $profesor) {
+                    if (password_verify($posibleCodigo, $profesor['codigo_hash'])) {
+                        iniciarSesionProfesor($profesor, $rateLimitFile);
+                    }
+                }
+            }
+
+            if (!$autenticado) {
+                $error = 'Datos de acceso incorrectos. Verifique su DNI, correo o código y su contraseña.';
+            }
+
+        } catch (PDOException $ex) {
+            error_log('Error de BD en login unificado: ' . $ex->getMessage());
+            $error = 'No se pudo conectar con la base de datos. Intente más tarde.';
         }
 
-        else {
-            $error = 'Seleccione un tipo de usuario válido.';
-            $rolElegido = 'alumno';
+        // Si falló la autenticación, incrementamos el contador de intentos
+        if ($error !== '') {
+            $intentos = ($rateData['intentos'] ?? 0) + 1;
+            $bloqueadoHasta = 0;
+            if ($intentos >= 5) {
+                $bloqueadoHasta = time() + 900; // 15 minutos de bloqueo
+                $error = 'Demasiados intentos fallidos. Por seguridad, su acceso ha sido bloqueado temporalmente por 15 minutos.';
+            }
+            $rateData = ['intentos' => $intentos, 'bloqueado_hasta' => $bloqueadoHasta];
+            $_SESSION['login_intentos'] = $intentos;
+            $_SESSION['login_bloqueado_hasta'] = $bloqueadoHasta;
+            @file_put_contents($rateLimitFile, json_encode($rateData));
         }
-
-    } catch (PDOException $ex) {
-        // No mostramos detalles técnicos al visitante; quedan en el log del servidor
-        error_log('Error de BD en login: ' . $ex->getMessage());
-        $error = 'No se pudo conectar con la base de datos. Intente más tarde.';
-    }
-
-    // Si hubo un fallo de autenticación, incrementamos el contador de intentos
-    if ($error !== '') {
-        $intentos = ($rateData['intentos'] ?? 0) + 1;
-        $bloqueadoHasta = 0;
-        if ($intentos >= 5) {
-            $bloqueadoHasta = time() + 900; // 15 minutos de bloqueo tras 5 intentos
-            $error = 'Demasiados intentos fallidos. Por seguridad, su acceso ha sido bloqueado temporalmente por 15 minutos.';
-        }
-        $rateData = ['intentos' => $intentos, 'bloqueado_hasta' => $bloqueadoHasta];
-        $_SESSION['login_intentos'] = $intentos;
-        $_SESSION['login_bloqueado_hasta'] = $bloqueadoHasta;
-        @file_put_contents($rateLimitFile, json_encode($rateData));
-    }
     }
 }
 ?>
@@ -195,27 +230,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ingresar al campus</title>
+    <title>Ingresar al Campus Virtual | EET N°2</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .form-unificado {
+            display: block !important;
+            text-align: left;
+        }
+        .form-unificado label {
+            display: block;
+            margin: 14px 0 6px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #e5e7eb;
+        }
+        .form-unificado input {
+            width: 100%;
+            padding: 12px 14px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 8px;
+            font-size: 1rem;
+            color: #ffffff;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+        }
+        .form-unificado input:focus {
+            background: rgba(255, 255, 255, 0.09);
+            outline: 3px solid rgba(162, 19, 47, 0.35);
+            border-color: var(--primary, #a2132f);
+        }
+        .identificador-hint {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            color: #9ca3af;
+            margin-top: 6px;
+            transition: color 0.2s ease;
+        }
+        .identificador-hint.detected {
+            color: #4ade80;
+            font-weight: 600;
+        }
+        .login__sub--unificado {
+            color: #d1d5db;
+            font-size: 0.92rem;
+            margin-bottom: 1.5rem;
+        }
+    </style>
 </head>
 <body class="fondo-login">
 
 <main class="login">
-    <!-- AQUÍ VA EL LOGO DE LA ESCUELA (mismo archivo: img/logo.png) -->
+    <!-- LOGO DE LA ESCUELA -->
     <img src="img/logo.png" alt="Logo de la escuela" class="logo logo--login" onerror="this.style.display='none'">
     <h1>Campus Virtual</h1>
-    <p class="login__sub">Seleccione su tipo de usuario</p>
+    <p class="login__sub login__sub--unificado">Portal institucional de acceso unificado</p>
 
-    <!-- PESTAÑAS para elegir el rol (el JavaScript de abajo las hace funcionar) -->
-    <div class="pestanas">
-        <button type="button" class="pestana" data-rol="alumno">Alumno</button>
-        <button type="button" class="pestana" data-rol="profesor">Profesor</button>
-        <button type="button" class="pestana" data-rol="directivo">Directivo</button>
-    </div>
-
-    <!-- Mensaje de éxito (registro o recuperación de contraseña) -->
+    <!-- Mensaje de éxito tras registro o recuperación -->
     <?php if ($mensajeExito): ?>
-        <div class="exito">
+        <div class="exito" style="margin-bottom: 1.25rem;">
             <p><strong><?php echo e($mensajeExito['mensaje']); ?></strong></p>
             <?php if (!empty($mensajeExito['clave'])): ?>
                 <div class="clave-destacada">
@@ -224,7 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </span>
                     <strong class="clave-destacada__codigo"><?php echo e($mensajeExito['clave']); ?></strong>
                 </div>
-                <p class="nota-clave">⚠️ Guarde o copie esta contraseña. Ingrese a continuación con su <strong>DNI</strong> y esta <strong>contraseña</strong>.</p>
+                <p class="nota-clave">⚠️ Guarde o copie esta contraseña para ingresar a continuación.</p>
             <?php elseif (!empty($mensajeExito['codigo'])): ?>
                 <div class="clave-destacada">
                     <span class="clave-destacada__titulo">Su código de profesor:</span>
@@ -235,97 +310,111 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     <?php endif; ?>
 
-    <!-- Mensaje de error (solo aparece si $error tiene texto) -->
+    <!-- Mensaje de error -->
     <?php if ($error !== ''): ?>
-        <div class="error"><?php echo e($error); // e() escapa el texto por seguridad ?></div>
+        <div class="error" style="margin-bottom: 1.25rem;"><?php echo e($error); ?></div>
     <?php endif; ?>
 
-
-    <!-- ============ FORMULARIO ALUMNO ============ -->
-    <form method="post" action="login.php" class="formulario" id="form-alumno">
-        <input type="hidden" name="rol" value="alumno"> <!-- Campo oculto: indica el rol -->
-
-        <label for="a-dni">DNI</label>
-        <input type="text" id="a-dni" name="dni" value="<?php echo e($dniPrellenado); ?>" inputmode="numeric" pattern="[0-9]*" maxlength="8" oninput="this.value = this.value.replace(/[^0-9]/g, '')" onkeypress="return event.charCode >= 48 && event.charCode <= 57" placeholder="Solo números (sin puntos ni letras)" required>
-
-        <label for="a-clave">Contraseña</label>
-        <input type="password" id="a-clave" name="clave" required>
-        <div class="login__ayuda-clave">
-            <small>Ingrese su DNI y la contraseña generada al registrarse.</small>
-            <a href="recuperar.php" class="login__olvido">¿Olvidó su contraseña?</a>
+    <!-- ============ FORMULARIO DE ACCESO UNIFICADO ============ -->
+    <form method="post" action="login.php" class="formulario form-unificado" id="form-login-unificado" novalidate>
+        <label for="identificador">Identificación</label>
+        <input 
+            type="text" 
+            id="identificador" 
+            name="identificador" 
+            value="<?php echo e($identificadorPrellenado); ?>" 
+            placeholder="DNI, correo o código PROF-" 
+            required 
+            autocomplete="username" 
+            autofocus
+        >
+        <div class="identificador-hint" id="identificadorHint">
+            <span>Ingrese su DNI (alumno), código PROF- (profesor) o correo (directivo)</span>
         </div>
 
-        <button type="submit" class="boton">Ingresar</button>
+        <div id="campoClaveWrapper" style="margin-top: 0.5rem;">
+            <label for="clave" id="labelClave">Contraseña</label>
+            <input 
+                type="password" 
+                id="clave" 
+                name="clave" 
+                placeholder="Su contraseña de acceso" 
+                autocomplete="current-password"
+            >
+            <div class="login__ayuda-clave">
+                <small id="ayudaClave">Alumnos y Directivos ingresan su contraseña personal.</small>
+                <a href="recuperar.php" class="login__olvido">¿Olvidó su contraseña?</a>
+            </div>
+        </div>
+
+        <button type="submit" class="boton" style="margin-top: 1.25rem; width: 100%;">Ingresar</button>
     </form>
 
-
-    <!-- ============ FORMULARIO PROFESOR ============ -->
-    <form method="post" action="login.php" class="formulario" id="form-profesor">
-        <input type="hidden" name="rol" value="profesor">
-
-        <label for="p-codigo">Código de profesor</label>
-        <input type="text" id="p-codigo" name="codigo" placeholder="Ej: PROF-A1B2C3" required>
-        <small>Código entregado por la escuela.</small>
-
-        <button type="submit" class="boton">Ingresar</button>
-    </form>
-
-
-    <!-- ============ FORMULARIO DIRECTIVO ============ -->
-    <form method="post" action="login.php" class="formulario" id="form-directivo">
-        <input type="hidden" name="rol" value="directivo">
-
-        <label for="d-correo">Correo</label>
-        <input type="email" id="d-correo" name="correo" required>
-
-        <label for="d-clave">Contraseña</label>
-        <input type="password" id="d-clave" name="clave" required>
-
-        <button type="submit" class="boton">Ingresar</button>
-    </form>
-
-    <!-- ACCIONES: REGISTRO, RECUPERACIÓN, AYUDA Y VOLVER -->
-    <div class="login__acciones">
+    <!-- ACCIONES: REGISTRO, AYUDA Y VOLVER -->
+    <div class="login__acciones" style="margin-top: 1.5rem;">
         <a href="registro.php" class="boton boton--secundario">¿Primera vez? Regístrese aquí</a>
         <a href="recuperar.php" class="boton boton--gris">¿Olvidó su contraseña?</a>
-        <a href="ayuda.php" class="boton boton--gris">❓ ¿Necesitas ayuda para registrarte?</a>
+        <a href="ayuda.php" class="boton boton--gris">❓ ¿Necesitas ayuda para ingresar?</a>
         <a href="index.php" class="boton boton--oscuro">← Volver al inicio</a>
     </div>
 </main>
 
-
 <script>
-/* =====================================================================
-   JAVASCRIPT: muestra solo el formulario del rol elegido.
-   No tiene que ver con la seguridad: la validación real la hace PHP.
-   ===================================================================== */
+// Detección visual en tiempo real para guiar al usuario según lo que teclea
+(function() {
+    const inputId = document.getElementById('identificador');
+    const hintEl = document.getElementById('identificadorHint');
+    const campoClave = document.getElementById('campoClaveWrapper');
+    const ayudaClave = document.getElementById('ayudaClave');
 
-// PHP nos pasa qué pestaña mostrar al cargar (por si hubo un error)
-var rolInicial = "<?php echo e($rolElegido); ?>";
+    function actualizarPistas() {
+        if (!inputId || !hintEl) return;
+        const val = inputId.value.trim();
 
-// Guardamos todas las pestañas y todos los formularios
-var pestanas = document.querySelectorAll('.pestana');
-var roles = ['alumno', 'profesor', 'directivo'];
+        if (val.length === 0) {
+            hintEl.className = 'identificador-hint';
+            hintEl.innerHTML = '<span>Ingrese su DNI (alumno), código PROF- (profesor) o correo (directivo)</span>';
+            if (campoClave) campoClave.style.display = 'block';
+            if (ayudaClave) ayudaClave.textContent = 'Alumnos y Directivos ingresan su contraseña personal.';
+            return;
+        }
 
-// Función que muestra un rol y oculta los demás
-function mostrarRol(rol) {
-    roles.forEach(function (r) {
-        // Muestra el formulario del rol elegido, oculta los otros
-        document.getElementById('form-' + r).style.display = (r === rol) ? 'block' : 'none';
-    });
-    pestanas.forEach(function (p) {
-        // Marca como "activa" la pestaña elegida
-        p.classList.toggle('activa', p.dataset.rol === rol);
-    });
-}
+        // Si empieza con PROF- (o contiene código de profesor)
+        if (/^prof-/i.test(val) || /^prof/i.test(val)) {
+            hintEl.className = 'identificador-hint detected';
+            hintEl.innerHTML = '<span>✓ Código de profesor detectado (no requiere contraseña adicional)</span>';
+            if (ayudaClave) ayudaClave.textContent = 'Los profesores ingresan directamente con su código.';
+            return;
+        }
 
-// Al hacer clic en una pestaña, mostramos su formulario
-pestanas.forEach(function (p) {
-    p.addEventListener('click', function () { mostrarRol(p.dataset.rol); });
-});
+        // Si contiene @ (correo electrónico de directivo o profesor)
+        if (val.includes('@')) {
+            hintEl.className = 'identificador-hint detected';
+            hintEl.innerHTML = '<span>✓ Correo institucional detectado · Ingrese su contraseña</span>';
+            if (campoClave) campoClave.style.display = 'block';
+            if (ayudaClave) ayudaClave.textContent = 'Ingrese la contraseña asociada a su correo.';
+            return;
+        }
 
-// Mostramos la pestaña inicial al cargar la página
-mostrarRol(rolInicial);
+        // Si son solo números (DNI de alumno o profesor)
+        if (/^\d+$/.test(val)) {
+            hintEl.className = 'identificador-hint detected';
+            hintEl.innerHTML = '<span>✓ DNI detectado · Ingrese su contraseña de alumno</span>';
+            if (campoClave) campoClave.style.display = 'block';
+            if (ayudaClave) ayudaClave.textContent = 'Ingrese la contraseña generada al registrarse.';
+            return;
+        }
+
+        hintEl.className = 'identificador-hint';
+        hintEl.innerHTML = '<span>DNI, correo institucional o código de profesor</span>';
+        if (campoClave) campoClave.style.display = 'block';
+    }
+
+    if (inputId) {
+        inputId.addEventListener('input', actualizarPistas);
+        actualizarPistas();
+    }
+})();
 </script>
 
 </body>

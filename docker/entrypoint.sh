@@ -7,9 +7,12 @@ cd /var/www/html
 [ -f campus/includes/config.php ] || cp campus/includes/config.render.php campus/includes/config.php
 
 # Certificado del proveedor de MySQL (texto PEM en la variable DB_SSL_CA)
+# (si no es válido, se sigue sin él: la conexión va cifrada pero sin verificar el servidor)
 if [ -n "$DB_SSL_CA" ]; then
-    printf '%s\n' "$DB_SSL_CA" > /etc/ssl/certs/mysql-proveedor.pem
-    export DB_SSL_CA_ARCHIVO=/etc/ssl/certs/mysql-proveedor.pem
+    CA_ARCHIVO="$(php docker/certificado.php)"
+    if [ -n "$CA_ARCHIVO" ]; then
+        export DB_SSL_CA_ARCHIVO="$CA_ARCHIVO"
+    fi
 fi
 
 # Carpetas donde escribe PHP (datos del modo prueba, base y PDF de ProgMesas)

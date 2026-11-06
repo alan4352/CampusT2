@@ -12,7 +12,8 @@
         clearFieldErrors,
         COURSE_LEVEL_MAP,
         YEAR_LEVEL_MAP,
-        initAllCustomSelects
+        initAllCustomSelects,
+        esc
     } = window.AppCore;
 
     // Variables para controlar si hay cambios sin guardar o si se está editando una mesa existente
@@ -1494,7 +1495,7 @@
                 div.className = 'turn-stat-card';
                 div.innerHTML = `
                     <div class="turn-stat-title">
-                        <span>${t}</span>
+                        <span>${esc(t)}</span>
                         <span class="turn-badge ${t === stats.bestTurn && st.gradedCount > 0 ? 'best' : ''}">${st.passRate}% Aprobación</span>
                     </div>
                     <div class="turn-progress-bar">
@@ -1522,7 +1523,7 @@
                     item.className = 'top-subject-item';
                     item.innerHTML = `
                         <span class="top-rank">#${idx + 1}</span>
-                        <span class="top-name">${sub.name}</span>
+                        <span class="top-name">${esc(sub.name)}</span>
                         <span class="top-count">${sub.count} inscripto(s)</span>
                     `;
                     topSubjectsList.appendChild(item);
@@ -1667,7 +1668,7 @@
             const item = document.createElement('div');
             item.className = 'top-subject-item';
             item.innerHTML = `
-                <span class="top-name" style="flex: 1;">${sub.name}</span>
+                <span class="top-name" style="flex: 1;">${esc(sub.name)}</span>
                 <span class="top-count">${sub.count} alumno(s)</span>
             `;
             resultsContainer.appendChild(item);
@@ -1686,7 +1687,7 @@
             famBlock.style.marginTop = '0.6rem';
             famBlock.innerHTML = `
                 <div class="mesa-subject-group-title" style="display: flex; justify-content: space-between; align-items: center;">
-                    <span><span class="material-symbols-outlined" style="font-size: 0.95rem; vertical-align: middle;">hub</span> Familia: ${fam}</span>
+                    <span><span class="material-symbols-outlined" style="font-size: 0.95rem; vertical-align: middle;">hub</span> Familia: ${esc(fam)}</span>
                     <span style="font-size: 0.75rem; color: var(--color-gold);">Total: ${totalFamCount} alumno(s)</span>
                 </div>
             `;
@@ -1696,7 +1697,7 @@
                 subRow.className = 'top-subject-item';
                 subRow.style.margin = '0.35rem 0';
                 subRow.innerHTML = `
-                    <span class="top-name" style="flex: 1;">${sub.name}</span>
+                    <span class="top-name" style="flex: 1;">${esc(sub.name)}</span>
                     <span class="top-count">${sub.count} alumno(s)</span>
                 `;
                 famBlock.appendChild(subRow);
@@ -1783,7 +1784,7 @@
                 picker.innerHTML = `
                     <div class="picker-placeholder" style="color: #fca5a5;">
                         <span class="material-symbols-outlined" style="font-size: 1.3rem;">info</span>
-                        No hay materias con alumnos inscriptos en ${getCourseLabel(singleCourse)} para el turno seleccionado.
+                        No hay materias con alumnos inscriptos en ${esc(getCourseLabel(singleCourse))} para el turno seleccionado.
                     </div>
                 `;
                 selectedMesaSubjects = [];
@@ -1794,7 +1795,7 @@
 
             const groupEl = document.createElement('div');
             groupEl.className = 'mesa-subject-group';
-            groupEl.innerHTML = `<div class="mesa-subject-group-title"><span class="material-symbols-outlined" style="font-size: 1rem;">menu_book</span> Materias de ${getCourseLabel(singleCourse)} (materias con alumnos inscriptos)</div>`;
+            groupEl.innerHTML = `<div class="mesa-subject-group-title"><span class="material-symbols-outlined" style="font-size: 1rem;">menu_book</span> Materias de ${esc(getCourseLabel(singleCourse))} (materias con alumnos inscriptos)</div>`;
 
             subjects.forEach(sub => {
                 const itemEl = document.createElement('div');
@@ -1807,7 +1808,7 @@
                         <span class="material-symbols-outlined" style="font-size: 1.1rem; color: var(--color-gold);" data-type="radio">
                             ${selectedMesaSubjects.includes(sub) ? 'check_circle' : 'radio_button_unchecked'}
                         </span>
-                        <span>${sub}</span>
+                        <span>${esc(sub)}</span>
                     </div>
                 `;
 
@@ -1906,7 +1907,7 @@
                 picker.innerHTML = `
                     <div class="picker-placeholder" style="color: #fca5a5;">
                         <span class="material-symbols-outlined" style="font-size: 1.3rem;">warning</span>
-                        Los cursos seleccionados (${selectedMesaCourses.map(c => getCourseLabel(c)).join(', ')}) no comparten materias en común ni familias de materias.<br>
+                        Los cursos seleccionados (${esc(selectedMesaCourses.map(c => getCourseLabel(c)).join(', '))}) no comparten materias en común ni familias de materias.<br>
                         Por favor selecciona cursos que compartan contenidos curriculares.
                     </div>
                 `;
@@ -1937,7 +1938,7 @@
                             <span class="material-symbols-outlined" style="font-size: 1.1rem; color: var(--color-gold);" data-type="radio">
                                 ${selectedMesaSubjects.includes(sub) ? 'check_circle' : 'radio_button_unchecked'}
                             </span>
-                            <span>${sub}</span>
+                            <span>${esc(sub)}</span>
                         </div>
                         <span class="mesa-subject-tag">Común</span>
                     `;
@@ -1959,7 +1960,7 @@
                 groupEl.innerHTML = `
                     <div class="mesa-subject-group-title">
                         <span class="material-symbols-outlined" style="font-size: 1rem;">hub</span>
-                        ${fam} <span style="font-size: 0.73rem; opacity: 0.85; text-transform: none; font-weight: 500;">(Materias numeradas / por año)</span>
+                        ${esc(fam)} <span style="font-size: 0.73rem; opacity: 0.85; text-transform: none; font-weight: 500;">(Materias numeradas / por año)</span>
                     </div>
                 `;
 
@@ -1974,9 +1975,9 @@
                             <span class="material-symbols-outlined" style="font-size: 1.1rem; color: var(--color-gold);" data-type="checkbox">
                                 ${selectedMesaSubjects.includes(it.subjectName) ? 'check_box' : 'check_box_outline_blank'}
                             </span>
-                            <span>${it.subjectName}</span>
+                            <span>${esc(it.subjectName)}</span>
                         </div>
-                        <span class="mesa-subject-tag">${getCourseLabel(it.course)}</span>
+                        <span class="mesa-subject-tag">${esc(getCourseLabel(it.course))}</span>
                     `;
 
                     const allowedNames = items.map(x => x.subjectName);
@@ -2523,18 +2524,18 @@
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><strong>${m.course}</strong></td>
-                <td><strong>${m.subjectName}</strong></td>
-                <td>${m.examTurn}</td>
-                <td>${m.examDate} (${m.examTime} hs)</td>
-                <td>${m.classroom}</td>
+                <td><strong>${esc(m.course)}</strong></td>
+                <td><strong>${esc(m.subjectName)}</strong></td>
+                <td>${esc(m.examTurn)}</td>
+                <td>${esc(m.examDate)} (${esc(m.examTime)} hs)</td>
+                <td>${esc(m.classroom)}</td>
                 <td><span class="badge-count">${inscriptosCount} alumno(s)</span></td>
                 <td>
                     <div style="display: flex; gap: 6px; align-items: center; justify-content: center;">
-                        <button type="button" class="btn-action-edit" data-id="${m.id}" title="Editar mesa">
+                        <button type="button" class="btn-action-edit" data-id="${esc(m.id)}" title="Editar mesa">
                             <span class="material-symbols-outlined">edit</span>
                         </button>
-                        <button type="button" class="btn-action-delete" data-id="${m.id}" title="Eliminar mesa">
+                        <button type="button" class="btn-action-delete" data-id="${esc(m.id)}" title="Eliminar mesa">
                             <span class="material-symbols-outlined">delete</span>
                         </button>
                     </div>
@@ -2588,10 +2589,10 @@
         records.forEach(r => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><strong>${r.studentName}</strong><br><small style="color:#aaa;">DNI: ${r.studentDni}</small></td>
-                <td><strong>${r.owedYear}</strong></td>
-                <td>${r.subjectName}</td>
-                <td>${r.examTurn}</td>
+                <td><strong>${esc(r.studentName)}</strong><br><small style="color:#aaa;">DNI: ${esc(r.studentDni)}</small></td>
+                <td><strong>${esc(r.owedYear)}</strong></td>
+                <td>${esc(r.subjectName)}</td>
+                <td>${esc(r.examTurn)}</td>
                 <td>
                     <span class="status-badge ${r.paid ? 'paid' : 'unpaid'}">
                         <span class="material-symbols-outlined">${r.paid ? 'check_circle' : 'pending'}</span>
@@ -2599,7 +2600,7 @@
                     </span>
                 </td>
                 <td>
-                    <button type="button" class="btn-toggle-pay ${r.paid ? 'cancel' : 'pay'}" data-enrollment="${r.enrollmentId}" data-subject="${r.subjectId}">
+                    <button type="button" class="btn-toggle-pay ${r.paid ? 'cancel' : 'pay'}" data-enrollment="${esc(r.enrollmentId)}" data-subject="${esc(r.subjectId)}">
                         ${r.paid ? 'Marcar Pendiente' : 'Registrar Pago'}
                     </button>
                 </td>
@@ -2738,8 +2739,8 @@
                 tr.innerHTML = `
                     <td style="border: 1px solid #000; text-align: center; font-size: 7.5pt; font-weight: normal; padding: 1px 1px; width: 46px;">${i}</td>
                     <td style="border: 1px solid #000; text-align: center; font-size: 7.5pt; padding: 1px 1px; width: 82px;"></td>
-                    <td style="border: 1px solid #000; text-align: center; font-size: 7.5pt; padding: 1px 2px; width: 86px;">${s ? s.studentDni : ''}</td>
-                    <td style="border: 1px solid #000; padding: 1px 6px; font-size: 7.5pt; text-align: left;">${s ? s.studentName : ''}</td>
+                    <td style="border: 1px solid #000; text-align: center; font-size: 7.5pt; padding: 1px 2px; width: 86px;">${esc(s ? s.studentDni : '')}</td>
+                    <td style="border: 1px solid #000; padding: 1px 6px; font-size: 7.5pt; text-align: left;">${esc(s ? s.studentName : '')}</td>
                     <td style="border: 1px solid #000; text-align: center; width: 52px;"></td>
                     <td style="border: 1px solid #000; text-align: center; width: 52px;"></td>
                     <td style="border: 1px solid #000; text-align: center; width: 52px;"></td>
@@ -3035,13 +3036,13 @@
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><strong>${r.studentName}</strong><br><small style="color:#aaa;">DNI: ${r.studentDni}</small></td>
-                <td><strong>${r.owedYear}</strong></td>
-                <td>${r.subjectName}</td>
-                <td>${r.examTurn}</td>
+                <td><strong>${esc(r.studentName)}</strong><br><small style="color:#aaa;">DNI: ${esc(r.studentDni)}</small></td>
+                <td><strong>${esc(r.owedYear)}</strong></td>
+                <td>${esc(r.subjectName)}</td>
+                <td>${esc(r.examTurn)}</td>
                 <td>${statusBadge}</td>
                 <td>
-                    <select class="grade-select" data-enrollment="${r.enrollmentId}" data-subject="${r.subjectId}">
+                    <select class="grade-select" data-enrollment="${esc(r.enrollmentId)}" data-subject="${esc(r.subjectId)}">
                         <option value="" ${r.grade === null ? 'selected' : ''}>-- Nota --</option>
                         ${[1,2,3,4,5,6,7,8,9,10].map(n => `
                             <option value="${n}" ${r.grade === n ? 'selected' : ''}>${n} ${n >= 6 ? '(Aprobado)' : '(Desaprobado)'}</option>

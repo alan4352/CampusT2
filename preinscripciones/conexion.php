@@ -74,10 +74,15 @@ function usuario_mesas(?string $rolRequerido = null): ?array
     }
 
     if ($rol === 'alumno') {
-        // Buscamos el DNI y el correo del alumno en la tabla de usuarios registrados
+        // El DNI sale de la sesión (login.php guarda id = "alumno:<DNI>"), nunca del nombre: dos alumnos pueden llamarse igual
+        $dniSesion = preg_match('/^alumno:(\d{7,8})$/', (string) ($_SESSION['id'] ?? ''), $m) ? $m[1] : '';
+        if ($dniSesion === '') {
+            return ['rol' => 'alumno', 'nombre' => $nombre, 'dni' => '', 'correo' => ''];
+        }
+
         try {
-            $st = conectar()->prepare('SELECT nombre, dni, correo FROM alumnos WHERE nombre = ? LIMIT 1');
-            $st->execute([$nombre]);
+            $st = conectar()->prepare('SELECT nombre, dni, correo FROM alumnos WHERE dni = ? LIMIT 1');
+            $st->execute([$dniSesion]);
             $fila = $st->fetch();
             if ($fila !== false) {
                 return [
@@ -95,7 +100,7 @@ function usuario_mesas(?string $rolRequerido = null): ?array
         global $ALUMNOS;
         if (isset($ALUMNOS) && is_array($ALUMNOS)) {
             foreach ($ALUMNOS as $al) {
-                if (mb_strtolower(trim($al['nombre'] ?? ''), 'UTF-8') === mb_strtolower($nombre, 'UTF-8')) {
+                if ((string) ($al['dni'] ?? '') === $dniSesion) {
                     return [
                         'rol'    => 'alumno',
                         'nombre' => (string) $al['nombre'],
@@ -120,6 +125,13 @@ function usuario_mesas(?string $rolRequerido = null): ?array
 // Función que usamos en api.php para bloquear peticiones si no hay sesión iniciada
 function exigir_usuario_api(bool $soloDirectivo = false): array
 {
+    // CSRF: lo que modifica datos solo se acepta desde las páginas del módulo, que mandan esta cabecera
+    // (otro sitio no puede agregarla sin CORS, que este servidor no habilita)
+    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET'
+        && ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'preinscripciones') {
+        responder_json(['success' => false, 'error' => 'Petición no permitida'], 403);
+    }
+
     $u = null;
     try {
         $u = usuario_mesas();

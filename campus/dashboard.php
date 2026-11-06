@@ -106,6 +106,10 @@ $etiquetaRol = $etiquetas[$rol] ?? 'Usuario';
                 <h2>Control de programas de examen</h2>
                 <p>Vea qué programas faltan por curso y por docente, fije la fecha límite y revise el registro.</p>
             </a>
+            <a class="modulo" href="restablecer.php">
+                <h2>Restablecer contraseña de alumno</h2>
+                <p>Genere una contraseña nueva para un alumno que olvidó la suya.</p>
+            </a>
         <?php
         } elseif ($rol === 'profesor') {
         ?>

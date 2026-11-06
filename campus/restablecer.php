@@ -75,6 +75,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Restablecer contraseña de alumno — Campus Virtual</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .form-restablecer {
+            display: block !important;
+            text-align: left;
+            background: #ffffff !important;
+            padding: 2rem !important;
+            border-radius: 12px !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+            border: 1px solid #e5e7eb !important;
+        }
+        .form-restablecer label {
+            color: #1f2937 !important;
+            font-size: 0.98rem !important;
+            font-weight: 700 !important;
+            display: block;
+            margin-bottom: 0.5rem !important;
+        }
+        .form-restablecer input[type="text"] {
+            width: 100% !important;
+            padding: 12px 14px !important;
+            color: #111827 !important;
+            -webkit-text-fill-color: #111827 !important;
+            background-color: #f9fafb !important;
+            border: 2px solid #d1d5db !important;
+            border-radius: 8px !important;
+            font-size: 1.15rem !important;
+            font-weight: 700 !important;
+            letter-spacing: 1.5px !important;
+            box-sizing: border-box !important;
+            margin-bottom: 1.25rem !important;
+            transition: all 0.2s ease !important;
+        }
+        .form-restablecer input[type="text"]:focus {
+            background-color: #ffffff !important;
+            border-color: #a2132f !important;
+            outline: none !important;
+            box-shadow: 0 0 0 3px rgba(162, 19, 47, 0.25) !important;
+            color: #111827 !important;
+            -webkit-text-fill-color: #111827 !important;
+        }
+        .form-restablecer input[type="text"]::placeholder {
+            color: #9ca3af !important;
+            -webkit-text-fill-color: #9ca3af !important;
+            font-weight: 400 !important;
+            letter-spacing: normal !important;
+        }
+    </style>
 </head>
 <body class="fondo-panel">
 
@@ -118,13 +165,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     <?php endif; ?>
 
-    <form method="post" action="restablecer.php" class="formulario" style="display: block; text-align: left; background: #fff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+    <form method="post" action="restablecer.php" class="formulario form-restablecer">
         <input type="hidden" name="csrf_token" value="<?php echo e(obtenerTokenCsrf()); ?>">
 
-        <label for="dni" style="font-weight: 600; display: block; margin-bottom: 0.4rem;">Número de DNI del alumno</label>
-        <input type="text" id="dni" name="dni" value="<?php echo e($dni); ?>" inputmode="numeric" pattern="[0-9]*" maxlength="8" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Ej. 40123456 (sin puntos)" required style="width: 100%; margin-bottom: 1rem;">
+        <label for="dni">Número de DNI del alumno *</label>
+        <input type="text" id="dni" name="dni" value="<?php echo e($dni); ?>" inputmode="numeric" pattern="[0-9]*" maxlength="8" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Ej. 40123456 (sin puntos)" required autofocus>
 
-        <div style="display: flex; gap: 0.75rem; align-items: center; justify-content: flex-end;">
+        <div style="display: flex; gap: 0.75rem; align-items: center; justify-content: flex-end; margin-top: 0.5rem;">
             <a href="dashboard.php" class="boton boton--secundario" style="margin: 0;">Cancelar</a>
             <button type="submit" class="boton" style="margin: 0;">Generar nueva contraseña</button>
         </div>

@@ -37,14 +37,33 @@ function conectar(): PDO
     if (!$preparada) {
         // `dia` es TIMESTAMP: con +00:00 se guarda y se lee tal cual, sin corrimientos de zona horaria
         $pdo->exec("SET time_zone = '+00:00'");
-        try {
-            asegurar_estructura_proyectores($pdo);
-        } catch (Throwable $e) {
-            error_log('conexion.php (estructura proyectores): ' . $e->getMessage());
-        }
+        preparar_estructura_una_vez($pdo);
         $preparada = true;
     }
     return $pdo;
+}
+
+/** Sube este número cuando cambie la estructura de las tablas: la migración vuelve a correr una vez. */
+const VERSION_ESTRUCTURA = 2;
+
+/**
+ * Antes, CADA petición ejecutaba 2 CREATE TABLE IF NOT EXISTS + un COUNT(*). Ahora la estructura se verifica
+ * una sola vez (queda una marca en la carpeta temporal del servidor); si la marca se borra, se vuelve a verificar.
+ */
+function preparar_estructura_una_vez(PDO $pdo): void
+{
+    $huella = md5(__DIR__ . '|' . (defined('DB_HOST') ? DB_HOST : '') . '|' . (defined('DB_NAME') ? DB_NAME : ''));
+    $marca  = sys_get_temp_dir() . '/reservas_estructura_v' . VERSION_ESTRUCTURA . '_' . $huella . '.txt';
+    if (@is_file($marca)) {
+        return;
+    }
+    try {
+        asegurar_estructura_proyectores($pdo);
+    } catch (Throwable $e) {
+        error_log('conexion.php (estructura proyectores): ' . $e->getMessage());
+        return;   // sin marca: se reintenta en la próxima petición
+    }
+    @file_put_contents($marca, date('c'), LOCK_EX);
 }
 
 function asegurar_estructura_proyectores(PDO $pdo): void
@@ -84,6 +103,34 @@ function asegurar_estructura_proyectores(PDO $pdo): void
         $st->execute(['Proyector 2 (Laboratorio)', 'BenQ', '1280x800 (WXGA)', '3200 lm', 'HDMI, VGA', 'operativo', '']);
         $st->execute(['Proyector 3 (Biblioteca)', 'ViewSonic', '1024x768 (XGA)', '3000 lm', 'HDMI, USB', 'operativo', '']);
     }
+
+    /* ── v2: cada reserva guarda el ID del profesor (columna reservas.profesor_id) ── */
+    $colsReservas = array_map('strtolower', $pdo->query('SHOW COLUMNS FROM `reservas`')->fetchAll(PDO::FETCH_COLUMN));
+    if (!in_array('profesor_id', $colsReservas, true)) {
+        $pdo->exec('ALTER TABLE `reservas` ADD COLUMN `profesor_id` INT NULL DEFAULT NULL, ADD KEY `idx_reservas_profesor` (`profesor_id`)');
+    }
+
+    // La tabla `profesores` del campus necesita una columna `id`. Si ya la tiene no se toca; si no, se agrega
+    // (numérica, autoincremental) sin alterar el resto de la tabla.
+    try {
+        $colsProf = array_map('strtolower', $pdo->query('SHOW COLUMNS FROM `profesores`')->fetchAll(PDO::FETCH_COLUMN));
+        if (!in_array('id', $colsProf, true)) {
+            $pdo->exec('ALTER TABLE `profesores` ADD COLUMN `id` INT NOT NULL AUTO_INCREMENT, ADD UNIQUE KEY `uq_profesores_id` (`id`)');
+        }
+    } catch (Throwable $e) {
+        error_log('conexion.php (profesores.id): ' . $e->getMessage());   // sin id las reservas siguen funcionando por nombre
+    }
+
+    // Un turno de un proyector no puede estar dos veces: lo garantiza la base (evita duplicados por doble clic o carreras).
+    // Si ya existe un índice único no se toca; si hay duplicados viejos el ALTER falla y solo se registra en el log.
+    try {
+        $unicos = $pdo->query("SHOW INDEX FROM `reservas` WHERE Non_unique = 0 AND Key_name <> 'PRIMARY'")->fetchAll();
+        if (!$unicos) {
+            $pdo->exec('ALTER TABLE `reservas` ADD UNIQUE KEY `uq_reserva_turno` (`proyector_id`, `dia`, `hora_inicio`)');
+        }
+    } catch (Throwable $e) {
+        error_log('conexion.php (índice único de reservas): ' . $e->getMessage());
+    }
 }
 
 /** Cabecera que la página agrega a toda petición que modifica datos (POST/PUT/DELETE). */
@@ -117,8 +164,8 @@ function auditar(array $usuario, string $accion): void
 /* ── Usuario de la sesión del campus ────────────────────────────── */
 
 /**
- * Usuario autorizado a usar las reservas: ['rol' => 'directivo'|'profesor', 'nombre' => '...']
- * o null si no hay sesión o el rol no tiene permiso (alumno).
+ * Usuario autorizado a usar las reservas: ['rol' => 'directivo'|'profesor', 'nombre' => '...', 'id' => int|null]
+ * o null si no hay sesión o el rol no tiene permiso (alumno). 'id' es el de la tabla `profesores` (solo profesores).
  */
 function usuario_reservas(): ?array
 {
@@ -135,20 +182,86 @@ function usuario_reservas(): ?array
     $nombre = trim((string) $_SESSION['nombre']);
 
     if ($rol === 'directivo') {
-        $usuario = ['rol' => 'directivo', 'nombre' => $nombre];
+        $usuario = ['rol' => 'directivo', 'nombre' => $nombre, 'id' => null];
     } elseif ($rol === 'profesor') {
-        // La sesión trae lo que guardó el login (`profesores.nombre`). Se acepta tanto el nombre completo como el valor de
-        // `nombre` (como antes), y se usa el nombre completo escrito en la base, que es el que ve el directivo en su lista.
-        $pdo      = conectar();
-        $completo = sql_nombre_completo($pdo);
-        $st = $pdo->prepare("SELECT $completo FROM profesores WHERE $completo = ? OR nombre = ? LIMIT 1");
-        $st->execute([$nombre, $nombre]);
-        $nombreBD = $st->fetchColumn();
-        if ($nombreBD !== false && trim((string) $nombreBD) !== '') {
-            $usuario = ['rol' => 'profesor', 'nombre' => (string) $nombreBD];
-        }
+        $usuario = identificar_profesor($nombre);
     }
     return $usuario;
+}
+
+/**
+ * Busca al profesor de la sesión en la tabla `profesores`. Primero por el CORREO con el que inició sesión
+ * (login.php lo guarda en $_SESSION['correo'] y en $_SESSION['id'] = 'profesor:correo'), que es único: así dos profesores
+ * con el mismo nombre nunca se confunden. Si no hay correo, por nombre (y el id queda sin determinar si el nombre se repite).
+ * El resultado se recuerda 10 min en la sesión para no consultar la base en cada petición.
+ */
+function identificar_profesor(string $nombre): ?array
+{
+    $correo = strtolower(trim((string) ($_SESSION['correo'] ?? '')));
+    if ($correo === '') {
+        $sid = (string) ($_SESSION['id'] ?? '');
+        if (strncmp($sid, 'profesor:', 9) === 0) {
+            $correo = strtolower(trim(substr($sid, 9)));
+        }
+    }
+    $clave = md5($nombre . '|' . $correo);
+    $c = $_SESSION['reservas_profesor'] ?? null;
+    if (is_array($c) && ($c['k'] ?? null) === $clave && (time() - (int) ($c['t'] ?? 0)) < 600 && is_array($c['u'] ?? null)) {
+        return $c['u'];
+    }
+
+    $pdo      = conectar();
+    $completo = sql_nombre_completo($pdo);
+    $idSql    = sql_id_profesor($pdo);
+    $fila = false;
+    if ($correo !== '') {
+        $st = $pdo->prepare("SELECT $idSql AS pid, $completo AS completo FROM profesores WHERE LOWER(TRIM(correo)) = ? LIMIT 1");
+        $st->execute([$correo]);
+        $fila = $st->fetch();
+    }
+    if (!$fila) {
+        // La sesión trae lo que guardó el login (`profesores.nombre`). Se acepta tanto el nombre completo como el valor de `nombre`.
+        $st = $pdo->prepare("SELECT $idSql AS pid, $completo AS completo FROM profesores WHERE $completo = ? OR nombre = ? LIMIT 2");
+        $st->execute([$nombre, $nombre]);
+        $filas = $st->fetchAll();
+        if ($filas) {
+            $fila = $filas[0];
+            if (count($filas) > 1) {
+                $fila['pid'] = null;   // nombre repetido y sin correo: no se puede saber cuál es
+            }
+        }
+    }
+    if (!$fila || trim((string) $fila['completo']) === '') {
+        return null;
+    }
+    $u = [
+        'rol'    => 'profesor',
+        'nombre' => (string) $fila['completo'],
+        'id'     => $fila['pid'] !== null ? (int) $fila['pid'] : null,
+    ];
+    $_SESSION['reservas_profesor'] = ['k' => $clave, 't' => time(), 'u' => $u];
+    return $u;
+}
+
+/** Columnas de la tabla `profesores` en minúsculas (una sola consulta por petición). */
+function columnas_profesores(PDO $pdo): array
+{
+    static $cols = null;
+    if ($cols === null) {
+        $cols = array_map('strtolower', $pdo->query('SHOW COLUMNS FROM `profesores`')->fetchAll(PDO::FETCH_COLUMN));
+    }
+    return $cols;
+}
+
+function profesores_tiene_id(PDO $pdo): bool
+{
+    return in_array('id', columnas_profesores($pdo), true);
+}
+
+/** Expresión SQL del id del profesor (NULL si la tabla no tiene columna `id`). */
+function sql_id_profesor(PDO $pdo): string
+{
+    return profesores_tiene_id($pdo) ? 'id' : 'NULL';
 }
 
 /**
@@ -161,7 +274,7 @@ function sql_nombre_completo(PDO $pdo): string
 {
     static $expresion = null;
     if ($expresion === null) {
-        $columnas = array_map('strtolower', $pdo->query('SHOW COLUMNS FROM `profesores`')->fetchAll(PDO::FETCH_COLUMN));
+        $columnas = columnas_profesores($pdo);
         $apellido = in_array('apellido', $columnas, true) ? 'apellido'
                   : (in_array('apellidos', $columnas, true) ? 'apellidos' : null);   // nombre fijo: nunca viene del usuario
         $expresion = $apellido === null
@@ -183,16 +296,123 @@ function listar_profesores(PDO $pdo): array
     ));
 }
 
+/** Profesores con id y correo, ordenados: [['id' => int|null, 'nombre' => 'Juan Roude', 'correo' => 'a@b.com'], ...]. */
+function profesores_detalle(PDO $pdo): array
+{
+    $completo = sql_nombre_completo($pdo);
+    $idSql    = sql_id_profesor($pdo);
+    $filas = $pdo->query("SELECT $idSql AS pid, $completo AS completo, TRIM(correo) AS correo FROM profesores ORDER BY completo, correo")
+                 ->fetchAll();
+    $salida = [];
+    foreach ($filas as $f) {
+        $n = trim((string) $f['completo']);
+        if ($n === '') {
+            continue;
+        }
+        $salida[] = ['id' => $f['pid'] !== null ? (int) $f['pid'] : null, 'nombre' => $n, 'correo' => (string) $f['correo']];
+    }
+    return $salida;
+}
+
+/** Junta a los profesores con el mismo nombre (sin distinguir mayúsculas): [['nombre' => '...', 'correos' => ['a@b', 'c@d']], ...]. */
+function docentes_agrupados(array $detalle): array
+{
+    $grupos = [];
+    foreach ($detalle as $p) {
+        $k = mb_strtolower($p['nombre'], 'UTF-8');
+        if (!isset($grupos[$k])) {
+            $grupos[$k] = ['nombre' => $p['nombre'], 'correos' => []];
+        }
+        if ($p['correo'] !== '' && !in_array($p['correo'], $grupos[$k]['correos'], true)) {
+            $grupos[$k]['correos'][] = $p['correo'];
+        }
+    }
+    return array_values($grupos);
+}
+
+/**
+ * ID del profesor buscándolo por nombre completo (+ correo, si se indica). Devuelve [id|null, ambiguo].
+ *  · con correo: el nombre y el correo deben ser del mismo profesor;
+ *  · sin correo: solo si ese nombre pertenece a un único profesor (si hay varios → ambiguo = true).
+ */
+function buscar_id_profesor(PDO $pdo, string $nombre, string $correo = ''): array
+{
+    if (!profesores_tiene_id($pdo)) {
+        return [null, false];
+    }
+    $completo = sql_nombre_completo($pdo);
+    if ($correo !== '') {
+        $st = $pdo->prepare("SELECT id FROM profesores WHERE ($completo = ? OR nombre = ?) AND LOWER(TRIM(correo)) = ? LIMIT 1");
+        $st->execute([$nombre, $nombre, strtolower(trim($correo))]);
+        $id = $st->fetchColumn();
+        return [$id !== false ? (int) $id : null, false];
+    }
+    $st = $pdo->prepare("SELECT id FROM profesores WHERE $completo = ? OR nombre = ? LIMIT 2");
+    $st->execute([$nombre, $nombre]);
+    $ids = $st->fetchAll(PDO::FETCH_COLUMN);
+    if (count($ids) === 1) {
+        return [(int) $ids[0], false];
+    }
+    return [null, count($ids) > 1];
+}
+
 /** Compara dos nombres sin distinguir mayúsculas ni espacios de los extremos. */
 function mismo_nombre(string $a, string $b): bool
 {
     return mb_strtolower(trim($a), 'UTF-8') === mb_strtolower(trim($b), 'UTF-8');
 }
 
-/** El directivo cancela cualquier reserva; el profesor solo las que están a su nombre. */
-function puede_eliminar_reserva(array $usuario, string $docente): bool
+/**
+ * El directivo cancela cualquier reserva; el profesor solo las suyas.
+ * Si la reserva y el profesor tienen ID se comparan los IDs (dos profesores con el mismo nombre no se confunden);
+ * si no (reservas antiguas o escritas a mano por el directivo) se compara el nombre, como antes.
+ */
+function puede_eliminar_reserva(array $usuario, string $docente, ?int $profesorId = null): bool
 {
-    return $usuario['rol'] === 'directivo' || mismo_nombre($usuario['nombre'], $docente);
+    if ($usuario['rol'] === 'directivo') {
+        return true;
+    }
+    if ($profesorId !== null && ($usuario['id'] ?? null) !== null) {
+        return (int) $usuario['id'] === $profesorId;
+    }
+    return mismo_nombre($usuario['nombre'], $docente);
+}
+
+/**
+ * Reservas de varios días en UNA consulta: ['YYYY-MM-DD' => { proyectorId: { "HHMM": { id, materia, curso, nombre, puede_eliminar } } }].
+ * $desde (inclusive) y $hastaExcl (exclusive) son fechas 'YYYY-MM-DD'; todos los días del rango salen en el resultado (vacíos si no hay reservas).
+ */
+function reservas_por_dia(PDO $pdo, array $usuario, string $desde, string $hastaExcl): array
+{
+    $st = $pdo->prepare(
+        "SELECT ID, proyector_id, dia, hora_inicio, materia, curso, docente, profesor_id
+         FROM reservas
+         WHERE dia >= ? AND dia < ? AND estado_reserva = 'reservado'"
+    );
+    $st->execute([$desde . ' 00:00:00', $hastaExcl . ' 00:00:00']);
+
+    $dias = [];
+    for ($d = new DateTimeImmutable($desde); $d->format('Y-m-d') < $hastaExcl; $d = $d->modify('+1 day')) {
+        $dias[$d->format('Y-m-d')] = [];
+    }
+    foreach ($st as $r) {
+        $fecha = substr((string) $r['dia'], 0, 10);
+        $slot  = substr(str_replace(':', '', (string) $r['hora_inicio']), 0, 4);   // "07:20:00" → "0720"
+        $dias[$fecha][(string) $r['proyector_id']][$slot] = [
+            'id'      => (int) $r['ID'],
+            'materia' => $r['materia'],
+            'curso'   => $r['curso'],
+            'nombre'  => $r['docente'],
+            'puede_eliminar' => puede_eliminar_reserva($usuario, (string) $r['docente'], $r['profesor_id'] !== null ? (int) $r['profesor_id'] : null),
+        ];
+    }
+    foreach ($dias as $fecha => $mapa) {   // objetos (no listas) aunque haya una sola clave o ninguna
+        foreach ($mapa as $pid => $turnos) {
+            $mapa[$pid] = (object) $turnos;
+        }
+        $dias[$fecha] = (object) $mapa;
+    }
+    return $dias;
 }
 
 /**

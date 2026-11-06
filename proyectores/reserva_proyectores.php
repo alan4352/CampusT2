@@ -23,7 +23,7 @@ try {
     $errorBD = 'No se pudo conectar con la base de datos del campus.';
     // sin base no se puede verificar al profesor, pero la sesión ya dice qué rol tiene
     if (tienePermiso('proyector')) {
-        $usuario = ['rol' => (string) $_SESSION['rol'], 'nombre' => trim((string) $_SESSION['nombre'])];
+        $usuario = ['rol' => (string) $_SESSION['rol'], 'nombre' => trim((string) $_SESSION['nombre']), 'id' => null];
     }
 }
 
@@ -52,18 +52,31 @@ if ($errorBD === null) {
         $errorBD = 'No se pudo conectar con la base de datos del campus.';
     }
 }
-// Directivo: nombres completos ("Nombre Apellido") de la tabla `profesores`, armados igual que al identificar al profesor
-// que inicia sesión (ver SQL_NOMBRE_COMPLETO en conexion.php), para elegir al docente de la reserva sin escribirlo a mano.
-$profesores = [];
+// Reservas de la semana actual: se incrustan en la página para que se vean al instante, sin esperar otra petición.
+$reservasIniciales = null;
+if ($errorBD === null) {
+    try {
+        $hoyAR   = new DateTimeImmutable('now', new DateTimeZone('America/Argentina/Buenos_Aires'));
+        $lunesAR = $hoyAR->modify('-' . ((int) $hoyAR->format('N') - 1) . ' days');
+        $reservasIniciales = reservas_por_dia(conectar(), $usuario, $lunesAR->format('Y-m-d'), $lunesAR->modify('+7 days')->format('Y-m-d'));
+    } catch (Throwable $e) {
+        error_log('reserva_proyectores (reservas): ' . $e->getMessage());   // la página las pedirá por la API
+    }
+}
+// Directivo: docentes de la tabla `profesores`, juntando a los que tienen el mismo nombre ("Nombre Apellido"):
+// $docentes = [['nombre' => ..., 'correos' => [...]], ...]. Si un nombre tiene varios correos, al elegirlo se abre el cuadro
+// lateral para escoger el correo. Los profesores NO reciben esta lista (no ven correos ajenos).
+$docentes = [];
 $profesoresError = false;
 if ($esDirectivo && $errorBD === null) {
     try {
-        $profesores = listar_profesores(conectar());
+        $docentes = docentes_agrupados(profesores_detalle(conectar()));
     } catch (Throwable $e) {
         $profesoresError = true;   // se avisa en la lista; el directivo igual puede escribir el nombre con "Otro"
         error_log('reserva_proyectores (profesores): ' . $e->getMessage());
     }
 }
+$profesores = array_column($docentes, 'nombre');   // un nombre por docente, sin repetidos
 $jsonFlags = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
 ?>
 <!DOCTYPE html>
@@ -152,6 +165,7 @@ rel="stylesheet">
   </div>
 
   <div class="modal-overlay" id="modal">
+    <div class="modal-grupo">
     <div class="modal">
       <button class="close-modal" onclick="closeModal()">✕</button>
       <h2>Reservar turno</h2>
@@ -221,6 +235,17 @@ rel="stylesheet">
         <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
       </div>
     </div>
+    <?php if ($esDirectivo): ?>
+    <!-- Cuadro a la derecha: aparece solo si el docente elegido comparte nombre con otros; se elige su correo.
+         El correo NO se guarda en la reserva: el servidor lo usa para buscar el ID del profesor. -->
+    <aside class="modal-lado" id="panel-correo" hidden aria-live="polite">
+      <h3>Hay varios docentes con este nombre</h3>
+      <p class="modal-lado-sub" id="panel-correo-nombre"></p>
+      <div class="correo-lista" id="correo-lista" role="radiogroup" aria-label="Correo del docente"></div>
+      <div class="error-msg" id="err-correo">Elegí el correo del docente</div>
+    </aside>
+    <?php endif; ?>
+    </div><!-- /.modal-grupo -->
   </div>
 
   <!-- Botón flotante (solo teléfono): lleva al turno tarde -->
@@ -258,7 +283,9 @@ rel="stylesheet">
     const PROYECTORES_INICIAL = <?= json_encode($proyectoresIniciales, $jsonFlags) ?>;
     const ERROR_BD = <?= json_encode($errorBD, $jsonFlags) ?>;
     // Usuario del campus (la seguridad real la aplican las API en el servidor; esto solo adapta la pantalla)
-    const USUARIO = <?= json_encode($usuario, $jsonFlags) ?>;
+    const USUARIO = <?= json_encode(['rol' => $usuario['rol'], 'nombre' => $usuario['nombre']], $jsonFlags) ?>;   // el ID de profesor nunca llega al navegador
+    const RESERVAS_INICIAL = <?= json_encode($reservasIniciales, $jsonFlags) ?>;   // reservas de la semana actual (fecha → mapa)
+    const DOCENTES = <?= json_encode($docentes, $jsonFlags) ?>;                    // solo directivo: [{nombre, correos[]}]
     const ES_DIRECTIVO = <?= json_encode($esDirectivo) ?>;
     const ES_PROFESOR = <?= json_encode($esProfesor) ?>;
     const URL_CAMPUS = <?= json_encode(URL_CAMPUS) ?>;
@@ -332,10 +359,11 @@ rel="stylesheet">
     }
 
     const api = {
-      // Todas las reservas de una fecha → { proyectorId: { 'HHMM': { materia, curso, nombre } } }
-      async getReservas(fecha) {
-        const res = await fetch(`${API_RESERVAS}?fecha=${encodeURIComponent(fecha)}`, { cache: 'no-store' });
-        if (sesionVencida(res)) return reservations;
+      // Las reservas de TODA la semana (lunes a domingo) de esa fecha, en una sola petición:
+      // { 'YYYY-MM-DD': { proyectorId: { 'HHMM': { id, materia, curso, nombre, puede_eliminar } } } }
+      async getSemana(fecha) {
+        const res = await fetch(`${API_RESERVAS}?semana=${encodeURIComponent(fecha)}`, { cache: 'no-store' });
+        if (sesionVencida(res)) return null;
         if (!res.ok) throw new Error('Error al obtener reservas');
         return await res.json();
       },
@@ -369,19 +397,87 @@ rel="stylesheet">
       }
     };
 
-    async function loadReservations() {
-      document.getElementById('status-text').textContent = 'Actualizando...';
-      try {
-        const data = await api.getReservas(fechaSeleccionada);
-        reservations = data;
+    /* ══════════════════════════════════════════════════════════════
+     * Caché de reservas por día
+     * · Una petición trae la semana completa y queda guardada por fecha: pasar de un día a otro de la misma semana
+     *   es instantáneo (no hay petición). La primera semana viene incrustada en la página, y las semanas vecinas
+     *   se precargan en segundo plano.
+     * · Una fecha solo permite reservar si sus reservas se cargaron hace menos de CACHE_TTL_MS. Mientras se cargan
+     *   (o si los datos quedaron viejos) los horarios libres aparecen bloqueados: así nadie reserva "a ciegas" sobre
+     *   un turno que otra persona ya ocupó. (El servidor además rechaza el duplicado con un 409.)
+     * ══════════════════════════════════════════════════════════════ */
+    const CACHE_TTL_MS = 45000;      // mayor que el refresco periódico (30 s)
+    const cacheDias = {};            // 'YYYY-MM-DD' → { data, ts }
+    let reqSeq = 0;                  // descarta respuestas de una fecha que ya no se está mirando
+    let precargando = false;
+
+    const normalizarDia = m => (!m || Array.isArray(m)) ? {} : m;
+    const lunesISODe = fecha => isoDate(lunesDe(new Date(fecha + 'T00:00:00')));
+    function diaListo(fecha) { const c = cacheDias[fecha]; return !!c && (Date.now() - c.ts) < CACHE_TTL_MS; }
+    function guardarSemana(semana) {
+      const ts = Date.now();
+      for (const [f, m] of Object.entries(semana || {})) cacheDias[f] = { data: normalizarDia(m), ts };
+    }
+
+    function actualizarEstado() {
+      const total = Object.values(reservations).reduce((a, v) => a + Object.keys(v).length, 0);
+      document.getElementById('status-text').textContent = `${total} reserva${total !== 1 ? 's' : ''} activa${total !== 1 ? 's' : ''}`;
+      const c = cacheDias[fechaSeleccionada];
+      document.getElementById('status-time').textContent = c ? `Actualizado: ${new Date(c.ts).toLocaleTimeString('es-AR')}` : '';
+    }
+
+    /* forzar = false → si la fecha ya está cargada y fresca se muestra al instante, sin pedir nada.
+     * forzar = true  → se pide igual (refresco periódico); si los datos eran frescos no se bloquea nada ni se redibuja salvo que cambien. */
+    async function loadReservations(forzar = false) {
+      const fecha = fechaSeleccionada;
+      const previo = cacheDias[fecha];
+      const listo = diaListo(fecha);
+
+      if (listo && !forzar) {
+        reservations = previo.data;
+        renderAll(); actualizarEstado(); precargarSemanas();
+        return;
+      }
+      const antes = previo ? JSON.stringify(previo.data) : null;
+      const seq = ++reqSeq;
+      if (!listo) {   // sin datos confiables: se muestra lo que haya, con los horarios libres bloqueados
+        reservations = previo ? previo.data : {};
         renderAll();
-        const total = Object.values(reservations).reduce((a, v) => a + Object.keys(v).length, 0);
-        document.getElementById('status-text').textContent = `${total} reserva${total !== 1 ? 's' : ''} activa${total !== 1 ? 's' : ''}`;
-        document.getElementById('status-time').textContent = `Actualizado: ${new Date().toLocaleTimeString('es-AR')}`;
+        document.getElementById('status-text').textContent = 'Cargando reservas...';
+      }
+      try {
+        const semana = await api.getSemana(lunesISODe(fecha));
+        if (!semana) return;   // sesión vencida: ya se redirigió
+        guardarSemana(semana);
+        if (!cacheDias[fecha]) cacheDias[fecha] = { data: {}, ts: Date.now() };
+        if (seq !== reqSeq || fecha !== fechaSeleccionada) return;   // mientras tanto se eligió otro día: lo atiende su propia carga
+        const nuevo = cacheDias[fecha].data;
+        reservations = nuevo;
+        if (!listo || antes !== JSON.stringify(nuevo)) renderAll();
+        actualizarEstado(); precargarSemanas();
       } catch (e) {
         console.error(e);
-        document.getElementById('status-text').textContent = 'Error al cargar datos';
+        if (seq === reqSeq && fecha === fechaSeleccionada) {
+          document.getElementById('status-text').textContent = 'Error al cargar datos — reintentando…';
+          if (!listo) setTimeout(() => { if (fecha === fechaSeleccionada && !diaListo(fecha)) loadReservations(true); }, 4000);
+        }
       }
+    }
+
+    // Trae en segundo plano las semanas (anterior / actual / siguiente) que todavía no están en la caché.
+    async function precargarSemanas() {
+      if (precargando || document.hidden) return;
+      precargando = true;
+      try {
+        for (const off of [0, 1, -1]) {
+          const lunes = isoDate(getLunesPorOffset(off));
+          if (cacheDias[lunes]) continue;
+          const semana = await api.getSemana(lunes);
+          if (!semana) break;
+          guardarSemana(semana);
+        }
+      } catch (e) { /* no es grave: se pedirá cuando se abra esa semana */ }
+      finally { precargando = false; }
     }
 
     function renderSelector() {
@@ -489,7 +585,7 @@ rel="stylesheet">
     }
 
     // Refresca proyectores y reservas desde MySQL
-    function refrescarTodo() { return cargarProyectores().then(ok => { if (ok) loadReservations(); }); }
+    function refrescarTodo() { return cargarProyectores().then(ok => { if (ok) loadReservations(true); }); }
 
     /* ── Zoom interactivo con animación futurista ── */
     let zoomAnimTimers = [];  // Para limpiar timeouts al cerrar
@@ -559,6 +655,7 @@ rel="stylesheet">
       root.innerHTML = '';
       const isPastDay = esFechaPasada();
       const isToday = fechaSeleccionada === TODAY_ISO;
+      const listo = diaListo(fechaSeleccionada);   // false → las reservas de este día aún no se confirmaron
 
       for (const turno of TURNOS) {
         const block = document.createElement('div');
@@ -629,6 +726,15 @@ rel="stylesheet">
           </div>`;
             }
 
+            // Reservas todavía sin cargar: el horario no se puede tomar hasta saber si está ocupado
+            if (!listo) {
+              return `<div class="slot cargando" aria-disabled="true">
+            <span class="slot-dot"></span>
+            <span class="slot-time">${slot.time}–${slot.endTime}</span>
+            <span class="slot-status">cargando reservas…</span>
+          </div>`;
+            }
+
             // Slot libre y disponible
             return `<div class="slot free" onclick="openModal('${proy.id}','${slot.id}','${slot.time}','${slot.endTime}')">
           <span class="slot-dot dot-free"></span>
@@ -653,6 +759,7 @@ rel="stylesheet">
     let selectedSlot = null, selectedProy = null;
 
     function openModal(proyId, slotId, time, endTime) {
+      if (!diaListo(fechaSeleccionada)) { showToast('Esperá un momento: se están cargando las reservas'); return; }
       const proyName = (PROYECTORES.find(p => p.id === proyId) || {}).name || '';
       selectedSlot = { slotId, time, endTime }; selectedProy = { proyId, proyName };
       const dObj = new Date(fechaSeleccionada + 'T00:00:00');
@@ -665,12 +772,12 @@ rel="stylesheet">
       });
       document.getElementById('err-materia').textContent = 'Ingresá la materia';
       const selDoc = document.getElementById('select-docente');   // solo existe para el directivo
-      if (selDoc) { selDoc.value = ''; mostrarDocenteManual(false); }
+      if (selDoc) { selDoc.value = ''; mostrarDocenteManual(false); actualizarDocente(''); }
       document.getElementById('modal').classList.add('open');
       setTimeout(() => document.getElementById('input-materia').focus(), 80);
     }
 
-    function closeModal() { document.getElementById('modal').classList.remove('open'); selectedSlot = null; selectedProy = null; }
+    function closeModal() { document.getElementById('modal').classList.remove('open'); selectedSlot = null; selectedProy = null; if (typeof actualizarDocente === 'function') actualizarDocente(''); }
 
     /* ── Materia: solo letras (con tildes, ñ, ü…), números, espacios y puntos ──
      * Lo que no sea eso se descarta al escribir o pegar, y se vuelve a comprobar al confirmar.
@@ -715,12 +822,62 @@ rel="stylesheet">
       if (!sel) return inp.value.trim();
       return sel.value === DOCENTE_OTRO ? inp.value.replace(/\s+/g, ' ').trim() : sel.value.trim();
     }
+
+    /* Correos por docente (solo el directivo recibe DOCENTES). Si el nombre elegido lo comparten varios profesores se abre
+     * el cuadro de la derecha para elegir el correo; con uno solo se usa ese correo sin preguntar. Al confirmar, el servidor
+     * busca por nombre + correo el ID del profesor y guarda ese ID en la reserva (el correo no se guarda). */
+    const CORREOS_DOCENTE = new Map(DOCENTES.map(d => [d.nombre, d.correos]));
+    const panelCorreo = document.getElementById('panel-correo');
+    let correoElegido = '';
+
+    // El botón "Confirmar reserva" queda deshabilitado mientras el cuadro de correos esté abierto y no se haya elegido uno.
+    function sincronizarConfirmar() {
+      const b = document.querySelector('#modal .btn-confirm'); if (!b) return;
+      const falta = !!panelCorreo && !panelCorreo.hidden && !correoElegido;
+      b.disabled = falta || reservando;
+      b.title = falta ? 'Elegí el correo del docente para poder confirmar' : '';
+    }
+
+    function actualizarDocente(nombre) {
+      correoElegido = '';
+      if (!panelCorreo) { sincronizarConfirmar(); return; }
+      const correos = CORREOS_DOCENTE.get(nombre) || [];
+      document.getElementById('err-correo').classList.remove('show');
+      if (correos.length > 1) {
+        document.getElementById('panel-correo-nombre').textContent = nombre;
+        const lista = document.getElementById('correo-lista');
+        lista.textContent = '';
+        correos.forEach(c => {
+          const b = document.createElement('button');
+          b.type = 'button'; b.className = 'correo-opcion'; b.dataset.correo = c;
+          b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', 'false');
+          b.textContent = c;
+          lista.appendChild(b);
+        });
+        panelCorreo.hidden = false;
+      } else {
+        panelCorreo.hidden = true;
+        if (correos.length === 1) correoElegido = correos[0];
+      }
+      sincronizarConfirmar();
+    }
+    document.getElementById('correo-lista')?.addEventListener('click', e => {
+      const b = e.target.closest('.correo-opcion'); if (!b) return;
+      correoElegido = b.dataset.correo;
+      document.querySelectorAll('#correo-lista .correo-opcion').forEach(x => x.setAttribute('aria-checked', x === b ? 'true' : 'false'));
+      document.getElementById('err-correo').classList.remove('show');
+      sincronizarConfirmar();
+    });
     document.getElementById('select-docente')?.addEventListener('change', e => {
-      mostrarDocenteManual(e.target.value === DOCENTE_OTRO);
+      const v = e.target.value;
+      mostrarDocenteManual(v === DOCENTE_OTRO);
+      actualizarDocente(v === DOCENTE_OTRO ? '' : v);
       document.getElementById('err-nombre').classList.remove('show');
     });
 
+    let reservando = false;   // evita enviar dos veces la misma reserva (doble clic / Enter repetido)
     async function confirmarReserva() {
+      if (reservando) return;
       const materia = limpiarMateria(document.getElementById('input-materia').value);
       const curso = document.getElementById('input-curso').value.trim();
       const nombre = valorDocente();
@@ -736,11 +893,25 @@ rel="stylesheet">
         errNom.textContent = (selDoc && selDoc.value !== DOCENTE_OTRO) ? 'Elegí un docente de la lista' : 'Escribí el nombre completo del docente';
         errNom.classList.add('show'); ok = false;
       } else errNom.classList.remove('show');
+      // directivo + docente de nombre compartido: hay que haber elegido el correo en el cuadro de la derecha
+      const eligioLista = !!(selDoc && selDoc.value && selDoc.value !== DOCENTE_OTRO);
+      const errCor = document.getElementById('err-correo');
+      if (eligioLista && (CORREOS_DOCENTE.get(selDoc.value) || []).length > 1 && !correoElegido) { errCor.classList.add('show'); ok = false; }
+      else if (errCor) errCor.classList.remove('show');
       if (!ok) return;
+      if (!diaListo(fechaSeleccionada)) {   // los datos quedaron viejos (p. ej. falló un refresco): se actualizan antes de reservar
+        showToast('Actualizando las reservas… intentá de nuevo en unos segundos');
+        loadReservations(true);
+        return;
+      }
+      const datos = { horaInicio: selectedSlot.time, horaFin: selectedSlot.endTime, materia, curso, nombre };
+      if (eligioLista && correoElegido) datos.profesorCorreo = correoElegido;   // el profesor no envía nada más: su ID lo toma el servidor de la sesión
+      const btnConfirmar = document.querySelector('#modal .btn-confirm');
+      reservando = true; if (btnConfirmar) btnConfirmar.disabled = true;
       try {
-        const result = await api.setReserva(fechaSeleccionada, selectedProy.proyId, { horaInicio: selectedSlot.time, horaFin: selectedSlot.endTime, materia, curso, nombre });
+        const result = await api.setReserva(fechaSeleccionada, selectedProy.proyId, datos);
         if (result.conflict) {
-          await loadReservations(); closeModal();
+          await loadReservations(true); closeModal();
           showToast('Ese turno acaba de ser reservado — actualizando...');
           return;
         }
@@ -755,6 +926,7 @@ rel="stylesheet">
         document.getElementById('status-text').textContent = `${total} reservas activas`;
         showToast('¡Reserva confirmada!');
       } catch (e) { showToast(e.message || 'Error al guardar — intentá nuevamente'); }
+      finally { reservando = false; sincronizarConfirmar(); }
     }
 
     // La cancelación se confirma en la propia reserva (data-act="cancel" → "¿Cancelar? Sí / No"); aquí se ejecuta tras el "Sí".
@@ -764,7 +936,7 @@ rel="stylesheet">
       try {
         const r = await api.deleteReserva(fechaSeleccionada, proyId, slotId);
         cancelPend = null;
-        if (r && r.ok === false) { await loadReservations(); showToast('Esa reserva ya no existe — actualizando...'); return; }
+        if (r && r.ok === false) { await loadReservations(true); showToast('Esa reserva ya no existe — actualizando...'); return; }
         if (reservations[proyId]) delete reservations[proyId][slotId];
         renderAll();
         const total = Object.values(reservations).reduce((a, v) => a + Object.keys(v).length, 0);
@@ -844,7 +1016,7 @@ rel="stylesheet">
       if (adminView === 'form') {
         const r = adminRows.find(x => x.id === adminEditId) || { nombre: '', marca: '', resolucion: '', brillo: '', conexiones: '', estado: 'operativo', imagen: '' };
         const f = (k, label, ph) => `<div class="form-group"><label class="form-label">${label}</label><input type="text" class="form-input" id="af-${k}" value="${esc(r[k])}" placeholder="${ph}"></div>`;
-        meta.textContent = adminEditId == null ? 'Nuevo proyector' : `Editando · ID ${adminEditId} (el ID no se puede modificar)`;
+        meta.textContent = adminEditId == null ? 'Nuevo proyector' : 'Editando proyector';
         $a().innerHTML = `
           ${f('nombre', 'Nombre *', 'Ej: Epson X49')}
           ${f('marca', 'Marca *', 'Ej: Epson')}
@@ -898,7 +1070,7 @@ rel="stylesheet">
           <div class="admin-main">
             ${thumb}
             <div class="admin-info">
-              <div class="admin-name">${esc(r.nombre)} <span class="admin-id">ID ${r.id}</span>
+              <div class="admin-name">${esc(r.nombre)}
                 <span class="admin-badge ${r.estado === 'operativo' ? 'ok' : 'off'}">${r.estado}</span></div>
               <div class="admin-specs">${esc([r.marca, r.resolucion, r.brillo, r.conexiones].filter(Boolean).join(' · '))}</div>
             </div>
@@ -1047,6 +1219,7 @@ rel="stylesheet">
     renderSelector();
     if (PROYECTORES_INICIAL) {
       aplicarProyectores(PROYECTORES_INICIAL);
+      if (RESERVAS_INICIAL) guardarSemana(RESERVAS_INICIAL);   // semana actual ya cargada por PHP: se muestra sin esperar
       loadReservations();
     } else {
       document.getElementById('status-text').textContent = 'Sin conexión con la base de datos';
@@ -1058,7 +1231,7 @@ rel="stylesheet">
     function refrescarPeriodico() {
       if (document.hidden) return;
       if (!PROYECTORES.length || Date.now() - proyTs >= 5 * 60 * 1000) { proyTs = Date.now(); refrescarTodo(); }
-      else loadReservations();
+      else loadReservations(true);
     }
     setInterval(refrescarPeriodico, 30000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) refrescarPeriodico(); });

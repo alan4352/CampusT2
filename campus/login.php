@@ -122,6 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $_SESSION['usuario_id'] = (int) ($profesor['id'] ?? 0);
                         $_SESSION['user_id']    = (int) ($profesor['id'] ?? 0);
                         $_SESSION['nombre']     = $profesor['nombre'];
+                        $_SESSION['dni']        = $profesor['dni'] ?? '';
                         $_SESSION['correo']     = $profesor['correo'] ?? '';
                         $_SESSION['email']      = $profesor['correo'] ?? '';
                         $_SESSION['id']         = (int) ($profesor['id'] ?? 0);

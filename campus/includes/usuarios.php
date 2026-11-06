@@ -35,9 +35,18 @@ function asegurarTablasUsuarios(PDO $pdo) {
     $pdo->exec("CREATE TABLE IF NOT EXISTS profesores (
         id INT AUTO_INCREMENT PRIMARY KEY,
         nombre VARCHAR(100) NOT NULL,
+        dni VARCHAR(20) NULL,
         correo VARCHAR(150) NOT NULL UNIQUE,
         codigo_hash VARCHAR(255) NOT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Verificar si la columna dni ya existe en profesores (en caso de que la tabla ya estuviera creada)
+    try {
+        $cols = $pdo->query("SHOW COLUMNS FROM profesores LIKE 'dni'")->fetch();
+        if (!$cols) {
+            $pdo->exec("ALTER TABLE profesores ADD COLUMN dni VARCHAR(20) NULL AFTER nombre");
+        }
+    } catch (Throwable $e) {}
 
     $aseguradas = true;
 }
@@ -156,12 +165,12 @@ function actualizarClaveAlumno($dni, $claveHash) {
    PROFESORES
    --------------------------------------------------------------------- */
 
-// Devuelve todos los profesores con id, nombre, correo, codigo_hash
+// Devuelve todos los profesores con id, nombre, dni, correo, codigo_hash
 function listarProfesores() {
     try {
         $pdo = conectarBD();
         asegurarTablasUsuarios($pdo);
-        return $pdo->query('SELECT id, nombre, correo, codigo_hash FROM profesores ORDER BY id ASC')->fetchAll();
+        return $pdo->query('SELECT id, nombre, dni, correo, codigo_hash FROM profesores ORDER BY id ASC')->fetchAll();
     } catch (PDOException $e) {
     }
     global $PROFESORES;
@@ -185,7 +194,7 @@ function buscarProfesorPorId($id) {
     try {
         $pdo = conectarBD();
         asegurarTablasUsuarios($pdo);
-        $st = $pdo->prepare('SELECT id, nombre, correo, codigo_hash FROM profesores WHERE id = ? LIMIT 1');
+        $st = $pdo->prepare('SELECT id, nombre, dni, correo, codigo_hash FROM profesores WHERE id = ? LIMIT 1');
         $st->execute([$idNum]);
         $fila = $st->fetch();
         if ($fila !== false) {
@@ -202,8 +211,26 @@ function buscarProfesorPorCorreo($correo) {
     try {
         $pdo = conectarBD();
         asegurarTablasUsuarios($pdo);
-        $st = $pdo->prepare('SELECT id, nombre, correo, codigo_hash FROM profesores WHERE correo = ? LIMIT 1');
+        $st = $pdo->prepare('SELECT id, nombre, dni, correo, codigo_hash FROM profesores WHERE correo = ? LIMIT 1');
         $st->execute([$correoLimpio]);
+        $fila = $st->fetch();
+        if ($fila !== false) {
+            return $fila;
+        }
+    } catch (PDOException $e) {
+    }
+    return false;
+}
+
+// Devuelve el profesor por DNI
+function buscarProfesorPorDni($dni) {
+    $dniLimpio = preg_replace('/\D/', '', $dni);
+    if ($dniLimpio === '') return false;
+    try {
+        $pdo = conectarBD();
+        asegurarTablasUsuarios($pdo);
+        $st = $pdo->prepare('SELECT id, nombre, dni, correo, codigo_hash FROM profesores WHERE dni = ? LIMIT 1');
+        $st->execute([$dniLimpio]);
         $fila = $st->fetch();
         if ($fila !== false) {
             return $fila;
@@ -222,12 +249,24 @@ function existeProfesor($correo) {
     return $st->fetchColumn() !== false;
 }
 
-// Inserta un profesor nuevo y devuelve su ID numérico auto-generado único.
-function crearProfesor($nombre, $correo, $codigoHash) {
+// true si ya hay un profesor con ese DNI.
+function existeProfesorPorDni($dni) {
+    $dniLimpio = preg_replace('/\D/', '', $dni);
+    if ($dniLimpio === '') return false;
     $pdo = conectarBD();
     asegurarTablasUsuarios($pdo);
-    $st = $pdo->prepare('INSERT INTO profesores (nombre, correo, codigo_hash) VALUES (?, ?, ?)');
-    $st->execute([trim($nombre), strtolower(trim($correo)), $codigoHash]);
+    $st = $pdo->prepare('SELECT 1 FROM profesores WHERE dni = ? LIMIT 1');
+    $st->execute([$dniLimpio]);
+    return $st->fetchColumn() !== false;
+}
+
+// Inserta un profesor nuevo y devuelve su ID numérico auto-generado único.
+function crearProfesor($nombre, $correo, $codigoHash, $dni = null) {
+    $pdo = conectarBD();
+    asegurarTablasUsuarios($pdo);
+    $dniLimpio = $dni ? preg_replace('/\D/', '', $dni) : null;
+    $st = $pdo->prepare('INSERT INTO profesores (nombre, dni, correo, codigo_hash) VALUES (?, ?, ?, ?)');
+    $st->execute([trim($nombre), $dniLimpio, strtolower(trim($correo)), $codigoHash]);
     return (int) $pdo->lastInsertId();
 }
 

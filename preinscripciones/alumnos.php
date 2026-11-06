@@ -486,25 +486,6 @@ $idAlumno     = $usuario['id'] ?? '';
 
     </main>
 
-    <!-- Footer con apartado de ayuda y video tutorial al pie de la página -->
-    <footer class="app-page-footer no-print">
-        <aside class="help-tutorial-banner" aria-label="Ayuda para alumnos">
-            <div class="help-tutorial-content">
-                <div class="help-tutorial-icon">
-                    <span class="material-symbols-outlined">help</span>
-                </div>
-                <div class="help-tutorial-text">
-                    <span class="help-tutorial-question">¿Tienes problemas?</span>
-                    <span class="help-tutorial-cta">¡Aquí tienes ayuda! :D</span>
-                </div>
-            </div>
-            <a href="https://youtu.be/Nle67X21eSg" target="_blank" rel="noopener noreferrer" class="help-tutorial-btn">
-                <span class="material-symbols-outlined">play_circle</span>
-                <span>Ver video tutorial</span>
-            </a>
-        </aside>
-    </footer>
-
     <!-- Ventana que pregunta si quiere anotarse a otra materia más o terminar -->
     <div id="modalMultiSubject" class="modal-overlay">
         <div class="modal-card">

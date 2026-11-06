@@ -216,10 +216,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <button type="submit" class="boton">Registrarme</button>
     </form>
 
-    <!-- ACCIONES: INGRESO, AYUDA Y VOLVER -->
+    <!-- ACCIONES: INGRESO Y VOLVER -->
     <div class="login__acciones">
         <a href="login.php" class="boton boton--secundario">¿Ya tiene cuenta? Ingrese aquí</a>
-        <a href="ayuda.php" class="boton boton--gris">❓ ¿Necesitas ayuda para registrarte?</a>
         <a href="index.php" class="boton boton--oscuro">← Volver al inicio</a>
     </div>
 </main>

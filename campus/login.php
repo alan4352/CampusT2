@@ -341,20 +341,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 placeholder="Su contraseña de acceso" 
                 autocomplete="current-password"
             >
-            <div class="login__ayuda-clave">
+            <div class="login__ayuda-clave" style="margin-top: 8px;">
                 <small id="ayudaClave">Alumnos y Directivos ingresan su contraseña personal.</small>
-                <a href="recuperar.php" class="login__olvido">¿Olvidó su contraseña?</a>
+            </div>
+            <div style="margin-top: 8px;">
+                <a href="recuperar.php" class="login__olvido" style="color: #f87171; font-size: 0.88rem; font-weight: 600; text-decoration: underline;">
+                    ¿Olvidó su contraseña? Contacte a la institución para generar una nueva
+                </a>
             </div>
         </div>
 
         <button type="submit" class="boton" style="margin-top: 1.25rem; width: 100%;">Ingresar</button>
     </form>
 
-    <!-- ACCIONES: REGISTRO, AYUDA Y VOLVER -->
+    <!-- ACCIONES: REGISTRO, RECUPERACIÓN Y VOLVER -->
     <div class="login__acciones" style="margin-top: 1.5rem;">
         <a href="registro.php" class="boton boton--secundario">¿Primera vez? Regístrese aquí</a>
-        <a href="recuperar.php" class="boton boton--gris">¿Olvidó su contraseña?</a>
-        <a href="ayuda.php" class="boton boton--gris">❓ ¿Necesitas ayuda para ingresar?</a>
+        <a href="recuperar.php" class="boton boton--gris">¿Olvidó su contraseña? Solicitar nueva en la institución</a>
         <a href="index.php" class="boton boton--oscuro">← Volver al inicio</a>
     </div>
 </main>

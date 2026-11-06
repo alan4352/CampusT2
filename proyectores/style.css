@@ -1676,3 +1676,71 @@
   background: rgba(27, 14, 13, .85);
   border-color: #7a1f1f;
 }
+
+
+/* ═══ Cuadro lateral de correos (directivo, docentes con el mismo nombre) ═══
+   Escritorio: flota a la derecha de la ventana de reserva sin moverla (la ventana sigue centrada).
+   Tablet / celular: se apila ARRIBA de la ventana, porque a la derecha no hay lugar. */
+.modal-grupo { position: relative; max-width: 96vw; }
+
+.modal-lado {
+  position: absolute;
+  top: 0;
+  left: calc(100% + 14px);
+  width: 290px;
+  padding: 1.3rem 1.2rem 1.4rem;
+  background: #3a0000;
+  border: 1px solid rgba(245, 245, 220, .25);
+  border-top: 3px solid var(--blanco);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .6);
+  animation: ladoEntrar .25s ease-out;
+}
+.modal-lado[hidden] { display: none; }
+.modal-lado h3 { font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--blanco); margin-bottom: .3rem; }
+.modal-lado-sub { font-size: .66rem; color: var(--bordo-light); letter-spacing: .08em; text-transform: uppercase; margin-bottom: .9rem; word-break: break-word; }
+.correo-lista { display: flex; flex-direction: column; gap: 8px; }
+.correo-opcion {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; text-align: left; cursor: pointer;
+  font: inherit; font-size: .74rem; color: var(--blanco); word-break: break-all;
+  background: rgba(0, 0, 0, .25);
+  border: 1px solid rgba(245, 245, 220, .25);
+  border-radius: 8px;
+  padding: 10px 12px;
+  transition: border-color .15s, background .15s;
+}
+.correo-opcion::before { content: ''; flex-shrink: 0; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--blanco-muted); }
+.correo-opcion:hover { border-color: var(--blanco); }
+.correo-opcion:focus-visible { outline: 2px solid var(--celeste-brillo); outline-offset: 2px; }
+.correo-opcion[aria-checked="true"] { border-color: var(--celeste-brillo); background: rgba(94, 234, 255, .1); }
+.correo-opcion[aria-checked="true"]::before { background: var(--celeste-brillo); border-color: var(--celeste-brillo); }
+.modal-lado .error-msg { margin-top: .7rem; }
+
+@keyframes ladoEntrar { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+
+:root[data-tema="oscuro"] .modal-lado { background: #241312; border-color: #7a1f1f; border-top-color: var(--bordo-light); }
+:root[data-tema="oscuro"] .correo-opcion { background: #1b0e0d; border-color: #7a1f1f; }
+
+/* Apilado: pantallas angostas y tablets */
+@media (max-width: 1100px), (max-width: 1450px) and (pointer: coarse) {
+  .modal-grupo {
+    display: flex; flex-direction: column-reverse; align-items: center; gap: 10px;
+    max-height: 96vh; max-height: 96dvh; overflow-y: auto;
+  }
+  #modal .modal-grupo .modal { max-height: none; overflow: visible; }
+  .modal-lado { position: static; width: min(780px, 94vw); animation: none; }
+}
+@media (max-width: 620px) {
+  .modal-grupo { width: 100%; max-width: 100%; }
+  .modal-lado { width: calc(100% - 16px); }
+}
+
+/* ═══ Horarios libres mientras se cargan las reservas (no se pueden tomar todavía) ═══ */
+.slot.cargando { cursor: progress; opacity: .55; border-color: rgba(245, 245, 220, .12); }
+.slot.cargando .slot-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--blanco-muted); animation: pulsoCarga 1s ease-in-out infinite; }
+.slot.cargando .slot-status { color: rgba(245, 245, 220, .5); font-style: italic; font-size: .7rem; }
+@keyframes pulsoCarga { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .slot.cargando .slot-dot, .modal-lado { animation: none; }
+}

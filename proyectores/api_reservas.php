@@ -3,14 +3,18 @@
  * API de reservas — tabla `reservas` de MySQL.
  *
  *   GET    api_reservas.php?fecha=YYYY-MM-DD            → { proyectorId: { "HHMM": { id, materia, curso, nombre, puede_eliminar } } }
+ *   GET    api_reservas.php?semana=YYYY-MM-DD           → { "YYYY-MM-DD": {…como arriba…}, … } los 7 días de la semana de esa fecha, en UNA consulta
  *   POST   api_reservas.php  (JSON)                     → crea una reserva
- *          { fecha, proyId, horaInicio:"HH:MM", horaFin:"HH:MM", materia, curso, nombre }
+ *          { fecha, proyId, horaInicio:"HH:MM", horaFin:"HH:MM", materia, curso, nombre, profesorCorreo? }
+ *          profesorCorreo (solo directivo): correo del docente elegido cuando hay varios con el mismo nombre; el servidor
+ *          busca el ID del profesor por nombre + correo y guarda ese ID (no el correo) en reservas.profesor_id.
  *   DELETE api_reservas.php?fecha=...&proy=...&slot=HHMM → elimina la reserva
  *
  * Requiere sesión del campus (ver conexion.php):
  *   · directivo → reserva a nombre de quien indique y puede cancelar cualquier reserva.
  *   · profesor  → el docente de la reserva es SIEMPRE su nombre (se toma de la base, el que
- *                 venga en el JSON se ignora) y solo puede cancelar las reservas a su nombre.
+ *                 venga en el JSON se ignora) y su ID de profesor se guarda en la reserva sin que el usuario
+ *                 lo vea ni lo envíe; solo puede cancelar sus reservas (por ID; por nombre en reservas antiguas).
  *   · sin sesión / alumno → 401 / 401.
  *
  * Cada reserva es una fila: proyector_id, dia (fecha a las 00:00), hora_inicio, hora_fin,
@@ -178,34 +182,26 @@ try {
     $usuario = exigir_usuario_api();   // directivo o profesor; si no, responde 401 y termina
     $metodo = $_SERVER['REQUEST_METHOD'];
 
-    /* ── GET: reservas de un día ─────────────────────────────── */
+    /* ── GET: reservas de un día o de toda una semana ────────── */
     if ($metodo === 'GET') {
         limpiar_reservas_viejas($pdo);   // 1 vez por día
+
+        $semana = param('semana');
+        if ($semana !== '') {            // una sola consulta para los 5 días: cambiar de día no necesita pedir nada más
+            if (!fecha_valida($semana)) {
+                responder_json(['error' => 'Fecha inválida'], 400);
+            }
+            $d      = new DateTimeImmutable($semana);
+            $lunes  = $d->modify('-' . ((int) $d->format('N') - 1) . ' days');
+            responder_json(reservas_por_dia($pdo, $usuario, $lunes->format('Y-m-d'), $lunes->modify('+7 days')->format('Y-m-d')));
+        }
+
         $fecha = param('fecha');
         if (!fecha_valida($fecha)) {
             responder_json(['error' => 'Fecha inválida'], 400);
         }
-        $st = $pdo->prepare(
-            "SELECT ID, proyector_id, docente_id, hora_inicio, materia, curso, docente
-             FROM reservas
-             WHERE dia >= ? AND dia < ? AND estado_reserva = 'reservado'"
-        );
-        $st->execute(rango_dia($fecha));
-
-        $mapa = [];
-        foreach ($st as $r) {
-            $mapa[(string) $r['proyector_id']][clave_slot($r['hora_inicio'])] = [
-                'id'      => (int) $r['ID'],
-                'materia' => $r['materia'],
-                'curso'   => $r['curso'],
-                'nombre'  => $r['docente'],
-                'puede_eliminar' => puede_eliminar_reserva($usuario, $r),
-            ];
-        }
-        foreach ($mapa as $pid => $turnos) {   // objetos (no listas) aunque haya una sola clave
-            $mapa[$pid] = (object) $turnos;
-        }
-        responder_json((object) $mapa);
+        $siguiente = (new DateTimeImmutable($fecha))->modify('+1 day')->format('Y-m-d');
+        responder_json(reservas_por_dia($pdo, $usuario, $fecha, $siguiente)[$fecha]);
     }
 
     /* ── POST: crear reserva ─────────────────────────────────── */
@@ -219,6 +215,8 @@ try {
         $curso   = campo($d, 'curso');
         // El profesor solo reserva a su nombre (el de la base de datos); el directivo escribe el que quiera.
         $nombre  = $usuario['rol'] === 'profesor' ? $usuario['nombre'] : campo($d, 'nombre');
+        // Solo el directivo manda el correo (para distinguir a dos docentes con el mismo nombre); el profesor no manda nada.
+        $correoDoc = $usuario['rol'] === 'directivo' ? mb_strtolower(campo($d, 'profesorCorreo'), 'UTF-8') : '';
 
         if ($fecha === '' || $proyId === '' || $ini === '' || $fin === '' || $materia === '' || $curso === '' || $nombre === '') {
             responder_json(['error' => 'Faltan campos requeridos'], 400);
@@ -253,6 +251,24 @@ try {
             responder_json(['error' => 'Todavía no se puede reservar para esa fecha'], 400);
         }
 
+        // ID del profesor que queda guardado en la reserva (el correo NO se guarda):
+        //  · profesor  → su propio ID de sesión (invisible para él);
+        //  · directivo → el ID que corresponde al nombre + correo elegidos; sin correo, solo si el nombre es de un único profesor.
+        if ($usuario['rol'] === 'profesor') {
+            $profesorId = $usuario['id'] ?? null;
+        } else {
+            if ($correoDoc !== '' && (mb_strlen($correoDoc) > 150 || filter_var($correoDoc, FILTER_VALIDATE_EMAIL) === false)) {
+                responder_json(['error' => 'Correo del docente inválido'], 400);
+            }
+            [$profesorId, $ambiguo] = buscar_id_profesor($pdo, $nombre, $correoDoc);
+            if ($ambiguo) {
+                responder_json(['error' => 'Hay más de un docente con ese nombre: elegí su correo en la lista'], 400);
+            }
+            if ($correoDoc !== '' && $profesorId === null && profesores_tiene_id($pdo)) {
+                responder_json(['error' => 'Ese correo no corresponde al docente elegido'], 400);
+            }
+        }
+
         $pid = (int) $proyId;
         $st = $pdo->prepare('SELECT Estado FROM proyectores WHERE ID = ?');
         $st->execute([$pid]);
@@ -281,12 +297,11 @@ try {
              WHERE proyector_id = ? AND dia >= ? AND dia < ? AND hora_inicio = ? AND estado_reserva = 'disponible'"
         )->execute([$pid, $desde, $hasta, $ini . ':00']);
 
-        $docenteId = ($usuario['rol'] === 'profesor') ? ($usuario['id'] ?? null) : null;
         try {
             $pdo->prepare(
-                "INSERT INTO reservas (proyector_id, docente_id, dia, hora_inicio, hora_fin, estado_reserva, materia, curso, docente)
-                 VALUES (?, ?, ?, ?, ?, 'reservado', ?, ?, ?)"
-            )->execute([$pid, $docenteId, $fecha . ' 00:00:00', $ini . ':00', $fin . ':00', $materia, $curso, $nombre]);
+                "INSERT INTO reservas (proyector_id, dia, hora_inicio, hora_fin, estado_reserva, materia, curso, docente, profesor_id)
+                 VALUES (?, ?, ?, ?, 'reservado', ?, ?, ?, ?)"
+            )->execute([$pid, $fecha . ' 00:00:00', $ini . ':00', $fin . ':00', $materia, $curso, $nombre, $profesorId]);
         } catch (PDOException $e) {
             if ((int) ($e->errorInfo[1] ?? 0) === 1062) {   // otro usuario reservó justo antes
                 responder_json(['error' => 'El turno ya está reservado', 'existing' => true], 409);
@@ -295,7 +310,7 @@ try {
         }
 
         $nuevoId = (int) $pdo->lastInsertId();
-        auditar($usuario, "creó la reserva #$nuevoId (proyector $pid, $fecha $ini, $curso, docente: $nombre)");
+        auditar($usuario, "creó la reserva #$nuevoId (proyector $pid, $fecha $ini, $curso, docente: $nombre, id profesor: " . ($profesorId ?? 'sin id') . ')');
         responder_json([
             'ok'   => true,
             'data' => [
@@ -318,7 +333,7 @@ try {
         // primero se busca la reserva para saber a nombre de quién está
         [$desde, $hasta] = rango_dia($fecha);
         $st = $pdo->prepare(
-            "SELECT ID, docente_id, docente, hora_fin FROM reservas
+            "SELECT ID, docente, hora_fin, profesor_id FROM reservas
              WHERE proyector_id = ? AND dia >= ? AND dia < ? AND hora_inicio = ? AND estado_reserva = 'reservado' LIMIT 1"
         );
         $st->execute([(int) $proy, $desde, $hasta, $hora . ':00']);
@@ -327,7 +342,7 @@ try {
             responder_json(['error' => 'Reserva no encontrada'], 404);
         }
         // el profesor solo puede cancelar las suyas; el directivo, cualquiera
-        if (!puede_eliminar_reserva($usuario, $reserva)) {
+        if (!puede_eliminar_reserva($usuario, (string) $reserva['docente'], $reserva['profesor_id'] !== null ? (int) $reserva['profesor_id'] : null)) {
             responder_json(['error' => 'Solo podés cancelar las reservas hechas a tu nombre'], 403);
         }
         // igual que la página: una reserva de un turno que ya pasó queda como registro y no se cancela

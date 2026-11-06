@@ -407,9 +407,19 @@ function obtenerUsuarioActual(): ?array {
         if ($u) return $u;
     }
 
-    // Respaldo: si el usuario ya tiene sesión iniciada en el Campus Virtual en este navegador
+    // Respaldo: si el usuario ya tiene sesión iniciada en el Campus Virtual en este navegador.
+    // La cookie viaja sola, así que un sitio ajeno podría usarla (CSRF): para modificar datos con la
+    // sesión se exige la cabecera que solo manda la propia página (frontend/common.js).
+    $metodoActual = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    if (!in_array($metodoActual, ['GET', 'HEAD'], true) && ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'progmesas') {
+        return null;
+    }
     if (session_status() === PHP_SESSION_NONE) {
-        @session_start();
+        if (is_file(__DIR__ . '/../campus/includes/sesion.php')) {
+            require_once __DIR__ . '/../campus/includes/sesion.php';   // misma cookie segura que el campus
+        } else {
+            @session_start();
+        }
     }
     // (mismos datos que guarda login.php del campus: rol, nombre, correo e id)
     if (!empty($_SESSION['rol']) && !empty($_SESSION['nombre'])) {

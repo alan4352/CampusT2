@@ -1,4 +1,14 @@
 (function() {
+    // Escapa texto antes de insertarlo con innerHTML (los nombres, DNI y materias los escriben los alumnos)
+    function esc(valor) {
+        return String(valor ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    // Toda llamada a la API lleva esta cabecera: api.php rechaza los POST que no la traen (protección CSRF)
+    function apiFetch(url, opciones = {}) {
+        return fetch(url, { ...opciones, headers: { ...(opciones.headers || {}), 'X-Requested-With': 'preinscripciones' } });
+    }
+
     // Materias de cada año y tecnicatura según el plan de estudios de la EET N° 2
     const listado_materias = {
       "1er AÑO": [
@@ -395,7 +405,7 @@
 
             // Guardamos la inscripción en la base de datos MySQL
             try {
-                fetch('api.php?action=save_enrollment', {
+                apiFetch('api.php?action=save_enrollment', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(newRecord)
@@ -423,7 +433,7 @@
 
                 // Sincronizar con base de datos MySQL en segundo plano
                 try {
-                    fetch('api.php?action=update_payment', {
+                    apiFetch('api.php?action=update_payment', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ enrollmentId, subjectId, isPaid })
@@ -451,7 +461,7 @@
 
                 // Sincronizar con base de datos MySQL en segundo plano
                 try {
-                    fetch('api.php?action=update_grade', {
+                    apiFetch('api.php?action=update_grade', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ enrollmentId, subjectId, grade: gradeNum })
@@ -478,7 +488,7 @@
                 localStorage.setItem(DB_KEY, JSON.stringify(enrollments));
 
                 try {
-                    await fetch('api.php?action=clear_enrollments', {
+                    await apiFetch('api.php?action=clear_enrollments', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ turn: turn || '' })
@@ -543,7 +553,7 @@
                     courseRaw: labels.join(', ')
                 };
                 try {
-                    fetch('api.php?action=save_mesa', {
+                    apiFetch('api.php?action=save_mesa', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(updated)
@@ -621,7 +631,7 @@
 
             // Sincronizar con base de datos MySQL en segundo plano
             try {
-                fetch('api.php?action=create_mesa', {
+                apiFetch('api.php?action=create_mesa', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(newMesa)
@@ -642,7 +652,7 @@
 
             // Sincronizar eliminación en MySQL
             try {
-                fetch('api.php?action=delete_mesa&id=' + encodeURIComponent(targetId), {
+                apiFetch('api.php?action=delete_mesa&id=' + encodeURIComponent(targetId), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: targetId })
@@ -663,7 +673,7 @@
 
                 // Sincronizar en MySQL
                 try {
-                    fetch('api.php?action=save_mesa', {
+                    apiFetch('api.php?action=save_mesa', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(mesas[index])
@@ -678,14 +688,14 @@
         // Sincronización bidireccional automática con MySQL / MariaDB (eet2_mesas)
         async syncWithServer() {
             try {
-                const resStatus = await fetch('api.php?action=test_connection');
+                const resStatus = await apiFetch('api.php?action=test_connection');
                 if (!resStatus.ok) throw new Error("API no disponible");
                 const statusData = await resStatus.json();
 
                 if (statusData && statusData.success && statusData.db_connected) {
                     // Traemos las inscripciones guardadas en MySQL y las combinamos con las locales
                     try {
-                        const resEnr = await fetch('api.php?action=get_enrollments');
+                        const resEnr = await apiFetch('api.php?action=get_enrollments');
                         const enrData = await resEnr.json();
                         if (enrData && enrData.success && Array.isArray(enrData.data) && enrData.data.length > 0) {
                             const localRaw = localStorage.getItem(DB_KEY);
@@ -705,7 +715,7 @@
 
                     // Traemos las mesas guardadas en MySQL y las combinamos con las locales respetando las eliminadas
                     try {
-                        const resMesas = await fetch('api.php?action=get_mesas');
+                        const resMesas = await apiFetch('api.php?action=get_mesas');
                         const mesasData = await resMesas.json();
                         if (mesasData && mesasData.success && Array.isArray(mesasData.data)) {
                             const deletedIds = this.getDeletedMesaIds();
@@ -722,7 +732,7 @@
                                 const sid = String(serverItem.id);
                                 if (deletedIds.has(sid)) {
                                     // Si fue eliminada localmente, asegurar que también se borre en MySQL
-                                    fetch('api.php?action=delete_mesa&id=' + encodeURIComponent(sid), { method: 'POST' }).catch(() => {});
+                                    apiFetch('api.php?action=delete_mesa&id=' + encodeURIComponent(sid), { method: 'POST' }).catch(() => {});
                                     return;
                                 }
                                 const existing = mergedMesas.get(sid) || {};
@@ -735,7 +745,7 @@
 
                     // Sincronizar configuración de preinscripción desde MySQL
                     try {
-                        const resCfg = await fetch('api.php?action=get_config');
+                        const resCfg = await apiFetch('api.php?action=get_config');
                         const cfgData = await resCfg.json();
                         if (cfgData && cfgData.success && cfgData.data) {
                             localStorage.setItem(CONFIG_KEY, JSON.stringify(cfgData.data));
@@ -784,7 +794,7 @@
 
                 // Sincronizar en MySQL
                 try {
-                    await fetch('api.php?action=save_config', {
+                    await apiFetch('api.php?action=save_config', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(updated)
@@ -1087,7 +1097,7 @@
         if (parent && !parent.querySelector('.field-error-msg')) {
             const msgEl = document.createElement('div');
             msgEl.className = 'field-error-msg';
-            msgEl.innerHTML = `<span class="material-symbols-outlined" style="font-size: 1rem; color: #b45309;">warning</span> ${customMsg}`;
+            msgEl.innerHTML = `<span class="material-symbols-outlined" style="font-size: 1rem; color: #b45309;">warning</span> ${esc(customMsg)}`;
             parent.appendChild(msgEl);
         }
         if (customWrapper) {
@@ -1317,6 +1327,7 @@
         COURSE_LEVEL_MAP,
         YEAR_LEVEL_MAP,
         initCustomSelect,
-        initAllCustomSelects
+        initAllCustomSelects,
+        esc
     };
 })();

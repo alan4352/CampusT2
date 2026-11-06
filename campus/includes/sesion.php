@@ -12,7 +12,43 @@
 
 // PASO 1: iniciar (o retomar) la sesión.
 // DEBE ejecutarse ANTES de escribir cualquier HTML en la página.
-session_start();
+// La cookie de sesión: JavaScript no puede leerla (httponly), no viaja en pedidos que arma otro
+// sitio (samesite) y por HTTPS (ngrok) solo viaja cifrada (secure). El servidor no acepta IDs de
+// sesión inventados (use_strict_mode).
+if (session_status() === PHP_SESSION_NONE) {
+    $esHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || strtolower($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+    ini_set('session.use_strict_mode', '1');
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path'     => '/',
+        'secure'   => $esHttps,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
+
+
+/* ---------------------------------------------------------------------
+   PROTECCIÓN CSRF PARA FORMULARIOS
+   csrf_campo() va dentro de cada <form method="post">; csrf_valido()
+   se revisa antes de procesar el POST.
+   --------------------------------------------------------------------- */
+function csrf_token() {
+    if (empty($_SESSION['csrf'])) {
+        $_SESSION['csrf'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf'];
+}
+
+function csrf_campo() {
+    return '<input type="hidden" name="csrf" value="' . csrf_token() . '">';
+}
+
+function csrf_valido() {
+    return isset($_POST['csrf'], $_SESSION['csrf']) && hash_equals($_SESSION['csrf'], (string) $_POST['csrf']);
+}
 
 
 /* ---------------------------------------------------------------------

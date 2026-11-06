@@ -47,5 +47,20 @@ simulados) se borra cada vez que el servicio se reinicia, y el servicio se duerm
 3. Al arrancar, el contenedor crea las tablas `alumnos` y `profesores` (`docker/crear_tablas.php`); las de
    preinscripciones, proyectores y ProgMesas se crean solas al usarse.
 
+### Pasar las bases que ya tienen (archivos .sql) a Aiven
+
+`herramientas/importar_sql.php` importa un archivo `.sql` en Aiven con conexión cifrada. Antes lo limpia de lo que un
+servicio en la nube no acepta (CREATE DATABASE, USE, CREATE USER, GRANT, DEFINER y comandos sólo de MariaDB/XAMPP).
+Todos los módulos usan **una sola base**: si hay varios `.sql` (por ejemplo el del campus y el de preinscripciones), se
+importan todos en la misma.
+
+```
+C:\xampp\php\php.exe herramientas\importar_sql.php campus.sql --host=HOST --port=PUERTO --user=avnadmin --base=defaultdb --ca=ca.pem --probar
+C:\xampp\php\php.exe herramientas\importar_sql.php campus.sql --host=HOST --port=PUERTO --user=avnadmin --base=defaultdb --ca=ca.pem
+```
+
+`--probar` sólo prueba la conexión. La contraseña se pide al ejecutarlo. Aiven exige clave primaria en todas las tablas:
+si una tabla no tiene, el script lo avisa.
+
 Para probar el contenedor en la compu: `docker build -t campust2 .` y
 `docker run -p 8080:80 -e DB_HOST=... -e DB_USER=... -e DB_PASS=... campust2`.

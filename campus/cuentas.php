@@ -100,6 +100,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 avisar('exito', 'Cursos del preceptor actualizados.');
                 break;
 
+            case 'cambiar_curso':
+                $destino = (int) ($_POST['curso_id'] ?? 0);
+                $movidos = cambiarCursoAlumnos($pdo, (array) ($_POST['alumnos'] ?? []), $destino);
+                auditarCuentas("pasó $movidos alumno(s) al curso $destino");
+                avisar('exito', $movidos === 1 ? 'Se cambió el curso de 1 alumno.' : "Se cambió el curso de $movidos alumnos.");
+                break;
+
             case 'descartar':
                 descartarSolicitud($pdo, (int) ($_POST['solicitud_id'] ?? 0), $yo);
                 avisar('exito', 'Pedido descartado.');
@@ -251,6 +258,7 @@ encabezadoPanel('Gestión de cuentas');
             <form method="get" class="form-linea"><input type="hidden" name="ver" value="alumnos">
                 <select name="curso">
                     <option value="0">Todos los cursos</option>
+                    <option value="-1" <?php echo $cursoF === -1 ? 'selected' : ''; ?>>Sin curso asignado</option>
                     <?php foreach ($cursos as $c): ?>
                         <option value="<?php echo (int) $c['id']; ?>" <?php echo (int) $c['id'] === $cursoF ? 'selected' : ''; ?>><?php echo e(nombreCurso($c)); ?></option>
                     <?php endforeach; ?>
@@ -260,9 +268,14 @@ encabezadoPanel('Gestión de cuentas');
             </form>
         </div>
         <?php
+        $sinCurso = count(alumnosDeCurso($pdo, null));
+        if ($sinCurso && $cursoF !== -1): ?>
+            <p class="aviso-codigos">Hay <strong><?php echo $sinCurso; ?> alumno(s) sin curso</strong>: no aparecen en el panel de ningún preceptor.
+                <a href="cuentas.php?ver=alumnos&amp;curso=-1">Asignarles curso →</a></p>
+        <?php endif;
         $alumnos = [];
         if ($cursoF) {
-            $alumnos = alumnosDeCurso($pdo, $cursoF);
+            $alumnos = alumnosDeCurso($pdo, $cursoF === -1 ? null : $cursoF);
             if ($buscar !== '') {
                 $alumnos = array_filter($alumnos, fn($a) => stripos($a['nombre'] . ' ' . $a['dni'], $buscar) !== false);
             }
@@ -275,17 +288,34 @@ encabezadoPanel('Gestión de cuentas');
         <?php elseif (!$alumnos): ?>
             <p class="vacio">No hay alumnos para mostrar.</p>
         <?php else: ?>
-            <?php if ($cursoF): ?>
+            <?php if ($cursoF > 0): ?>
                 <form method="post" style="margin-bottom:10px;" onsubmit="return confirm('Se generan códigos nuevos para todos los alumnos sin activar de este curso. Los códigos anteriores dejan de servir. ¿Continuar?');"><?php echo csrf_campo(); ?>
                     <input type="hidden" name="accion" value="codigos_curso"><input type="hidden" name="curso_id" value="<?php echo $cursoF; ?>">
                     <button class="boton boton--chico">Generar códigos para los que no activaron</button>
                 </form>
             <?php endif; ?>
+            <!-- Las casillas de la tabla pertenecen a este formulario (atributo form) -->
+            <form method="post" id="mover-curso" class="form-linea" style="margin-bottom:10px;"><?php echo csrf_campo(); ?>
+                <input type="hidden" name="accion" value="cambiar_curso">
+                <label>Pasar los alumnos marcados a
+                    <select name="curso_id" required>
+                        <option value="">Elegir curso…</option>
+                        <?php foreach ($cursos as $c): ?>
+                            <option value="<?php echo (int) $c['id']; ?>"><?php echo e(nombreCurso($c)); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <button class="boton-mini">Cambiar curso</button>
+            </form>
             <div class="tabla-scroll"><table class="tabla-gestion">
-                <thead><tr><th>Nombre</th><th>DNI</th><th>Curso</th><th>Estado</th><th>Último ingreso</th><th>Acciones</th></tr></thead>
+                <thead><tr>
+                    <th><input type="checkbox" aria-label="Marcar todos" onclick="document.querySelectorAll('.marca-alumno').forEach(c => c.checked = this.checked)"></th>
+                    <th>Nombre</th><th>DNI</th><th>Curso</th><th>Estado</th><th>Último ingreso</th><th>Acciones</th>
+                </tr></thead>
                 <tbody>
-                <?php foreach ($alumnos as $u): [$txt, $cls] = estadoCuenta($u); $cid = (int) ($u['curso_id'] ?? $cursoF); ?>
+                <?php foreach ($alumnos as $u): [$txt, $cls] = estadoCuenta($u); $cid = (int) ($u['curso_id'] ?? 0); ?>
                     <tr>
+                        <td><input type="checkbox" class="marca-alumno" name="alumnos[]" value="<?php echo (int) $u['id']; ?>" form="mover-curso" aria-label="Marcar a <?php echo e($u['nombre']); ?>"></td>
                         <td><strong><?php echo e($u['nombre']); ?></strong></td>
                         <td><?php echo e($u['dni'] ?? ''); ?></td>
                         <td><?php echo e($cursoNombre[$cid] ?? 'Sin curso'); ?></td>

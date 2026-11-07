@@ -703,15 +703,32 @@ function asignarCursoPreceptor(PDO $pdo, int $usuarioId, int $cursoId, bool $asi
     }
 }
 
-/** Alumnos de un curso, con el estado de su cuenta. */
-function alumnosDeCurso(PDO $pdo, int $cursoId): array {
-    $st = $pdo->prepare("SELECT u.id, u.nombre, u.dni, u.correo, u.estado, u.ultimo_ingreso,
+/** Alumnos de un curso (null = los que no tienen curso), con el estado de su cuenta. */
+function alumnosDeCurso(PDO $pdo, ?int $cursoId): array {
+    $st = $pdo->prepare("SELECT u.id, u.nombre, u.dni, u.correo, u.estado, u.ultimo_ingreso, a.curso_id,
                                 (SELECT MAX(c.vence) FROM codigos_acceso c
                                   WHERE c.usuario_id = u.id AND c.usado_en IS NULL AND c.vence > NOW()) AS codigo_vence
                          FROM alumnos a JOIN usuarios u ON u.id = a.usuario_id
-                         WHERE a.curso_id = ? ORDER BY u.nombre");
-    $st->execute([$cursoId]);
+                         JOIN usuario_roles r ON r.usuario_id = u.id AND r.rol = 'alumno'
+                         WHERE " . ($cursoId === null ? 'a.curso_id IS NULL' : 'a.curso_id = ?') . ' ORDER BY u.nombre');
+    $st->execute($cursoId === null ? [] : [$cursoId]);
     return $st->fetchAll();
+}
+
+/** Pasa a esos alumnos al curso indicado. Devuelve cuántos se movieron. */
+function cambiarCursoAlumnos(PDO $pdo, array $usuarioIds, int $cursoId): int {
+    if (!cursoExiste($pdo, $cursoId)) {
+        throw new RuntimeException('Elija un curso válido.');
+    }
+    $ids = array_values(array_unique(array_filter(array_map('intval', $usuarioIds), fn($id) => $id > 0)));
+    if (!$ids) {
+        throw new RuntimeException('Marque al menos un alumno.');
+    }
+    $marcas = implode(',', array_fill(0, count($ids), '?'));
+    $st = $pdo->prepare("UPDATE alumnos a JOIN usuario_roles r ON r.usuario_id = a.usuario_id AND r.rol = 'alumno'
+                         SET a.curso_id = ? WHERE a.usuario_id IN ($marcas)");
+    $st->execute([$cursoId, ...$ids]);
+    return $st->rowCount();
 }
 
 /** Curso del alumno (o 0 si no tiene ficha de alumno). */

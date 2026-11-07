@@ -269,17 +269,18 @@ h1 {
     font-weight: 600;
 }
 
-/* Estilos para campos de fecha (ícono de calendario nítido y visible) */
+/* Estilos para campos de fecha (ícono de calendario nítido y visible en cualquier tema) */
 input[type="date"].form-control {
     cursor: pointer;
-    color-scheme: light;
+    color-scheme: light !important;
 }
 
 input[type="date"].form-control::-webkit-calendar-picker-indicator {
     cursor: pointer;
-    opacity: 0.85;
-    filter: invert(12%) sepia(85%) saturate(3000%) hue-rotate(345deg) brightness(80%) contrast(105%);
+    opacity: 0.95;
+    filter: brightness(0) saturate(100%) invert(14%) sepia(68%) saturate(3500%) hue-rotate(345deg) brightness(85%) contrast(110%);
     transition: transform 0.2s ease, opacity 0.2s ease;
+    padding: 3px;
 }
 
 input[type="date"].form-control::-webkit-calendar-picker-indicator:hover {
@@ -288,11 +289,11 @@ input[type="date"].form-control::-webkit-calendar-picker-indicator:hover {
 }
 
 :root[data-tema="oscuro"] input[type="date"].form-control {
-    color-scheme: light;
+    color-scheme: light !important;
 }
 
 :root[data-tema="oscuro"] input[type="date"].form-control::-webkit-calendar-picker-indicator {
-    filter: invert(12%) sepia(85%) saturate(3000%) hue-rotate(345deg) brightness(80%) contrast(105%);
+    filter: brightness(0) saturate(100%) invert(14%) sepia(68%) saturate(3500%) hue-rotate(345deg) brightness(85%) contrast(110%);
 }
 
 .form-control:focus, .form-select:focus {
@@ -608,16 +609,24 @@ select.custom-select-native:disabled,
 /* Barra de herramientas para Generación de Actas de Examen */
 .roster-toolbar-grid {
     display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
+    flex-direction: column;
     gap: 1rem;
     width: 100%;
     box-sizing: border-box;
 }
 
+@media (min-width: 880px) {
+    .roster-toolbar-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: flex-end;
+        gap: 1.25rem;
+    }
+}
+
 .roster-select-group {
-    flex: 1 1 360px;
-    min-width: 260px;
+    width: 100%;
+    min-width: 0;
     margin-bottom: 0;
 }
 
@@ -627,14 +636,15 @@ select.custom-select-native:disabled,
     flex: 0 1 auto;
     align-items: center;
     flex-wrap: wrap;
+    max-width: 100%;
     margin-bottom: 0;
 }
 
 #btnDownloadRosterPdf,
 #btnPrintRoster {
     min-height: 48px;
-    padding: 10px 20px;
-    font-size: 0.95rem;
+    padding: 10px 18px;
+    font-size: 0.92rem;
     font-weight: 700;
     margin: 0;
     display: inline-flex;
@@ -643,6 +653,11 @@ select.custom-select-native:disabled,
     gap: 7px;
     border-radius: 10px;
     box-sizing: border-box;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.2s ease;
+}
     white-space: nowrap;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -2222,14 +2237,75 @@ select.custom-select-native:disabled,
     }
 
     .filter-bar {
+        display: flex;
         flex-direction: column;
-        gap: 0.85rem;
+        gap: 0.75rem;
+        width: 100%;
     }
 
-    .filter-item {
+    .filter-item,
+    .filter-bar .custom-select-wrapper {
         width: 100% !important;
-        height: 48px !important;
-        font-size: 0.98rem !important;
+        min-width: 100% !important;
+        box-sizing: border-box;
+    }
+
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 8px;
+        margin-bottom: 0.8rem;
+    }
+
+    .dir-data-table {
+        min-width: 680px; /* Evita que las columnas de la tabla se aplasten en pantallas móviles */
+    }
+
+    .course-chips-grid {
+        gap: 6px;
+    }
+
+    .course-chip {
+        flex: 1 1 calc(33.333% - 6px);
+        min-width: 82px;
+        padding: 8px 10px;
+        font-size: 0.82rem;
+    }
+
+    .roster-toolbar-grid {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .roster-select-group {
+        width: 100%;
+        min-width: 100%;
+    }
+
+    .roster-buttons-group {
+        width: 100%;
+        display: flex;
+        gap: 0.6rem;
+    }
+
+    .roster-buttons-group button {
+        flex: 1;
+    }
+
+    .modal-card {
+        width: 92% !important;
+        max-width: 92% !important;
+        padding: 1.5rem 1.1rem !important;
+    }
+
+    .modal-actions {
+        flex-direction: column;
+        gap: 0.65rem;
+    }
+
+    .modal-actions button {
+        width: 100%;
     }
 
     /* En pantallas móviles la vista previa del acta CGE se adapta fluidamente */
@@ -2428,9 +2504,9 @@ select.custom-select-native:disabled,
     opacity: 0.4;
 }
 
-select:disabled:not(.custom-select-native),
-select[disabled]:not(.custom-select-native),
-.form-select:disabled:not(.custom-select-native) {
+:root[data-tema="oscuro"] select:disabled:not(.custom-select-native),
+:root[data-tema="oscuro"] select[disabled]:not(.custom-select-native),
+:root[data-tema="oscuro"] .form-select:disabled:not(.custom-select-native) {
     color: #ffffff !important;
     -webkit-text-fill-color: #ffffff !important;
     background-color: rgba(0, 0, 0, 0.3) !important;
@@ -2842,6 +2918,128 @@ select[disabled]:not(.custom-select-native),
 :root:not([data-tema="oscuro"]) .top-count {
     background: #7a0000;
     color: #f5f5dc;
+}
+
+/* Legibilidad y Contraste en Modo Claro */
+:root[data-tema="claro"] .hint-text,
+:root:not([data-tema="oscuro"]) .hint-text {
+    color: #4a1c14 !important;
+    font-weight: 600 !important;
+}
+
+:root[data-tema="claro"] .hint-text .material-symbols-outlined,
+:root:not([data-tema="oscuro"]) .hint-text .material-symbols-outlined {
+    color: #7a0000 !important;
+}
+
+:root[data-tema="claro"] .custom-select-wrapper.is-disabled .custom-select-trigger,
+:root:not([data-tema="oscuro"]) .custom-select-wrapper.is-disabled .custom-select-trigger,
+:root[data-tema="claro"] .custom-select-wrapper.is-disabled .custom-select-label,
+:root:not([data-tema="oscuro"]) .custom-select-wrapper.is-disabled .custom-select-label,
+:root[data-tema="claro"] select:disabled,
+:root:not([data-tema="oscuro"]) select:disabled,
+:root[data-tema="claro"] select[disabled],
+:root:not([data-tema="oscuro"]) select[disabled],
+:root[data-tema="claro"] select:disabled:not(.custom-select-native),
+:root:not([data-tema="oscuro"]) select:disabled:not(.custom-select-native),
+:root[data-tema="claro"] .form-select:disabled,
+:root:not([data-tema="oscuro"]) .form-select:disabled,
+:root[data-tema="claro"] .form-select:disabled:not(.custom-select-native),
+:root:not([data-tema="oscuro"]) .form-select:disabled:not(.custom-select-native),
+:root[data-tema="claro"] input:disabled,
+:root:not([data-tema="oscuro"]) input:disabled {
+    background-color: #ede6d4 !important;
+    color: #3b0909 !important;
+    -webkit-text-fill-color: #3b0909 !important;
+    border-color: #c4b699 !important;
+    opacity: 1 !important;
+    font-weight: 600 !important;
+}
+
+:root[data-tema="claro"] .btn-toggle-pay.cancel,
+:root:not([data-tema="oscuro"]) .btn-toggle-pay.cancel {
+    background: #7a0000 !important;
+    color: #ffffff !important;
+    border: 1.5px solid #5a0000 !important;
+}
+
+:root[data-tema="claro"] .btn-toggle-pay.cancel:hover,
+:root:not([data-tema="oscuro"]) .btn-toggle-pay.cancel:hover {
+    background: #5a0000 !important;
+}
+
+:root[data-tema="claro"] .btn-toggle-pay.pay,
+:root:not([data-tema="oscuro"]) .btn-toggle-pay.pay {
+    background: #ffeb3b !important;
+    color: #500000 !important;
+    border: 1.5px solid #f57f17 !important;
+}
+
+:root[data-tema="claro"] .btn-toggle-pay.pay:hover,
+:root:not([data-tema="oscuro"]) .btn-toggle-pay.pay:hover {
+    background: #fff176 !important;
+}
+
+.btn-toggle-pay.is-locked {
+    background: rgba(120, 120, 120, 0.22) !important;
+    color: #999999 !important;
+    border: 1px dashed rgba(150, 150, 150, 0.4) !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+:root[data-tema="claro"] .btn-toggle-pay.is-locked,
+:root:not([data-tema="oscuro"]) .btn-toggle-pay.is-locked {
+    background: #e8e2d2 !important;
+    color: #7d6b5e !important;
+    border: 1px dashed #b8a692 !important;
+}
+
+:root[data-tema="claro"] .text-dni-sub,
+:root:not([data-tema="oscuro"]) .text-dni-sub {
+    color: #6a4a3d !important;
+}
+
+:root[data-tema="oscuro"] .text-dni-sub {
+    color: #d1c4b2 !important;
+}
+
+:root[data-tema="claro"] .btn-vaciar-tabla,
+:root:not([data-tema="oscuro"]) .btn-vaciar-tabla {
+    background: #ffebee !important;
+    color: #c62828 !important;
+    border: 1px solid #ef9a9a !important;
+}
+
+:root[data-tema="claro"] .btn-vaciar-tabla:hover,
+:root:not([data-tema="oscuro"]) .btn-vaciar-tabla:hover {
+    background: #ffcdd2 !important;
+    color: #b71c1c !important;
+    border-color: #e57373 !important;
+}
+
+:root[data-tema="claro"] .badge-count,
+:root:not([data-tema="oscuro"]) .badge-count {
+    background: #7a0000 !important;
+    color: #ffffff !important;
+}
+
+:root[data-tema="claro"] .modal-card,
+:root:not([data-tema="oscuro"]) .modal-card {
+    background: #fdfaf5 !important;
+    border: 2px solid #7a0000 !important;
+    color: #4a0a0a !important;
+}
+
+:root[data-tema="claro"] .modal-title,
+:root:not([data-tema="oscuro"]) .modal-title {
+    color: #7a0000 !important;
+}
+
+:root[data-tema="claro"] .modal-body-text,
+:root:not([data-tema="oscuro"]) .modal-body-text {
+    color: #4a0a0a !important;
 }
 
 /* ===== Variante Modo Oscuro (el diseño oscuro original con bordó profundo, dorados y glassmorphism) ===== */

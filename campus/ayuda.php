@@ -41,7 +41,7 @@ require_once 'includes/sesion.php';
     </div>
 
     <!-- =========================================================
-         TUTORIAL 1: REGISTRO DE ALUMNO
+         GUÍA 1: REGISTRO DE ALUMNO
          ========================================================= -->
     <article class="tarjeta-tutorial" id="alumno">
         <div class="tarjeta-tutorial__cuerpo">
@@ -50,20 +50,12 @@ require_once 'includes/sesion.php';
                 <span class="badge-rol">Alumno</span>
             </div>
 
-            <!-- REPRODUCTOR DE VIDEO -->
-            <div class="video-contenedor">
-                <video controls preload="metadata">
-                    <source src="videos/registro_alumno.mp4" type="video/mp4">
-                    Su navegador no soporta el reproductor de video HTML5.
-                </video>
-            </div>
-
             <h3 class="pasos-titulo">📋 Paso a paso para Alumnos:</h3>
             <ol class="pasos-lista">
                 <li>Dirigite a la página de <strong>Registro</strong> y seleccioná la pestaña <strong>Alumno</strong>.</li>
                 <li>Escribí tu <strong>Nombre y apellido</strong> completo.</li>
-                <li>Ingresá tu <strong>Correo electrónico</strong> (puede ser Gmail, Hotmail, Outlook o cualquier otro servicio activo).</li>
-                <li>Completá tu <strong>DNI</strong>: el sistema solo admite números (sin puntos, espacios ni letras).</li>
+                <li>Ingresá tu <strong>Correo electrónico</strong> activo.</li>
+                <li>Completá tu <strong>DNI</strong>: solo números (sin puntos, espacios ni letras).</li>
                 <li>Hacé clic en el botón rojo <strong>"Registrarme"</strong>.</li>
                 <li>
                     <strong>⚠️ Muy importante:</strong> En la siguiente pantalla se mostrará tu <strong>contraseña generada automáticamente</strong>.
@@ -75,7 +67,7 @@ require_once 'includes/sesion.php';
 
 
     <!-- =========================================================
-         TUTORIAL 2: REGISTRO DE PROFESOR
+         GUÍA 2: REGISTRO DE PROFESOR
          ========================================================= -->
     <article class="tarjeta-tutorial" id="profesor">
         <div class="tarjeta-tutorial__cuerpo">
@@ -87,22 +79,14 @@ require_once 'includes/sesion.php';
             <!-- AVISO MESA DE ENTRADA -->
             <div class="aviso-importante">
                 <strong>🏛️ Requisito previo obligatorio:</strong>
-                Antes de iniciar el registro, el docente debe acercarse personalmente a <strong>Mesa de Entrada de la escuela</strong> para solicitar la <strong>Clave institucional de registro</strong>. Sin esta clave provista por la institución, no podrá habilitar su cuenta.
-            </div>
-
-            <!-- REPRODUCTOR DE VIDEO -->
-            <div class="video-contenedor">
-                <video controls preload="metadata">
-                    <source src="videos/registro_profesor.mp4" type="video/mp4">
-                    Su navegador no soporta el reproductor de video HTML5.
-                </video>
+                Antes de iniciar el registro, el docente debe solicitar a la <strong>Dirección o Secretaría de la escuela</strong> la <strong>Clave institucional de registro</strong>. Sin esta clave provista por la institución, no podrá habilitar su cuenta.
             </div>
 
             <h3 class="pasos-titulo">📋 Paso a paso para Docentes:</h3>
             <ol class="pasos-lista">
-                <li>Solicitá en <strong>Mesa de Entrada</strong> el código institucional para profesores.</li>
+                <li>Solicitá en la institución la clave institucional para registro de profesores.</li>
                 <li>Accedé a la sección de <strong>Registro</strong> y hacé clic en la pestaña <strong>Profesor</strong>.</li>
-                <li>Ingresá tu <strong>Nombre y apellido</strong> y tu <strong>Correo electrónico</strong> institucional o personal.</li>
+                <li>Ingresá tu <strong>Nombre y apellido</strong>, tu número de <strong>DNI</strong> y tu <strong>Correo electrónico</strong>.</li>
                 <li>En el casillero <strong>"Clave de la escuela"</strong>, escribí exactamente el código provisto por la institución.</li>
                 <li>Hacé clic en el botón <strong>"Registrarme"</strong>.</li>
                 <li>
@@ -114,7 +98,7 @@ require_once 'includes/sesion.php';
 
 
     <!-- =========================================================
-         TUTORIAL 3: RECUPERAR CONTRASEÑA
+         GUÍA 3: RECUPERAR CONTRASEÑA
          ========================================================= -->
     <article class="tarjeta-tutorial" id="recuperar">
         <div class="tarjeta-tutorial__cuerpo">
@@ -123,27 +107,17 @@ require_once 'includes/sesion.php';
                 <span class="badge-rol badge-rol--recuperar">Recuperación</span>
             </div>
 
-            <!-- AVISO MESA DE ENTRADA -->
-            <div class="aviso-importante">
-                <strong>🏛️ Requisito de seguridad:</strong>
-                Por motivos de seguridad y protección de los datos de cada estudiante, para restablecer la contraseña se requiere el <strong>Código de la escuela</strong>. Si lo olvidaste o no lo tenés, debés acercarte a <strong>Mesa de Entrada</strong> para solicitarlo antes de continuar.
+            <!-- AVISO INSTITUCIONAL -->
+            <div class="aviso-importante" style="background: rgba(162, 19, 47, 0.15); border-left: 4px solid var(--primary, #a2132f); color: #fff;">
+                <strong>🏛️ Contacte a la institución para generar una nueva contraseña:</strong><br>
+                Por razones de seguridad y protección de la privacidad, el blanqueo de contraseñas ya no se realiza de forma automática por internet.
             </div>
 
-            <!-- REPRODUCTOR DE VIDEO -->
-            <div class="video-contenedor">
-                <video controls preload="metadata">
-                    <source src="videos/recuperar_clave.mp4" type="video/mp4">
-                    Su navegador no soporta el reproductor de video HTML5.
-                </video>
-            </div>
-
-            <h3 class="pasos-titulo">📋 Paso a paso para restablecer la contraseña:</h3>
+            <h3 class="pasos-titulo">📋 Cómo solicitar una nueva clave:</h3>
             <ol class="pasos-lista">
-                <li>En la pantalla de ingreso (Login), hacé clic en <strong>"¿Olvidó su contraseña?"</strong>.</li>
-                <li>Escribí tu número de <strong>DNI</strong> (sin puntos ni letras).</li>
-                <li>En el campo <strong>"Código de la escuela"</strong>, colocá el código institucional provisto por Mesa de Entrada.</li>
-                <li>Hacé clic en <strong>"Restablecer contraseña"</strong>.</li>
-                <li>El sistema generará una <strong>nueva contraseña</strong> inmediatamente en pantalla. Copiala y usala para acceder con tu DNI.</li>
+                <li>Acercate personalmente a la <strong>Preceptoría, Secretaría o Dirección</strong> de la escuela.</li>
+                <li>Presentá tu número de <strong>DNI</strong> para acreditar tu identidad.</li>
+                <li>El personal directivo generará y te entregará tu nueva clave de acceso en el momento.</li>
             </ol>
         </div>
     </article>

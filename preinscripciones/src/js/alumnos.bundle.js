@@ -22,7 +22,14 @@
     };
 
     // Calcula las fechas mínima y máxima de nacimiento tomando la fecha real del dispositivo
-    // y el curso actual (contemplando repitentes y egresados)
+    // y el curso actual: alumnos regulares (1ro a 7mo) tienen como año mínimo (año actual - 19),
+    // o sea 2007 en 2026 (se calcula para que no quede desactualizado al cambiar el año),
+    // mientras que los egresados pueden ser mucho mayores (adultos sin límite superior estricto).
+    const EDAD_MAX_REGULAR = 19;
+    function anioMinimoRegular() {
+        return new Date().getFullYear() - EDAD_MAX_REGULAR;
+    }
+
     function getBirthdateBounds(currentCourse) {
         const now = new Date();
         const currentYear = now.getFullYear();
@@ -31,19 +38,24 @@
         const todayStr = `${currentYear}-${mm}-${dd}`;
 
         let minAge = 12;
-        let maxAge = 32;
+        let maxAge = 85;
+        let minBirthYear = 1940;
+        let minDateStr = '1940-01-01';
 
         if (currentCourse === 'Egreso') {
-            minAge = 17;
-            maxAge = 32;
+            minAge = 16;
+            maxAge = 85; // Los egresados pueden ser mucho mayores
+            minBirthYear = 1940;
+            minDateStr = '1940-01-01';
         } else if (currentCourse && COURSE_LEVEL_MAP[currentCourse]) {
             const level = COURSE_LEVEL_MAP[currentCourse]; // 2do = 2 ... 7mo = 7
-            minAge = 10 + level; // Ej: 2do -> 12 años mín., 7mo -> 17 años mín.
-            maxAge = 16 + level; // Contempla alumnos que hayan repetido varios años (ej: 7mo -> hasta 23 años)
+            minAge = 10 + level;
+            // Para alumnos regulares (1ro a 7mo), el año mínimo reglamentario
+            minBirthYear = anioMinimoRegular();
+            minDateStr = `${minBirthYear}-01-01`;
         }
 
         const maxBirthYear = currentYear - minAge;
-        const minBirthYear = currentYear - maxAge;
 
         // Ajustamos el día por si hoy es 29 de febrero y el año límite no es bisiesto
         const maxDateObj = new Date(maxBirthYear, now.getMonth(), now.getDate());
@@ -56,7 +68,7 @@
             maxAge,
             minBirthYear,
             maxBirthYear,
-            minDateStr: `${minBirthYear}-01-01`,
+            minDateStr,
             maxDateStr: `${maxDateObj.getFullYear()}-${maxM}-${maxD}`
         };
     }
@@ -87,20 +99,37 @@
 
         const parts = birthStr.split('-');
         const birthYear = parseInt(parts[0], 10);
-        if (isNaN(birthYear) || birthStr < bounds.minDateStr || birthStr > bounds.maxDateStr) {
-            const courseLabel = currentCourse === 'Egreso'
-                ? 'un alumno Egresado'
-                : (currentCourse ? `un alumno de ${currentCourse} AÑO` : 'un estudiante de nivel secundario');
-            return {
-                valid: false,
-                message: `La fecha de nacimiento ingresada está fuera del rango de edad real para ${courseLabel} (debe corresponder a una edad de entre ${bounds.minAge} y ${bounds.maxAge} años, nacidos entre ${bounds.minBirthYear} y ${bounds.maxBirthYear}).`
-            };
+
+        // Si es egresado, puede ser mucho mayor (desde 1940 en adelante), solo requiere al menos 16 años
+        if (currentCourse === 'Egreso') {
+            if (isNaN(birthYear) || birthYear < 1940 || birthStr > bounds.maxDateStr) {
+                return {
+                    valid: false,
+                    message: `Un alumno egresado debe tener al menos ${bounds.minAge} años.`
+                };
+            }
+        } else {
+            // Para alumnos regulares de 1ro a 7mo año, el año mínimo se calcula según el año actual
+            const minRegular = anioMinimoRegular();
+            if (isNaN(birthYear) || birthYear < minRegular) {
+                return {
+                    valid: false,
+                    message: `Para alumnos regulares de 1ro a 7mo año, el año mínimo de nacimiento es ${minRegular}. Si eres egresado de promociones anteriores, selecciona 'Egresado' en Curso Actual.`
+                };
+            }
+            if (birthStr > bounds.maxDateStr) {
+                const courseLabel = currentCourse ? `un alumno de ${currentCourse} AÑO` : 'un estudiante regular';
+                return {
+                    valid: false,
+                    message: `La fecha de nacimiento ingresada es muy reciente para ${courseLabel} (debe tener al menos ${bounds.minAge} años).`
+                };
+            }
         }
 
         if (owedYear && calendarYear) {
             const owedLevel = YEAR_LEVEL_MAP[owedYear] || 1;
             const calYearNum = parseInt(calendarYear, 10);
-            const minAgeWhenCursed = 10 + owedLevel; // Ej: al menos 11 años para 1er año, 16 para 6to
+            const minAgeWhenCursed = 10 + owedLevel;
             if (!isNaN(calYearNum) && (calYearNum - birthYear) < minAgeWhenCursed) {
                 return {
                     valid: false,
@@ -478,6 +507,15 @@
             yearFormatted += ` ${currentSpecialty}`;
         }
 
+        // Límite reglamentario: Alumnos regulares (1ro a 7mo) máximo 2 materias previas
+        // Los alumnos con más de 2 materias previas deben repetir el año. Los egresados pueden elegir todas las que deseen.
+        const isEgresado = currentCourse === 'Egreso';
+        if (!state.editingSubjectId && !isEgresado && state.addedSubjects.length >= 2) {
+            highlightFieldError(owedSubjectInput);
+            showAlert(`Como alumno regular de ${currentCourse} AÑO, solo puedes inscribirte a un máximo de 2 materias previas reglamentarias (adeudar más de 2 materias implica la repetición del ciclo lectivo). Solo los egresados pueden solicitar más materias.`, "warning");
+            return;
+        }
+
         const isDuplicate = state.addedSubjects.some(item => 
             (state.editingSubjectId ? item.id !== state.editingSubjectId : true) &&
             item.subjectName.toLowerCase() === owedSubject.toLowerCase() && 
@@ -700,6 +738,7 @@
 
     // Guarda o actualiza inmediatamente la solicitud del alumno en la base de datos y localStorage
     function syncActiveStudentEnrollment() {
+        const studentDbId = document.getElementById('studentDbId')?.value || '';
         const studentName = document.getElementById('studentName')?.value.trim() || '';
         const studentDni = document.getElementById('studentDni')?.value.trim() || '';
         const studentBirthdateVal = document.getElementById('studentBirthdate')?.value || '';
@@ -718,6 +757,7 @@
 
         DB.save({
             id: state.currentEnrollmentId,
+            alumnoId: studentDbId ? parseInt(studentDbId, 10) : null,
             studentName,
             studentDni,
             studentBirthdate: studentBirthdateVal,
@@ -760,7 +800,38 @@
 
     function openModal() {
         const modal = document.getElementById('modalMultiSubject');
-        if (modal) modal.classList.add('active');
+        if (!modal) return;
+        const currentCourse = document.getElementById('currentCourse')?.value || '';
+        const isEgresado = currentCourse === 'Egreso';
+        const titleEl = modal.querySelector('.modal-title');
+        const bodyEl = modal.querySelector('.modal-body-text');
+        const btnYes = document.getElementById('btnModalYes');
+        const btnNo = document.getElementById('btnModalNo');
+
+        if (!isEgresado && state.addedSubjects.length >= 2) {
+            if (titleEl) titleEl.textContent = 'Límite Reglamentario Alcanzado (2 Materias)';
+            if (bodyEl) {
+                bodyEl.innerHTML = `Has completado las <strong>2 materias previas reglamentarias</strong> permitidas para alumnos regulares.<br><br>Por normativa institucional, los alumnos regulares (1ro a 7mo año) pueden rendir un máximo de 2 materias previas. Para continuar, finaliza y descarga tu permiso de examen.`;
+            }
+            if (btnYes) btnYes.style.display = 'none';
+            if (btnNo) {
+                btnNo.innerHTML = '<span class="material-symbols-outlined">description</span> Finalizar y Descargar PDF';
+                btnNo.classList.remove('btn-secondary-auth');
+                btnNo.classList.add('btn-ingresar');
+            }
+        } else {
+            if (titleEl) titleEl.textContent = '¿Deseas inscribirte a otra materia?';
+            if (bodyEl) {
+                bodyEl.innerHTML = `La materia ha sido cargada correctamente a tu lista de preinscripción.<br><br>¿Quieres agregar otra materia adeudada a esta solicitud o deseas finalizar y descargar tu permiso?`;
+            }
+            if (btnYes) btnYes.style.display = 'inline-flex';
+            if (btnNo) {
+                btnNo.innerHTML = '<span class="material-symbols-outlined">description</span> No, finalizar y descargar PDF';
+                btnNo.classList.remove('btn-ingresar');
+                btnNo.classList.add('btn-secondary-auth');
+            }
+        }
+        modal.classList.add('active');
     }
 
     function closeModal() {
@@ -1179,16 +1250,12 @@
         if (examTurnSelect) {
             examTurnSelect.value = currentTurn;
             examTurnSelect.disabled = true;
-            examTurnSelect.style.color = '#ffffff';
             const wrapper = examTurnSelect.closest('.custom-select-wrapper');
             if (wrapper) {
                 wrapper.classList.add('is-disabled');
-                const trigger = wrapper.querySelector('.custom-select-trigger');
                 const lbl = wrapper.querySelector('.custom-select-label');
-                if (trigger) trigger.style.color = '#ffffff';
                 if (lbl) {
                     lbl.textContent = currentTurn;
-                    lbl.style.color = '#ffffff';
                 }
             }
             if (examTurnSelect._refreshCustomOptions) {

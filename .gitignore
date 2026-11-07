@@ -8,7 +8,12 @@ campus/data/*
 
 # Dependencias y archivos temporales
 node_modules/
+vendor/
+.vscode/
 progmesas/backend/database.sqlite-*
 *.log
+*.tmp
+*.zip
+*.rar
 .DS_Store
 ~$*.xlsx

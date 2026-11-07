@@ -74,18 +74,23 @@ function usuario_mesas(?string $rolRequerido = null): ?array
     }
 
     if ($rol === 'alumno') {
-        // El DNI sale de la sesión (login.php guarda id = "alumno:<DNI>"), nunca del nombre: dos alumnos pueden llamarse igual
+        // El DNI sale de la sesión (login.php guarda id = "alumno:<DNI>"), nunca del nombre ni del correo:
+        // dos alumnos pueden llamarse igual o compartir correo (la columna correo no es única).
         $dniSesion = preg_match('/^alumno:(\d{7,8})$/', (string) ($_SESSION['id'] ?? ''), $m) ? $m[1] : '';
+        if ($dniSesion === '' && preg_match('/^\d{7,8}$/', (string) ($_SESSION['dni'] ?? ''))) {
+            $dniSesion = (string) $_SESSION['dni'];
+        }
         if ($dniSesion === '') {
-            return ['rol' => 'alumno', 'nombre' => $nombre, 'dni' => '', 'correo' => ''];
+            return ['id' => null, 'rol' => 'alumno', 'nombre' => $nombre, 'dni' => '', 'correo' => ''];
         }
 
         try {
-            $st = conectar()->prepare('SELECT nombre, dni, correo FROM alumnos WHERE dni = ? LIMIT 1');
+            $st = conectar()->prepare('SELECT id, nombre, dni, correo FROM alumnos WHERE dni = ? LIMIT 1');
             $st->execute([$dniSesion]);
             $fila = $st->fetch();
             if ($fila !== false) {
                 return [
+                    'id'     => (int) $fila['id'],
                     'rol'    => 'alumno',
                     'nombre' => (string) $fila['nombre'],
                     'dni'    => (string) ($fila['dni'] ?? ''),
@@ -99,9 +104,10 @@ function usuario_mesas(?string $rolRequerido = null): ?array
         // Si es uno de los alumnos de prueba cargados en datos.php, tomamos sus datos de ahí
         global $ALUMNOS;
         if (isset($ALUMNOS) && is_array($ALUMNOS)) {
-            foreach ($ALUMNOS as $al) {
+            foreach ($ALUMNOS as $idx => $al) {
                 if ((string) ($al['dni'] ?? '') === $dniSesion) {
                     return [
+                        'id'     => $idx + 1,
                         'rol'    => 'alumno',
                         'nombre' => (string) $al['nombre'],
                         'dni'    => (string) ($al['dni'] ?? ''),
@@ -112,6 +118,7 @@ function usuario_mesas(?string $rolRequerido = null): ?array
         }
 
         return [
+            'id'     => null,
             'rol'    => 'alumno',
             'nombre' => $nombre,
             'dni'    => '',
@@ -122,16 +129,24 @@ function usuario_mesas(?string $rolRequerido = null): ?array
     return null;
 }
 
+/** CSRF: lo que modifica datos solo se acepta desde las páginas del módulo, que mandan la cabecera
+ *  X-Requested-With (otro sitio no puede agregarla sin CORS, que este servidor no habilita). */
+function exigir_peticion_propia(): void
+{
+    $m = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    if (in_array($m, ['GET', 'HEAD', 'OPTIONS'], true)) {
+        return;
+    }
+    $cabecera = $_SERVER['HTTP_X_REQUESTED_WITH'] ?? '';
+    if (!in_array($cabecera, ['preinscripciones', 'XMLHttpRequest'], true)) {
+        responder_json(['success' => false, 'error' => 'Petición no permitida'], 403);
+    }
+}
+
 // Función que usamos en api.php para bloquear peticiones si no hay sesión iniciada
 function exigir_usuario_api(bool $soloDirectivo = false): array
 {
-    // CSRF: lo que modifica datos solo se acepta desde las páginas del módulo, que mandan esta cabecera
-    // (otro sitio no puede agregarla sin CORS, que este servidor no habilita)
-    if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET'
-        && ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'preinscripciones') {
-        responder_json(['success' => false, 'error' => 'Petición no permitida'], 403);
-    }
-
+    exigir_peticion_propia();
     $u = null;
     try {
         $u = usuario_mesas();
@@ -170,6 +185,7 @@ SQL,
         <<<'SQL'
 CREATE TABLE IF NOT EXISTS `alumnos_inscripciones` (
   `id` varchar(50) NOT NULL,
+  `alumno_id` int DEFAULT NULL,
   `student_name` varchar(150) NOT NULL,
   `student_dni` varchar(20) NOT NULL,
   `student_course` varchar(50) NOT NULL,
@@ -177,7 +193,8 @@ CREATE TABLE IF NOT EXISTS `alumnos_inscripciones` (
   `student_email` varchar(150) DEFAULT NULL,
   `paid` tinyint(1) DEFAULT 0,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_ai_alumno_id` (`alumno_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL,
         <<<'SQL'
@@ -220,6 +237,14 @@ function asegurar_estructura(PDO $pdo): void
 {
     foreach (sql_tablas_mesas() as $sql) {
         $pdo->exec($sql);
+    }
+
+    try {
+        $cols = $pdo->query("DESCRIBE alumnos_inscripciones")->fetchAll(PDO::FETCH_COLUMN);
+        if (!in_array('alumno_id', $cols, true)) {
+            $pdo->exec("ALTER TABLE alumnos_inscripciones ADD COLUMN alumno_id INT NULL DEFAULT NULL AFTER id, ADD INDEX idx_ai_alumno_id (alumno_id)");
+        }
+    } catch (Throwable $e) {
     }
 
     // Valores por defecto de configuración si la tabla está vacía

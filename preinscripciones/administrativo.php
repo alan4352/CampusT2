@@ -440,6 +440,9 @@ $nombreDirectivo = $usuario['nombre'] !== '' ? $usuario['nombre'] : 'Directivo/a
                                 </div>
                             </div>
 
+                            <!-- Cartel de aviso de período de abonos -->
+                            <div id="abonosPeriodNotice" class="alert-custom alert-warning" style="margin-bottom: 1.2rem; display: none; align-items: center; gap: 0.8rem;"></div>
+
                             <!-- Filtros Dinámicos -->
                             <div class="filter-bar">
                                 <select id="filterCourseAbono" class="form-select filter-item">
@@ -885,23 +888,6 @@ $nombreDirectivo = $usuario['nombre'] !== '' ? $usuario['nombre'] : 'Directivo/a
 
                 </div>
             </div>
-
-            <!-- Apartado de Ayuda / Tutorial en Video para Directivos y Administrativos -->
-            <aside class="help-tutorial-banner no-print" aria-label="Ayuda para directivos" style="margin-top: 1.5rem; max-width: 100%;">
-                <div class="help-tutorial-content">
-                    <div class="help-tutorial-icon">
-                        <span class="material-symbols-outlined">help</span>
-                    </div>
-                    <div class="help-tutorial-text">
-                        <span class="help-tutorial-question">¿Tienes problemas?</span>
-                        <span class="help-tutorial-cta">¡Aquí tienes ayuda! :D</span>
-                    </div>
-                </div>
-                <a href="https://youtu.be/dqTh9vQUdFg" target="_blank" rel="noopener noreferrer" class="help-tutorial-btn">
-                    <span class="material-symbols-outlined">play_circle</span>
-                    <span>Ver video tutorial</span>
-                </a>
-            </aside>
 
         </section>
 

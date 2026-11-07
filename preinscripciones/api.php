@@ -181,8 +181,8 @@ switch ($action) {
                     echo json_encode(['success' => false, 'error' => "Debes completar el Nombre y Apellido del {$roleName}."]);
                     exit;
                 }
-                if (preg_match('/\d/', $docName)) {
-                    echo json_encode(['success' => false, 'error' => "El {$roleName} no puede contener números, solo letras."]);
+                if (preg_match('/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/u', $docName)) {
+                    echo json_encode(['success' => false, 'error' => "El {$roleName} solo puede contener letras y espacios, sin números ni caracteres especiales."]);
                     exit;
                 }
                 $docWords = array_values(array_filter(preg_split('/\s+/', $docName)));
@@ -383,6 +383,8 @@ switch ($action) {
 
                 $enrollments[] = [
                     'id' => $rec['id'],
+                    'alumnoId' => isset($rec['alumno_id']) ? (int)$rec['alumno_id'] : null,
+                    'alumno_id' => isset($rec['alumno_id']) ? (int)$rec['alumno_id'] : null,
                     'studentName' => $rec['student_name'],
                     'student_name' => $rec['student_name'],
                     'studentDni' => $rec['student_dni'],
@@ -409,21 +411,36 @@ switch ($action) {
     case 'save_enrollment':
         try {
             $esAlumno = $usuarioSesion['rol'] === 'alumno';
+            $curso = texto_limpio($input['currentCourse'] ?? $input['studentCourse'] ?? $input['student_course'] ?? '', 50);
+
+            // Límite reglamentario: los alumnos regulares (1ro a 7mo) rinden como máximo 2 materias previas;
+            // los egresados pueden anotarse en todas las que adeuden
+            $esEgresado = (stripos($curso, 'Egreso') !== false || stripos($curso, 'Egresad') !== false);
+            if (!$esEgresado && !empty($input['subjects']) && is_array($input['subjects']) && count($input['subjects']) > 2) {
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Los alumnos regulares (de 1ro a 7mo año) solo pueden inscribirse a un máximo de 2 materias previas reglamentarias.'
+                ]);
+                break;
+            }
+
             $id = texto_limpio($input['id'] ?? '', 50);
             $nombre = texto_limpio($input['studentName'] ?? $input['student_name'] ?? '', 150);
             $dni = preg_replace('/\D/', '', (string) ($input['studentDni'] ?? $input['student_dni'] ?? ''));
             $correo = texto_limpio($input['studentEmail'] ?? $input['student_email'] ?? '', 150);
             $pagado = !empty($input['paid']) ? 1 : 0;
+            $alumnoId = (int) ($input['alumnoId'] ?? $input['alumno_id'] ?? 0);
             $previas = [];   // materia|turno => [paid, grade] ya guardados
 
             if ($esAlumno) {
-                // El alumno se inscribe a sí mismo: nombre, DNI y correo salen de su sesión, no del navegador
+                // El alumno se inscribe a sí mismo: nombre, DNI, correo e ID salen de su sesión, no del navegador
                 $dni = (string) ($usuarioSesion['dni'] ?? '');
                 if ($dni === '') {
                     responder_json(['success' => false, 'error' => 'No se pudo identificar tu DNI. Volvé a iniciar sesión.'], 403);
                 }
                 $nombre = (string) $usuarioSesion['nombre'];
                 $correo = (string) (($usuarioSesion['correo'] ?? '') ?: $correo);
+                $alumnoId = (int) ($usuarioSesion['id'] ?? 0);
 
                 if ($id !== '') {
                     $st = $pdo->prepare('SELECT student_dni FROM alumnos_inscripciones WHERE id = ?');
@@ -450,9 +467,10 @@ switch ($action) {
 
             $pdo->beginTransaction();
             $stmt = $pdo->prepare("
-                INSERT INTO alumnos_inscripciones (id, student_name, student_dni, student_course, student_phone, student_email, paid, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+                INSERT INTO alumnos_inscripciones (id, alumno_id, student_name, student_dni, student_course, student_phone, student_email, paid, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
                 ON DUPLICATE KEY UPDATE 
+                    alumno_id = VALUES(alumno_id),
                     student_name = VALUES(student_name),
                     student_dni = VALUES(student_dni),
                     student_course = VALUES(student_course),
@@ -462,9 +480,10 @@ switch ($action) {
             ");
             $stmt->execute([
                 $id,
+                $alumnoId > 0 ? $alumnoId : null,
                 $nombre,
                 $dni,
-                texto_limpio($input['currentCourse'] ?? $input['studentCourse'] ?? $input['student_course'] ?? '', 50),
+                $curso,
                 texto_limpio($input['studentPhone'] ?? $input['student_phone'] ?? '', 50),
                 $correo,
                 $esAlumno ? 0 : $pagado
@@ -538,6 +557,20 @@ switch ($action) {
 
     case 'update_payment':
         try {
+            // Los abonos solo pueden registrarse y modificarse una vez finalizado el período de preinscripción
+            $cfgStmt = $pdo->query("SELECT clave, valor FROM configuracion");
+            $cfgRows = $cfgStmt ? $cfgStmt->fetchAll(PDO::FETCH_KEY_PAIR) : [];
+            $habilitada = ($cfgRows['preinscripcion_habilitada'] ?? '1') === '1';
+            $fechaInicio = $cfgRows['preinscripcion_fecha_inicio'] ?? '';
+            $fechaFin = $cfgRows['preinscripcion_fecha_fin'] ?? '';
+            $today = date('Y-m-d');
+            $isActive = $habilitada && (!$fechaInicio || $today >= $fechaInicio) && (!$fechaFin || $today <= $fechaFin);
+
+            if ($isActive) {
+                echo json_encode(['success' => false, 'error' => 'Los abonos solo pueden registrarse y modificarse una vez que finalice el período de preinscripción para los alumnos.']);
+                break;
+            }
+
             $enrollmentId = $input['enrollmentId'] ?? '';
             $subjectId = $input['subjectId'] ?? '';
             $isPaid = !empty($input['isPaid']) ? 1 : 0;

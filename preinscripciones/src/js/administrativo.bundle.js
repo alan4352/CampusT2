@@ -12,9 +12,10 @@
         clearFieldErrors,
         COURSE_LEVEL_MAP,
         YEAR_LEVEL_MAP,
-        initAllCustomSelects,
-        esc
+        initAllCustomSelects
     } = window.AppCore;
+
+    const esc = window.esc || (s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'));
 
     // Variables para controlar si hay cambios sin guardar o si se está editando una mesa existente
     let savedHabilitarState = null;
@@ -734,15 +735,18 @@
             });
         }
 
-        // Impedir que se escriban números en los campos de Tribunal Docente
+        // Impedir que se escriban números o caracteres especiales en los campos de Tribunal Docente
         ['mesaPresDocente', 'mesaVocal1Docente', 'mesaVocal2Docente'].forEach(id => {
             const input = document.getElementById(id);
             if (input) {
-                input.addEventListener('input', () => {
-                    if (/\d/.test(input.value)) {
-                        input.value = input.value.replace(/\d/g, '');
+                const sanitizeTeacherInput = () => {
+                    const sanitized = input.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/g, '');
+                    if (input.value !== sanitized) {
+                        input.value = sanitized;
                     }
-                });
+                };
+                input.addEventListener('input', sanitizeTeacherInput);
+                input.addEventListener('paste', () => setTimeout(sanitizeTeacherInput, 0));
             }
         });
 
@@ -2352,17 +2356,13 @@
                 highlightFieldError(inputEl, `Debes ingresar el Nombre y Apellido del ${roleName}`);
                 return false;
             }
-            if (/\d/.test(val)) {
-                highlightFieldError(inputEl, `El ${roleName} no puede contener números, solo letras`);
+            if (/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]/.test(val)) {
+                highlightFieldError(inputEl, `El ${roleName} solo puede contener letras y espacios, sin números ni caracteres especiales`);
                 return false;
             }
             const words = val.split(/\s+/).filter(w => w.length > 0);
             if (words.length < 2) {
                 highlightFieldError(inputEl, `Debes ingresar al menos Nombre y Apellido completo para el ${roleName}`);
-                return false;
-            }
-            if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'\-\.]+$/.test(val)) {
-                highlightFieldError(inputEl, `El ${roleName} contiene caracteres no válidos`);
                 return false;
             }
             return true;
@@ -2577,6 +2577,26 @@
         const countBadge = document.getElementById('abonosFilterCount');
         if (countBadge) countBadge.textContent = `${records.length} alumno(s)`;
 
+        // Control de estado del período de preinscripción para habilitar o bloquear el registro de abonos
+        const preinscStatus = typeof DB.isPreinscripcionActive === 'function' ? DB.isPreinscripcionActive() : { active: false };
+        const isPreinscripcionActive = !!preinscStatus.active;
+        const noticeEl = document.getElementById('abonosPeriodNotice');
+        if (noticeEl) {
+            if (isPreinscripcionActive) {
+                const endDateFormatted = preinscStatus.endDate ? preinscStatus.endDate.split('-').reverse().join('/') : '';
+                noticeEl.style.display = 'flex';
+                noticeEl.innerHTML = `
+                    <span class="material-symbols-outlined" style="font-size: 1.8rem; color: #ffeb3b; flex-shrink: 0;">lock_clock</span>
+                    <div>
+                        <strong>Período de Preinscripción en Curso ${endDateFormatted ? '(Abierto hasta el ' + endDateFormatted + ')' : ''}</strong><br>
+                        El registro y modificación de abonos se habilitará una vez que finalice el período de preinscripción de los alumnos. Esto asegura que ninguna solicitud registrada como abonada pueda ser editada posteriormente por el estudiante.
+                    </div>
+                `;
+            } else {
+                noticeEl.style.display = 'none';
+            }
+        }
+
         const tbody = document.getElementById('abonosTableBody');
         if (!tbody) return;
         tbody.innerHTML = '';
@@ -2588,30 +2608,51 @@
 
         records.forEach(r => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><strong>${esc(r.studentName)}</strong><br><small style="color:#aaa;">DNI: ${esc(r.studentDni)}</small></td>
-                <td><strong>${esc(r.owedYear)}</strong></td>
-                <td>${esc(r.subjectName)}</td>
-                <td>${esc(r.examTurn)}</td>
-                <td>
-                    <span class="status-badge ${r.paid ? 'paid' : 'unpaid'}">
-                        <span class="material-symbols-outlined">${r.paid ? 'check_circle' : 'pending'}</span>
-                        ${r.paid ? 'ABONADO' : 'PENDIENTE'}
-                    </span>
-                </td>
-                <td>
-                    <button type="button" class="btn-toggle-pay ${r.paid ? 'cancel' : 'pay'}" data-enrollment="${esc(r.enrollmentId)}" data-subject="${esc(r.subjectId)}">
-                        ${r.paid ? 'Marcar Pendiente' : 'Registrar Pago'}
-                    </button>
-                </td>
-            `;
+            if (isPreinscripcionActive) {
+                tr.innerHTML = `
+                    <td><strong>${esc(r.studentName)}</strong><br><small class="text-dni-sub">DNI: ${esc(r.studentDni)}</small></td>
+                    <td><strong>${esc(r.owedYear)}</strong></td>
+                    <td>${esc(r.subjectName)}</td>
+                    <td>${esc(r.examTurn)}</td>
+                    <td>
+                        <span class="status-badge ${r.paid ? 'paid' : 'unpaid'}">
+                            <span class="material-symbols-outlined">${r.paid ? 'check_circle' : 'pending'}</span>
+                            ${r.paid ? 'ABONADO' : 'PENDIENTE'}
+                        </span>
+                    </td>
+                    <td>
+                        <button type="button" class="btn-toggle-pay is-locked" disabled title="El registro de abonos se habilitará al finalizar el período de preinscripción">
+                            <span class="material-symbols-outlined" style="font-size: 0.95rem; vertical-align: middle;">lock</span>
+                            Bloqueado
+                        </button>
+                    </td>
+                `;
+            } else {
+                tr.innerHTML = `
+                    <td><strong>${esc(r.studentName)}</strong><br><small class="text-dni-sub">DNI: ${esc(r.studentDni)}</small></td>
+                    <td><strong>${esc(r.owedYear)}</strong></td>
+                    <td>${esc(r.subjectName)}</td>
+                    <td>${esc(r.examTurn)}</td>
+                    <td>
+                        <span class="status-badge ${r.paid ? 'paid' : 'unpaid'}">
+                            <span class="material-symbols-outlined">${r.paid ? 'check_circle' : 'pending'}</span>
+                            ${r.paid ? 'ABONADO' : 'PENDIENTE'}
+                        </span>
+                    </td>
+                    <td>
+                        <button type="button" class="btn-toggle-pay ${r.paid ? 'cancel' : 'pay'}" data-enrollment="${esc(r.enrollmentId)}" data-subject="${esc(r.subjectId)}">
+                            ${r.paid ? 'Marcar Pendiente' : 'Registrar Pago'}
+                        </button>
+                    </td>
+                `;
 
-            tr.querySelector('.btn-toggle-pay').addEventListener('click', () => {
-                DB.updatePaymentStatus(r.enrollmentId, r.subjectId, !r.paid);
-                populateAbonoFilters();
-                renderAbonosTab();
-                renderStatsTab();
-            });
+                tr.querySelector('.btn-toggle-pay').addEventListener('click', () => {
+                    DB.updatePaymentStatus(r.enrollmentId, r.subjectId, !r.paid);
+                    populateAbonoFilters();
+                    renderAbonosTab();
+                    renderStatsTab();
+                });
+            }
 
             tbody.appendChild(tr);
         });
@@ -2739,8 +2780,8 @@
                 tr.innerHTML = `
                     <td style="border: 1px solid #000; text-align: center; font-size: 7.5pt; font-weight: normal; padding: 1px 1px; width: 46px;">${i}</td>
                     <td style="border: 1px solid #000; text-align: center; font-size: 7.5pt; padding: 1px 1px; width: 82px;"></td>
-                    <td style="border: 1px solid #000; text-align: center; font-size: 7.5pt; padding: 1px 2px; width: 86px;">${esc(s ? s.studentDni : '')}</td>
-                    <td style="border: 1px solid #000; padding: 1px 6px; font-size: 7.5pt; text-align: left;">${esc(s ? s.studentName : '')}</td>
+                    <td style="border: 1px solid #000; text-align: center; font-size: 7.5pt; padding: 1px 2px; width: 86px;">${s ? esc(s.studentDni) : ''}</td>
+                    <td style="border: 1px solid #000; padding: 1px 6px; font-size: 7.5pt; text-align: left;">${s ? esc(s.studentName) : ''}</td>
                     <td style="border: 1px solid #000; text-align: center; width: 52px;"></td>
                     <td style="border: 1px solid #000; text-align: center; width: 52px;"></td>
                     <td style="border: 1px solid #000; text-align: center; width: 52px;"></td>

@@ -34,8 +34,9 @@ session_write_close();
 
 // Cargamos los datos del alumno que inició sesión para mostrarlos en el formulario
 $nombreAlumno = $usuario['nombre'] !== '' ? $usuario['nombre'] : 'Alumno';
-$dniAlumno    = $usuario['dni'] !== '' ? $usuario['dni'] : '40123456';
-$correoAlumno = $usuario['correo'] !== '' ? $usuario['correo'] : 'alumno@gmail.com';
+$dniAlumno    = $usuario['dni'] !== '' ? $usuario['dni'] : '';
+$correoAlumno = $usuario['correo'] !== '' ? $usuario['correo'] : '';
+$idAlumno     = $usuario['id'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -118,6 +119,7 @@ $correoAlumno = $usuario['correo'] !== '' ? $usuario['correo'] : 'alumno@gmail.c
                 
                 <!-- Paso 1: Datos personales del alumno -->
                 <div class="form-card-block" id="studentDataBlock">
+                    <input type="hidden" id="studentDbId" value="<?= e($idAlumno) ?>">
                     <div class="section-title">
                         <span class="material-symbols-outlined">account_circle</span>
                         Datos del Alumno
@@ -155,7 +157,7 @@ $correoAlumno = $usuario['correo'] !== '' ? $usuario['correo'] : 'alumno@gmail.c
                                 <span class="material-symbols-outlined">cake</span>
                                 Fecha de Nacimiento *
                             </label>
-                            <input type="date" id="studentBirthdate" class="form-control" min="<?= e((date('Y') - 32) . '-01-01') ?>" max="<?= e(date('Y-m-d', strtotime('-12 years'))) ?>" value="2005-04-15" required>
+                            <input type="date" id="studentBirthdate" class="form-control" min="1940-01-01" max="<?= e(date('Y-m-d', strtotime('-11 years'))) ?>" value="2005-04-15" required>
                         </div>
                     </div>
 
@@ -483,25 +485,6 @@ $correoAlumno = $usuario['correo'] !== '' ? $usuario['correo'] : 'alumno@gmail.c
         </section>
 
     </main>
-
-    <!-- Footer con apartado de ayuda y video tutorial al pie de la página -->
-    <footer class="app-page-footer no-print">
-        <aside class="help-tutorial-banner" aria-label="Ayuda para alumnos">
-            <div class="help-tutorial-content">
-                <div class="help-tutorial-icon">
-                    <span class="material-symbols-outlined">help</span>
-                </div>
-                <div class="help-tutorial-text">
-                    <span class="help-tutorial-question">¿Tienes problemas?</span>
-                    <span class="help-tutorial-cta">¡Aquí tienes ayuda! :D</span>
-                </div>
-            </div>
-            <a href="https://youtu.be/Nle67X21eSg" target="_blank" rel="noopener noreferrer" class="help-tutorial-btn">
-                <span class="material-symbols-outlined">play_circle</span>
-                <span>Ver video tutorial</span>
-            </a>
-        </aside>
-    </footer>
 
     <!-- Ventana que pregunta si quiere anotarse a otra materia más o terminar -->
     <div id="modalMultiSubject" class="modal-overlay">

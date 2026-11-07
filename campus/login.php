@@ -95,25 +95,31 @@ function claveCuenta(string $identificador): string {
 /* ---------------------------------------------------------------------
    INICIO DE SESIÓN (mismo formato de sesión que antes del login unificado)
    --------------------------------------------------------------------- */
-function iniciarSesion(string $rol, string $nombre, string $correo, string $id, string $claveCuentaUsada): void {
+function iniciarSesion(string $rol, string $nombre, string $correo, string $id, string $claveCuentaUsada,
+                       int $usuarioId = 0, string $dni = ''): void {
     borrarIntentos($claveCuentaUsada);
     session_regenerate_id(true);
     $_SESSION['rol']    = $rol;
     $_SESSION['nombre'] = $nombre;
     $_SESSION['correo'] = $correo;
     $_SESSION['id']     = $id;   // lo usan ProgMesas y proyectores
+    // Datos extra (NO reemplazan a 'id'): ID numérico de la tabla y DNI, los usa preinscripciones
+    $_SESSION['usuario_id'] = $usuarioId;
+    $_SESSION['dni']        = $dni;
     header('Location: ' . destinoTrasLogin());
     exit;
 }
 
 function iniciarSesionAlumno(array $alumno, string $cc): void {
-    iniciarSesion('alumno', $alumno['nombre'], $alumno['correo'] ?? '', 'alumno:' . $alumno['dni'], $cc);
+    iniciarSesion('alumno', $alumno['nombre'], $alumno['correo'] ?? '', 'alumno:' . $alumno['dni'], $cc,
+        (int) ($alumno['id'] ?? 0), (string) $alumno['dni']);
 }
 
 function iniciarSesionProfesor(array $profesor, string $cc): void {
     $correo = $profesor['correo'] ?? '';
     iniciarSesion('profesor', $profesor['nombre'], $correo,
-        'profesor:' . strtolower($correo !== '' ? $correo : $profesor['nombre']), $cc);
+        'profesor:' . strtolower($correo !== '' ? $correo : $profesor['nombre']), $cc,
+        (int) ($profesor['id'] ?? 0), (string) ($profesor['dni'] ?? ''));
 }
 
 function iniciarSesionDirectivo(array $directivo, string $cc): void {

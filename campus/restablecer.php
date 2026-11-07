@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $directivoNom,
                         $directivoCor,
                         $alumno['nombre'],
-                        $dni
+                        $alumno['dni']
                     ));
 
                     $exito = 'Contraseña restablecida exitosamente para el alumno ' . e($alumno['nombre']) . ' (DNI: ' . e($alumno['dni']) . ').';

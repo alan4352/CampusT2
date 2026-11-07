@@ -5,11 +5,37 @@ principal y da el inicio de sesión; los demás sistemas son subpáginas que usa
 
 | Carpeta | Qué es |
 |---|---|
-| `campus/` | Campus virtual: portal, registro, inicio de sesión (alumno, profesor, directivo) y panel con los módulos |
+| `campus/` | Campus virtual: portal, registro, inicio de sesión unificado y panel con los módulos de cada rol |
 | `preinscripciones/` | Mesas de examen: preinscripción de alumnos y gestión administrativa |
 | `proyectores/` | Reserva de proyectores para profesores y directivos |
 | `progmesas/` | ProgMesas: carga, control y consulta de los programas de examen ([repositorio propio](https://github.com/alan4352/progMesas)) |
 | `index.php` | Entrada: manda a cada persona a su panel según el rol, o al portal si no inició sesión |
+| `docs/` | Seguridad del sistema y configuración de nginx para un servidor propio |
+| `docker/`, `Dockerfile`, `render.yaml` | Publicación en Render (no se copian a un servidor propio) |
+| `herramientas/` | Scripts de línea de comandos (por ejemplo, importar bases `.sql` en Aiven) |
+
+## Usuarios y acceso
+
+| Rol | Cómo se crea la cuenta | Con qué entra | Módulos |
+|---|---|---|---|
+| **Alumno** | Se registra en `campus/registro.php` con nombre, correo y DNI; el sistema le genera la contraseña | DNI o correo + contraseña | Preinscripción a mesa, programas de examen |
+| **Profesor** | Se registra con nombre, DNI, correo y la clave de la escuela (`CLAVE_REGISTRO_PROFESOR`); recibe un código `PROF-…` | Código `PROF-…`, o DNI/correo + código | Reserva de proyectores, subir programas de examen |
+| **Directivo** | Lo agrega la escuela en `campus/includes/datos.php` (no se registra solo) | Correo + contraseña | Todo lo anterior, gestión de mesas, control de programas y restablecer contraseñas |
+
+- **Un solo formulario de ingreso** (`campus/login.php`): detecta si se escribió un DNI, un correo o un código de profesor.
+- **Límite de intentos:** 5 fallos seguidos con la misma cuenta, o 30 desde la misma IP, bloquean el acceso 15 minutos.
+- **Olvido de contraseña:** el alumno se la pide a un directivo, que la restablece desde **Restablecer contraseñas**
+  (`campus/restablecer.php`). La página «¿Olvidó su contraseña?» solo explica esto: no cambia contraseñas.
+- Los permisos de cada módulo están en la tabla `$PERMISOS` de `campus/includes/sesion.php`.
+- Con `MODO_PRUEBA` en `true` no se envían correos: la contraseña o el código se muestran en pantalla y el mensaje se
+  guarda en `campus/data/correos_simulados.txt`.
+
+## Requisitos
+
+- PHP 8.1 o superior con las extensiones **`pdo_mysql`**, **`pdo_sqlite`** (ProgMesas), **`mbstring`**, **`xml`**
+  (SimpleXML, para leer la planilla de asignaciones de ProgMesas) y `zlib`. Si falta `mbstring`, el registro da error 500.
+- MySQL 8 o MariaDB.
+- Apache (XAMPP) o nginx + PHP-FPM.
 
 ## Instalación (XAMPP)
 
@@ -19,13 +45,45 @@ principal y da el inicio de sesión; los demás sistemas son subpáginas que usa
    - `CLAVE_REGISTRO_PROFESOR`, la clave que piden los profesores para registrarse;
    - `PROGMESAS_SECRETO`, una clave larga para entrar a ProgMesas con la sesión del campus
      (`php -r "echo bin2hex(random_bytes(32));"`).
-3. Las tablas de preinscripciones están en `preinscripciones/database.sql`; las demás se crean solas al usarse.
-4. ProgMesas funciona con PHP (`progmesas/api.php`, necesita las extensiones `pdo_sqlite` y `zip` de XAMPP). Si además
-   se inicia su servidor Node (`progmesas/iniciar.bat`), el campus lo usa automáticamente. Para Node hace falta
-   `progmesas/.env` con `EXTERNO_JWT_SECRET` igual a `PROGMESAS_SECRETO` (ver `progmesas/.env.example`).
+3. Las tablas de preinscripciones están en `preinscripciones/database.sql`; las demás se crean solas al usarse
+   (ver «Cambios automáticos en la base»).
+4. ProgMesas funciona con PHP (`progmesas/api.php`). Si además se inicia su servidor Node (`progmesas/iniciar.bat`),
+   el campus lo usa automáticamente. Para Node hace falta `progmesas/.env` con `EXTERNO_JWT_SECRET` igual a
+   `PROGMESAS_SECRETO` (ver `progmesas/.env.example`).
 
-`config.php`, `progmesas/.env` y los datos de `campus/data/` (usuarios y correos del modo prueba) no se suben al
-repositorio: tienen contraseñas y datos personales.
+`config.php`, `progmesas/.env`, los datos de `campus/data/` (usuarios y correos del modo prueba), la base
+`progmesas/backend/database.sqlite` y los PDF de `progmesas/backend/uploads/` no se suben al repositorio: tienen
+contraseñas y datos personales.
+
+### Cambios automáticos en la base
+
+Al usarse por primera vez, el código crea las tablas que faltan y agrega columnas nuevas sin borrar nada:
+
+- `profesores.dni` (lo agrega `campus/includes/usuarios.php`);
+- `reservas.profesor_id`, `profesores.id` si no existe, y un índice único por proyector + día + hora en `reservas`
+  (lo agrega `proyectores/conexion.php`). Si ya hay reservas duplicadas, el índice no se crea y queda anotado en el log.
+
+El usuario de MySQL necesita permiso para `CREATE` y `ALTER`. Antes de actualizar un servidor con datos reales,
+conviene respaldar la base.
+
+## Publicar en un servidor propio (Linux con nginx)
+
+Así está publicado el campus de la escuela: Debian con nginx y PHP-FPM.
+
+1. Instalar PHP y sus extensiones:
+   `sudo apt-get install php8.4-fpm php8.4-mysql php8.4-sqlite3 php8.4-mbstring php8.4-xml`.
+2. Copiar el código a la carpeta del sitio (por ejemplo `/var/www/final`) **sin** `docker/`, `Dockerfile`,
+   `render.yaml`, `.dockerignore` ni `herramientas/`: son para Render o para usar desde la línea de comandos, y dentro de
+   la carpeta web quedarían a la vista.
+3. Crear `campus/includes/config.php` como en la instalación con XAMPP.
+4. Configurar nginx con [`docs/nginx-campus.conf`](docs/nginx-campus.conf). **nginx no lee los `.htaccess`**: sin esa
+   configuración se pueden descargar desde internet las cuentas de `campus/data/`, la base de ProgMesas y otros archivos
+   internos.
+5. Comprobar con `sudo nginx -t` y recargar con `sudo systemctl reload nginx`.
+
+**Para actualizar** con una versión nueva: hacer primero una copia de la carpeta del sitio y copiar solo el código. No
+pisar `campus/includes/config.php`, `campus/data/`, `progmesas/.env`, `progmesas/backend/database.sqlite`,
+`progmesas/backend/uploads/` ni `progmesas/backend/data/`.
 
 ## Publicar en Render (gratis, con MySQL en Aiven)
 
@@ -64,3 +122,8 @@ si una tabla no tiene, el script lo avisa.
 
 Para probar el contenedor en la compu: `docker build -t campust2 .` y
 `docker run -p 8080:80 -e DB_HOST=... -e DB_USER=... -e DB_PASS=... campust2`.
+
+## Seguridad
+
+Las protecciones del sistema (sesión, CSRF, permisos, escape de datos) y las reglas para quien modifique el código
+están en [`docs/SEGURIDAD.md`](docs/SEGURIDAD.md). Leelo antes de agregar una página o un endpoint nuevo.

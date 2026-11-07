@@ -8,8 +8,9 @@
    Todas las consultas usan "consultas preparadas" (?): los datos del
    usuario nunca se pegan dentro del SQL, lo que evita la inyección SQL.
 
-   NOTA: los DIRECTIVOS no están en la base: se definen solo en
-   includes/datos.php, porque NO pueden registrarse por su cuenta.
+   NOTA: las cuentas (contraseña, roles, estado) están en la tabla
+   `usuarios` (ver includes/cuentas.php). `alumnos` y `profesores` son
+   las fichas que usan los demás módulos, enlazadas por usuario_id.
    ===================================================================== */
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';

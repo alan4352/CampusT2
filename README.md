@@ -16,24 +16,48 @@ principal y da el inicio de sesión; los demás sistemas son subpáginas que usa
 
 ## Usuarios y acceso
 
-| Rol | Cómo se crea la cuenta | Con qué entra | Módulos |
-|---|---|---|---|
-| **Alumno** | Se registra en `campus/registro.php` con nombre, correo y DNI; el sistema le genera la contraseña | DNI o correo + contraseña | Preinscripción a mesa, programas de examen |
-| **Profesor** | Se registra con nombre, DNI, correo y la clave de la escuela (`CLAVE_REGISTRO_PROFESOR`); recibe un código `PROF-…` | Código `PROF-…`, o DNI/correo + código | Reserva de proyectores, subir programas de examen |
-| **Directivo** | Lo agrega la escuela en `campus/includes/datos.php` (no se registra solo) | Correo + contraseña | Todo lo anterior, gestión de mesas, control de programas y restablecer contraseñas |
+**No hay registro libre:** las cuentas las crea la escuela y cada persona elige su contraseña con un **código de
+acceso** de un solo uso.
 
-- **Un solo formulario de ingreso** (`campus/login.php`): detecta si se escribió un DNI, un correo o un código de profesor.
-- **Límite de intentos:** 5 fallos seguidos con la misma cuenta, o 30 desde la misma IP, bloquean el acceso 15 minutos.
-- **Olvido de contraseña:** el alumno se la pide a un directivo, que la restablece desde **Restablecer contraseñas**
-  (`campus/restablecer.php`). La página «¿Olvidó su contraseña?» solo explica esto: no cambia contraseñas.
+| Rol | Quién crea la cuenta | Módulos |
+|---|---|---|
+| **Alumno** | Su **preceptor** (panel «Alumnos y cuentas»), o un directivo | Preinscripción a mesa, programas de examen |
+| **Profesor** | Un **directivo** (panel «Gestión de cuentas») | Reserva de proyectores, subir programas de examen |
+| **Preceptor** | Un **directivo**, que además le asigna sus cursos | Alumnos y cuentas de sus cursos, consulta de programas |
+| **Directivo** | Otro **directivo** | Todo lo anterior, gestión de mesas, control de programas y gestión de cuentas |
+
+Una persona puede tener **varios roles** (por ejemplo, profesor y preceptor): el directivo se los agrega a la misma
+cuenta.
+
+**Cómo funciona una cuenta**
+
+1. **Alta:** quien crea la cuenta genera un **código de alta** (por ejemplo `ABCDE-FGHJK`). El preceptor puede generar los
+   de todo un curso juntos, listos para imprimir y recortar.
+2. **Primer ingreso:** la persona entra a **Activar cuenta** (`campus/activar.php`), escribe el código y elige su
+   contraseña (al menos 8 caracteres).
+3. **Todos los días:** entra en `campus/login.php` con su **DNI o correo** y su contraseña.
+4. **Si la olvida:** la pide en **Recuperar cuenta** (`campus/recuperar.php`) o en persona. Su preceptor (alumnos) o un
+   directivo le da un **código de recuperación**, y con ese código elige una contraseña nueva en «Activar cuenta».
+
+- Los códigos sirven **una sola vez**, vencen (alta: 7 días; recuperación: 48 horas) y se guardan cifrados: se ven
+  solo en el momento de generarlos. Generar uno nuevo anula el anterior.
+- El directivo puede **suspender** una cuenta: no puede ingresar hasta que la reactive.
+- **Límite de intentos:** 5 fallos seguidos con la misma cuenta, o 30 desde la misma IP, bloquean el ingreso 15 minutos.
+  En «Activar cuenta», 10 códigos incorrectos desde la misma IP bloquean 15 minutos.
 - Los permisos de cada módulo están en la tabla `$PERMISOS` de `campus/includes/sesion.php`.
-- Con `MODO_PRUEBA` en `true` no se envían correos: la contraseña o el código se muestran en pantalla y el mensaje se
-  guarda en `campus/data/correos_simulados.txt`.
+
+**Cuentas anteriores a este sistema:** la primera vez que se usa el campus, `campus/includes/cuentas.php` las pasa
+solas a la tabla nueva. Los alumnos conservan su contraseña. Los directivos de `campus/includes/datos.php` pasan a la
+base y desde ahí se gestionan en el panel. Los profesores escriben **una vez** su código `PROF-…` en el ingreso y
+eligen su contraseña; después ese código deja de servir.
+
+**Cursos:** se cargan los 29 cursos de 2026 (con su turno) tomados de las asignaciones de ProgMesas. Están en la tabla
+`cursos`.
 
 ## Requisitos
 
 - PHP 8.1 o superior con las extensiones **`pdo_mysql`**, **`pdo_sqlite`** (ProgMesas), **`mbstring`**, **`xml`**
-  (SimpleXML, para leer la planilla de asignaciones de ProgMesas) y `zlib`. Si falta `mbstring`, el registro da error 500.
+  (SimpleXML, para leer la planilla de asignaciones de ProgMesas) y `zlib`. Si falta `mbstring`, los paneles dan error 500.
 - MySQL 8 o MariaDB.
 - Apache (XAMPP) o nginx + PHP-FPM.
 
@@ -42,12 +66,14 @@ principal y da el inicio de sesión; los demás sistemas son subpáginas que usa
 1. Copiar esta carpeta dentro de `htdocs` (o en la raíz del sitio del servidor).
 2. Copiar `campus/includes/config.example.php` como `campus/includes/config.php` y completar:
    - los datos de la base MySQL (`DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`);
-   - `CLAVE_REGISTRO_PROFESOR`, la clave que piden los profesores para registrarse;
    - `PROGMESAS_SECRETO`, una clave larga para entrar a ProgMesas con la sesión del campus
      (`php -r "echo bin2hex(random_bytes(32));"`).
 3. Las tablas de preinscripciones están en `preinscripciones/database.sql`; las demás se crean solas al usarse
    (ver «Cambios automáticos en la base»).
-4. ProgMesas funciona con PHP (`progmesas/api.php`). Si además se inicia su servidor Node (`progmesas/iniciar.bat`),
+4. Para el primer directivo: dejar sus datos en `campus/includes/datos.php` (`$DIRECTIVOS`, con su contraseña en
+   `password_hash`) **antes** de usar el campus por primera vez. Se copia a la base sola y desde ahí crea las demás
+   cuentas en «Gestión de cuentas».
+5. ProgMesas funciona con PHP (`progmesas/api.php`). Si además se inicia su servidor Node (`progmesas/iniciar.bat`),
    el campus lo usa automáticamente. Para Node hace falta `progmesas/.env` con `EXTERNO_JWT_SECRET` igual a
    `PROGMESAS_SECRETO` (ver `progmesas/.env.example`).
 
@@ -59,6 +85,10 @@ contraseñas y datos personales.
 
 Al usarse por primera vez, el código crea las tablas que faltan y agrega columnas nuevas sin borrar nada:
 
+- **Cuentas** (`campus/includes/cuentas.php`, una sola vez, anotado en `campus_migraciones`): tablas `usuarios`,
+  `usuario_roles`, `codigos_acceso`, `solicitudes_recuperacion`, `cursos` y `preceptor_cursos`; columnas
+  `alumnos.usuario_id`, `alumnos.curso_id` y `profesores.usuario_id`; `alumnos.correo`, `alumnos.clave_hash` y
+  `profesores.codigo_hash` pasan a aceptar valores vacíos. Después pasa las cuentas existentes a `usuarios`;
 - `profesores.dni` (lo agrega `campus/includes/usuarios.php`);
 - `reservas.profesor_id`, `profesores.id` si no existe, y un índice único por proyector + día + hora en `reservas`
   (lo agrega `proyectores/conexion.php`). Si ya hay reservas duplicadas, el índice no se crea y queda anotado en el log.

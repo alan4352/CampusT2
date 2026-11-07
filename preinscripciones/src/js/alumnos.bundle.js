@@ -22,8 +22,14 @@
     };
 
     // Calcula las fechas mínima y máxima de nacimiento tomando la fecha real del dispositivo
-    // y el curso actual: alumnos regulares (1ro a 7mo) tienen año mínimo 2007,
+    // y el curso actual: alumnos regulares (1ro a 7mo) tienen como año mínimo (año actual - 19),
+    // o sea 2007 en 2026 (se calcula para que no quede desactualizado al cambiar el año),
     // mientras que los egresados pueden ser mucho mayores (adultos sin límite superior estricto).
+    const EDAD_MAX_REGULAR = 19;
+    function anioMinimoRegular() {
+        return new Date().getFullYear() - EDAD_MAX_REGULAR;
+    }
+
     function getBirthdateBounds(currentCourse) {
         const now = new Date();
         const currentYear = now.getFullYear();
@@ -44,9 +50,9 @@
         } else if (currentCourse && COURSE_LEVEL_MAP[currentCourse]) {
             const level = COURSE_LEVEL_MAP[currentCourse]; // 2do = 2 ... 7mo = 7
             minAge = 10 + level;
-            // Para alumnos regulares (1ro a 7mo), la fecha mínima reglamentaria es 2007
-            minBirthYear = 2007;
-            minDateStr = '2007-01-01';
+            // Para alumnos regulares (1ro a 7mo), el año mínimo reglamentario
+            minBirthYear = anioMinimoRegular();
+            minDateStr = `${minBirthYear}-01-01`;
         }
 
         const maxBirthYear = currentYear - minAge;
@@ -103,11 +109,12 @@
                 };
             }
         } else {
-            // Para alumnos regulares de 1ro a 7mo año, la fecha mínima es 2007
-            if (isNaN(birthYear) || birthStr < '2007-01-01') {
+            // Para alumnos regulares de 1ro a 7mo año, el año mínimo se calcula según el año actual
+            const minRegular = anioMinimoRegular();
+            if (isNaN(birthYear) || birthYear < minRegular) {
                 return {
                     valid: false,
-                    message: `Para alumnos regulares de 1ro a 7mo año, el año mínimo de nacimiento es 2007. Si eres egresado de promociones anteriores, selecciona 'Egresado' en Curso Actual.`
+                    message: `Para alumnos regulares de 1ro a 7mo año, el año mínimo de nacimiento es ${minRegular}. Si eres egresado de promociones anteriores, selecciona 'Egresado' en Curso Actual.`
                 };
             }
             if (birthStr > bounds.maxDateStr) {

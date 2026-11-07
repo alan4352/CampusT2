@@ -23,9 +23,9 @@ if (!tienePermiso('programa')) {
 } elseif (!progmesasConfigurado()) {
     $error = 'Falta configurar la clave de ProgMesas (PROGMESAS_SECRETO en includes/config.php).';
 } else {
-    // El id identifica a la persona en ProgMesas: correo o identificador de sesión
-    $correo = $_SESSION['email'] ?? $_SESSION['correo'] ?? '';
-    $id = ($correo !== '') ? $correo : ($_SESSION['usuario_id'] ?? $_SESSION['id'] ?? ($_SESSION['rol'] . ':' . $_SESSION['nombre']));
+    // El id identifica a la persona en ProgMesas: rol + correo (o DNI / nombre si no hay correo)
+    $correo = $_SESSION['correo'] ?? '';
+    $id = $_SESSION['id'] ?? ($_SESSION['rol'] . ':' . ($correo !== '' ? $correo : $_SESSION['nombre']));
     header('Location: ' . enlaceProgMesas($id, $_SESSION['nombre'], $correo, $_SESSION['rol']));
     exit;
 }

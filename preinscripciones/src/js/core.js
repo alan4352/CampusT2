@@ -1109,7 +1109,7 @@ window.apiFetch = function(url, options = {}) {
         if (parent && !parent.querySelector('.field-error-msg')) {
             const msgEl = document.createElement('div');
             msgEl.className = 'field-error-msg';
-            msgEl.innerHTML = `<span class="material-symbols-outlined" style="font-size: 1rem; color: #b45309;">warning</span> ${customMsg}`;
+            msgEl.innerHTML = `<span class="material-symbols-outlined" style="font-size: 1rem; color: #b45309;">warning</span> ${esc(customMsg)}`;
             parent.appendChild(msgEl);
         }
         if (customWrapper) {
@@ -1339,6 +1339,7 @@ window.apiFetch = function(url, options = {}) {
         COURSE_LEVEL_MAP,
         YEAR_LEVEL_MAP,
         initCustomSelect,
-        initAllCustomSelects
+        initAllCustomSelects,
+        esc
     };
 })();

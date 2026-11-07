@@ -2,20 +2,129 @@
 /* =====================================================================
    ARCHIVO: login.php
    PARA QUÉ SIRVE: Formulario unificado de acceso al Campus Virtual.
-   Permite ingresar a Alumnos, Profesores y Directivos desde un único
-   formulario inteligente, detectando automáticamente el tipo de usuario
-   según el identificador (DNI, correo electrónico o código PROF-).
+   Alumnos, profesores y directivos entran desde un único formulario;
+   el tipo de usuario se detecta según el identificador (DNI, correo
+   electrónico o código PROF-).
+
+   IMPORTANTE: $_SESSION['id'] se guarda con el prefijo del rol
+   ('alumno:<DNI>', 'profesor:<correo>', 'directivo:<correo>').
+   ProgMesas (api.php) y proyectores (conexion.php) identifican a la
+   persona con ese valor: no cambiar el formato.
    ===================================================================== */
 
 require_once 'includes/sesion.php';
 require_once 'includes/datos.php';      // Directivos institucionales
 require_once 'includes/usuarios.php';   // Alumnos y profesores en MySQL
 
+const LOGIN_MAX_FALLOS_CUENTA = 5;      // fallos seguidos con el mismo identificador
+const LOGIN_MAX_FALLOS_IP     = 30;     // fallos desde la misma IP (frena probar muchos códigos)
+const LOGIN_BLOQUEO_SEGUNDOS  = 900;    // 15 minutos
+
 // Destino tras el inicio de sesión exitoso
 function destinoTrasLogin() {
     $destino = $_SESSION['volver_a'] ?? 'dashboard.php';
     unset($_SESSION['volver_a']);
     return preg_match('/^[a-z_]+\.php$/', $destino) ? $destino : 'dashboard.php';
+}
+
+/* ---------------------------------------------------------------------
+   LÍMITE DE INTENTOS FALLIDOS
+   Se cuenta por cuenta (identificador) y, con un tope más alto, por IP.
+   No se cuenta solo por IP: detrás del proxy de Render muchos usuarios
+   pueden compartir la misma y se bloquearía a toda la escuela.
+   --------------------------------------------------------------------- */
+function ipCliente(): string {
+    // Render agrega la IP real al final de X-Forwarded-For; lo anterior lo puede inventar el cliente
+    $xff = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
+    if ($xff !== '') {
+        $partes = array_map('trim', explode(',', $xff));
+        $ultima = end($partes);
+        if (filter_var($ultima, FILTER_VALIDATE_IP)) {
+            return $ultima;
+        }
+    }
+    return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+}
+
+function archivoIntentos(string $clave): string {
+    $carpeta = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'campus_login';
+    if (!is_dir($carpeta)) {
+        @mkdir($carpeta, 0700, true);
+    }
+    return $carpeta . DIRECTORY_SEPARATOR . hash('sha256', $clave) . '.json';
+}
+
+function leerIntentos(string $clave): array {
+    $datos = ['fallos' => 0, 'bloqueado_hasta' => 0];
+    $raw = @file_get_contents(archivoIntentos($clave));
+    if ($raw) {
+        $dec = json_decode($raw, true);
+        if (is_array($dec)) {
+            $datos = array_merge($datos, $dec);
+        }
+    }
+    // Si el bloqueo ya venció, se empieza de cero
+    if ($datos['bloqueado_hasta'] > 0 && $datos['bloqueado_hasta'] <= time()) {
+        $datos = ['fallos' => 0, 'bloqueado_hasta' => 0];
+    }
+    return $datos;
+}
+
+function sumarFallo(string $clave, int $maximo): void {
+    $d = leerIntentos($clave);
+    $d['fallos']++;
+    if ($d['fallos'] >= $maximo) {
+        $d['bloqueado_hasta'] = time() + LOGIN_BLOQUEO_SEGUNDOS;
+    }
+    @file_put_contents(archivoIntentos($clave), json_encode($d), LOCK_EX);
+}
+
+function borrarIntentos(string $clave): void {
+    @unlink(archivoIntentos($clave));
+}
+
+// Normaliza lo que escribió el usuario para que "40.123.456" y "40123456" cuenten igual
+function claveCuenta(string $identificador): string {
+    $id = strtolower(trim($identificador));
+    if (preg_match('/^[\d.\s-]+$/', $id)) {
+        $id = preg_replace('/\D/', '', $id);
+    }
+    return 'cuenta:' . $id;
+}
+
+/* ---------------------------------------------------------------------
+   INICIO DE SESIÓN (mismo formato de sesión que antes del login unificado)
+   --------------------------------------------------------------------- */
+function iniciarSesion(string $rol, string $nombre, string $correo, string $id, string $claveCuentaUsada,
+                       int $usuarioId = 0, string $dni = ''): void {
+    borrarIntentos($claveCuentaUsada);
+    session_regenerate_id(true);
+    $_SESSION['rol']    = $rol;
+    $_SESSION['nombre'] = $nombre;
+    $_SESSION['correo'] = $correo;
+    $_SESSION['id']     = $id;   // lo usan ProgMesas y proyectores
+    // Datos extra (NO reemplazan a 'id'): ID numérico de la tabla y DNI, los usa preinscripciones
+    $_SESSION['usuario_id'] = $usuarioId;
+    $_SESSION['dni']        = $dni;
+    header('Location: ' . destinoTrasLogin());
+    exit;
+}
+
+function iniciarSesionAlumno(array $alumno, string $cc): void {
+    iniciarSesion('alumno', $alumno['nombre'], $alumno['correo'] ?? '', 'alumno:' . $alumno['dni'], $cc,
+        (int) ($alumno['id'] ?? 0), (string) $alumno['dni']);
+}
+
+function iniciarSesionProfesor(array $profesor, string $cc): void {
+    $correo = $profesor['correo'] ?? '';
+    iniciarSesion('profesor', $profesor['nombre'], $correo,
+        'profesor:' . strtolower($correo !== '' ? $correo : $profesor['nombre']), $cc,
+        (int) ($profesor['id'] ?? 0), (string) ($profesor['dni'] ?? ''));
+}
+
+function iniciarSesionDirectivo(array $directivo, string $cc): void {
+    iniciarSesion('directivo', $directivo['nombre'], $directivo['correo'],
+        'directivo:' . strtolower($directivo['correo']), $cc);
 }
 
 // Si ya inició sesión, redirigimos a su destino correspondiente
@@ -28,27 +137,7 @@ $error = '';
 $identificadorPrellenado = '';
 $mensajeExito = null;
 
-// Control de intentos fallidos (Rate Limiting contra ataques de fuerza bruta)
-$ipRemota = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-$rateLimitKey = 'campus_login_' . md5($ipRemota);
-$rateLimitFile = sys_get_temp_dir() . DIRECTORY_SEPARATOR . $rateLimitKey . '.json';
-
-$rateData = ['intentos' => 0, 'bloqueado_hasta' => 0];
-if (file_exists($rateLimitFile)) {
-    $raw = @file_get_contents($rateLimitFile);
-    if ($raw) {
-        $decoded = @json_decode($raw, true);
-        if (is_array($decoded)) {
-            $rateData = $decoded;
-        }
-    }
-}
-
-$ahora = time();
-$bloqueadoHasta = max($rateData['bloqueado_hasta'] ?? 0, $_SESSION['login_bloqueado_hasta'] ?? 0);
-$estaBloqueado = ($bloqueadoHasta > $ahora);
-
-// Si venimos de un registro o recuperación, precargamos el identificador
+// Si venimos de un registro, precargamos el identificador
 if (isset($_SESSION['mensaje_exito'])) {
     $mensajeExito = $_SESSION['mensaje_exito'];
     unset($_SESSION['mensaje_exito']);
@@ -60,167 +149,83 @@ if (isset($_SESSION['mensaje_exito'])) {
     }
 }
 
-// Funciones auxiliares para iniciar sesión de forma consistente según el rol
-function iniciarSesionAlumno(array $alumno, string $rateLimitFile): void {
-    unset($_SESSION['login_intentos'], $_SESSION['login_bloqueado_hasta']);
-    if (file_exists($rateLimitFile)) { @unlink($rateLimitFile); }
-
-    session_regenerate_id(true);
-    $_SESSION['rol']        = 'alumno';
-    $_SESSION['usuario_id'] = (int) ($alumno['id'] ?? 0);
-    $_SESSION['user_id']    = (int) ($alumno['id'] ?? 0);
-    $_SESSION['nombre']     = $alumno['nombre'];
-    $_SESSION['dni']        = $alumno['dni'];
-    $_SESSION['correo']     = $alumno['correo'] ?? '';
-    $_SESSION['email']      = $alumno['correo'] ?? '';
-    $_SESSION['id']         = (int) ($alumno['id'] ?? 0);
-    header('Location: ' . destinoTrasLogin());
-    exit;
-}
-
-function iniciarSesionProfesor(array $profesor, string $rateLimitFile): void {
-    unset($_SESSION['login_intentos'], $_SESSION['login_bloqueado_hasta']);
-    if (file_exists($rateLimitFile)) { @unlink($rateLimitFile); }
-
-    session_regenerate_id(true);
-    $_SESSION['rol']        = 'profesor';
-    $_SESSION['usuario_id'] = (int) ($profesor['id'] ?? 0);
-    $_SESSION['user_id']    = (int) ($profesor['id'] ?? 0);
-    $_SESSION['nombre']     = $profesor['nombre'];
-    $_SESSION['dni']        = $profesor['dni'] ?? '';
-    $_SESSION['correo']     = $profesor['correo'] ?? '';
-    $_SESSION['email']      = $profesor['correo'] ?? '';
-    $_SESSION['id']         = (int) ($profesor['id'] ?? 0);
-    header('Location: ' . destinoTrasLogin());
-    exit;
-}
-
-function iniciarSesionDirectivo(array $directivo, string $rateLimitFile): void {
-    unset($_SESSION['login_intentos'], $_SESSION['login_bloqueado_hasta']);
-    if (file_exists($rateLimitFile)) { @unlink($rateLimitFile); }
-
-    session_regenerate_id(true);
-    $_SESSION['rol']        = 'directivo';
-    $_SESSION['usuario_id'] = 'directivo:' . strtolower($directivo['correo']);
-    $_SESSION['user_id']    = 'directivo:' . strtolower($directivo['correo']);
-    $_SESSION['nombre']     = $directivo['nombre'];
-    $_SESSION['correo']     = $directivo['correo'];
-    $_SESSION['email']      = $directivo['correo'];
-    $_SESSION['id']         = 'directivo:' . strtolower($directivo['correo']);
-    header('Location: ' . destinoTrasLogin());
-    exit;
-}
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $identificador = trim($_POST['identificador'] ?? $_POST['dni'] ?? $_POST['correo'] ?? $_POST['codigo'] ?? '');
-    $clave         = $_POST['clave'] ?? '';
-
+    $identificador = trim((string) ($_POST['identificador'] ?? ''));
+    $clave         = (string) ($_POST['clave'] ?? '');
     $identificadorPrellenado = $identificador;
 
-    if ($estaBloqueado) {
-        $minutosRestantes = max(1, (int) ceil(($bloqueadoHasta - $ahora) / 60));
-        $error = "Demasiados intentos fallidos. Por seguridad, el acceso ha sido bloqueado temporalmente. Intente nuevamente en {$minutosRestantes} minuto(s).";
+    $cc = claveCuenta($identificador);
+    $ci = 'ip:' . ipCliente();
+    $bloqueo = max(leerIntentos($cc)['bloqueado_hasta'], leerIntentos($ci)['bloqueado_hasta']);
+
+    if ($bloqueo > time()) {
+        $minutos = max(1, (int) ceil(($bloqueo - time()) / 60));
+        $error = "Demasiados intentos fallidos. Por seguridad, el acceso quedó bloqueado. Intente nuevamente en {$minutos} minuto(s).";
     } elseif ($identificador === '') {
         $error = 'Por favor, ingrese su DNI, correo electrónico o código de profesor.';
     } else {
         try {
-            $autenticado = false;
-
-            /* =================================================================
-               1. DETECCIÓN POR CÓDIGO DE PROFESOR (PROF-...)
-               ================================================================= */
-            $codigoCandidato = '';
+            /* 1. CÓDIGO DE PROFESOR (PROF-...) en el identificador o en el campo contraseña */
+            $codigo = '';
             if (stripos($identificador, 'PROF-') === 0) {
-                $codigoCandidato = strtoupper($identificador);
+                $codigo = strtoupper($identificador);
             } elseif (stripos($clave, 'PROF-') === 0) {
-                $codigoCandidato = strtoupper($clave);
+                $codigo = strtoupper(trim($clave));
             }
-
-            if ($codigoCandidato !== '') {
+            if ($codigo !== '') {
                 foreach (listarProfesores() as $profesor) {
-                    if (password_verify($codigoCandidato, $profesor['codigo_hash'])) {
-                        iniciarSesionProfesor($profesor, $rateLimitFile);
+                    if (password_verify($codigo, $profesor['codigo_hash'])) {
+                        iniciarSesionProfesor($profesor, $cc);
                     }
                 }
             }
 
-            /* =================================================================
-               2. DETECCIÓN POR CORREO ELECTRÓNICO (contiene @)
-               ================================================================= */
-            if (!$autenticado && strpos($identificador, '@') !== false) {
-                $correoLimpio = strtolower($identificador);
+            /* 2. CORREO ELECTRÓNICO: directivo, profesor (con su código) o alumno */
+            if (strpos($identificador, '@') !== false && $clave !== '') {
+                $correo = strtolower($identificador);
 
-                // A) Verificar si es Directivo
                 foreach ($DIRECTIVOS as $directivo) {
-                    if (strtolower($directivo['correo']) === $correoLimpio && password_verify($clave, $directivo['clave_hash'])) {
-                        iniciarSesionDirectivo($directivo, $rateLimitFile);
+                    if (strtolower($directivo['correo']) === $correo && password_verify($clave, $directivo['clave_hash'])) {
+                        iniciarSesionDirectivo($directivo, $cc);
                     }
                 }
-
-                // B) Verificar si es Profesor por correo
-                $prof = buscarProfesorPorCorreo($correoLimpio);
-                if ($prof && password_verify($clave, $prof['codigo_hash'])) {
-                    iniciarSesionProfesor($prof, $rateLimitFile);
+                $prof = buscarProfesorPorCorreo($correo);
+                if ($prof && password_verify(strtoupper(trim($clave)), $prof['codigo_hash'])) {
+                    iniciarSesionProfesor($prof, $cc);
                 }
-
-                // C) Verificar si es Alumno por correo
-                $alumnoCorreo = buscarAlumnoPorCorreo($correoLimpio);
-                if ($alumnoCorreo && password_verify($clave, $alumnoCorreo['clave_hash'])) {
-                    iniciarSesionAlumno($alumnoCorreo, $rateLimitFile);
-                }
-            }
-
-            /* =================================================================
-               3. DETECCIÓN POR DNI (secuencia numérica de 7 u 8 dígitos)
-               ================================================================= */
-            $dniLimpio = preg_replace('/\D/', '', $identificador);
-            if (!$autenticado && $dniLimpio !== '' && strlen($dniLimpio) >= 7 && strlen($dniLimpio) <= 9) {
-                // A) Buscar en Alumnos por DNI
-                $alumno = buscarAlumnoPorDni($dniLimpio);
+                $alumno = buscarAlumnoPorCorreo($correo);
                 if ($alumno && password_verify($clave, $alumno['clave_hash'])) {
-                    iniciarSesionAlumno($alumno, $rateLimitFile);
-                }
-
-                // B) Buscar en Profesores por DNI (con código o contraseña)
-                $profDni = buscarProfesorPorDni($dniLimpio);
-                if ($profDni && password_verify($clave, $profDni['codigo_hash'])) {
-                    iniciarSesionProfesor($profDni, $rateLimitFile);
+                    iniciarSesionAlumno($alumno, $cc);
                 }
             }
 
-            /* =================================================================
-               4. CASO DE RESPALDO: Código de profesor sin prefijo o directo
-               ================================================================= */
-            if (!$autenticado && $clave === '' && strlen($identificador) >= 4) {
-                $posibleCodigo = strtoupper($identificador);
-                foreach (listarProfesores() as $profesor) {
-                    if (password_verify($posibleCodigo, $profesor['codigo_hash'])) {
-                        iniciarSesionProfesor($profesor, $rateLimitFile);
-                    }
+            /* 3. DNI (7 u 8 números): alumno con su contraseña o profesor con su código */
+            $dni = preg_replace('/\D/', '', $identificador);
+            if (strpos($identificador, '@') === false && preg_match('/^\d{7,8}$/', $dni) && $clave !== '') {
+                $alumno = buscarAlumnoPorDni($dni);
+                if ($alumno && password_verify($clave, $alumno['clave_hash'])) {
+                    iniciarSesionAlumno($alumno, $cc);
+                }
+                $prof = buscarProfesorPorDni($dni);
+                if ($prof && password_verify(strtoupper(trim($clave)), $prof['codigo_hash'])) {
+                    iniciarSesionProfesor($prof, $cc);
                 }
             }
 
-            if (!$autenticado) {
-                $error = 'Datos de acceso incorrectos. Verifique su DNI, correo o código y su contraseña.';
-            }
+            $error = 'Datos de acceso incorrectos. Verifique su DNI, correo o código y su contraseña.';
 
         } catch (PDOException $ex) {
-            error_log('Error de BD en login unificado: ' . $ex->getMessage());
+            error_log('Error de BD en login: ' . $ex->getMessage());
             $error = 'No se pudo conectar con la base de datos. Intente más tarde.';
         }
 
-        // Si falló la autenticación, incrementamos el contador de intentos
-        if ($error !== '') {
-            $intentos = ($rateData['intentos'] ?? 0) + 1;
-            $bloqueadoHasta = 0;
-            if ($intentos >= 5) {
-                $bloqueadoHasta = time() + 900; // 15 minutos de bloqueo
-                $error = 'Demasiados intentos fallidos. Por seguridad, su acceso ha sido bloqueado temporalmente por 15 minutos.';
+        // Solo los datos incorrectos cuentan como intento fallido (no las caídas de la base)
+        if (strpos($error, 'Datos de acceso incorrectos') === 0) {
+            sumarFallo($cc, LOGIN_MAX_FALLOS_CUENTA);
+            sumarFallo($ci, LOGIN_MAX_FALLOS_IP);
+            if (max(leerIntentos($cc)['bloqueado_hasta'], leerIntentos($ci)['bloqueado_hasta']) > time()) {
+                $error = 'Demasiados intentos fallidos. Por seguridad, el acceso quedó bloqueado por 15 minutos.';
             }
-            $rateData = ['intentos' => $intentos, 'bloqueado_hasta' => $bloqueadoHasta];
-            $_SESSION['login_intentos'] = $intentos;
-            $_SESSION['login_bloqueado_hasta'] = $bloqueadoHasta;
-            @file_put_contents($rateLimitFile, json_encode($rateData));
         }
     }
 }
@@ -394,16 +399,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             hintEl.className = 'identificador-hint detected';
             hintEl.innerHTML = '<span>✓ Correo institucional detectado · Ingrese su contraseña</span>';
             if (campoClave) campoClave.style.display = 'block';
-            if (ayudaClave) ayudaClave.textContent = 'Ingrese la contraseña asociada a su correo.';
+            if (ayudaClave) ayudaClave.textContent = 'Directivos y alumnos: su contraseña. Profesores: su código PROF-.';
             return;
         }
 
         // Si son solo números (DNI de alumno o profesor)
         if (/^\d+$/.test(val)) {
             hintEl.className = 'identificador-hint detected';
-            hintEl.innerHTML = '<span>✓ DNI detectado · Ingrese su contraseña de alumno</span>';
+            hintEl.innerHTML = '<span>✓ DNI detectado · Ingrese su contraseña</span>';
             if (campoClave) campoClave.style.display = 'block';
-            if (ayudaClave) ayudaClave.textContent = 'Ingrese la contraseña generada al registrarse.';
+            if (ayudaClave) ayudaClave.textContent = 'Alumnos: la contraseña generada al registrarse. Profesores: su código PROF-.';
             return;
         }
 

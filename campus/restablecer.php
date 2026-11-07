@@ -27,8 +27,7 @@ $alumnoEncontrado = null;
 $nuevaClave = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $tokenCsrf = $_POST['csrf_token'] ?? '';
-    if (!validarTokenCsrf($tokenCsrf)) {
+    if (!csrf_valido()) {
         $error = 'Error de validación de seguridad (CSRF inválido o sesión expirada). Recargue la página.';
     } else {
         $dni = preg_replace('/\D/', '', $_POST['dni'] ?? '');
@@ -37,15 +36,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'El DNI debe tener 7 u 8 números válidos.';
         } else {
             try {
-                $alumno = buscarAlumnoPorDni($dni);
+                // Se consulta directamente la base de datos: si no está en MySQL, actualizarClaveAlumno no tendría efecto
+                $st = conectarBD()->prepare('SELECT nombre, dni FROM alumnos WHERE dni = ? LIMIT 1');
+                $st->execute([$dni]);
+                $alumno = $st->fetch();
+
                 if (!$alumno) {
                     $error = 'No se encontró ningún alumno registrado con el DNI ingresado (' . e($dni) . ').';
                 } else {
                     $alumnoEncontrado = $alumno;
-                    // Generar nueva contraseña aleatoria de 8 caracteres
-                    $nuevaClave = bin2hex(random_bytes(4));
+                    // Generar nueva contraseña aleatoria de 10 caracteres
+                    $nuevaClave = bin2hex(random_bytes(5));
 
                     actualizarClaveAlumno($dni, password_hash($nuevaClave, PASSWORD_DEFAULT));
+                    $dni = '';   // limpia el campo tras restablecer
 
                     // Registro de auditoría en log
                     $directivoNom = $_SESSION['nombre'] ?? 'Directivo';
@@ -58,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $dni
                     ));
 
-                    $exito = 'Contraseña restablecida exitosamente para el alumno ' . e($alumno['nombre']) . ' (DNI: ' . e($dni) . ').';
+                    $exito = 'Contraseña restablecida exitosamente para el alumno ' . e($alumno['nombre']) . ' (DNI: ' . e($alumno['dni']) . ').';
                 }
             } catch (Throwable $e) {
                 error_log('Error en restablecer contraseña directivo: ' . $e->getMessage());
@@ -166,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 
     <form method="post" action="restablecer.php" class="formulario form-restablecer">
-        <input type="hidden" name="csrf_token" value="<?php echo e(obtenerTokenCsrf()); ?>">
+        <?php echo csrf_campo(); ?>
 
         <label for="dni">Número de DNI del alumno *</label>
         <input type="text" id="dni" name="dni" value="<?php echo e($dni); ?>" inputmode="numeric" pattern="[0-9]*" maxlength="8" oninput="this.value = this.value.replace(/[^0-9]/g, '')" placeholder="Ej. 40123456 (sin puntos)" required autofocus>

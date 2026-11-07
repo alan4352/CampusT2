@@ -74,49 +74,38 @@ function usuario_mesas(?string $rolRequerido = null): ?array
     }
 
     if ($rol === 'alumno') {
-        $alumnoId = (int)($_SESSION['usuario_id'] ?? $_SESSION['user_id'] ?? (is_numeric($_SESSION['id'] ?? null) ? $_SESSION['id'] : 0));
-        $dniSesion = trim((string)($_SESSION['dni'] ?? ''));
-        $correoSesion = strtolower(trim((string)($_SESSION['correo'] ?? $_SESSION['email'] ?? '')));
+        // El DNI sale de la sesión (login.php guarda id = "alumno:<DNI>"), nunca del nombre ni del correo:
+        // dos alumnos pueden llamarse igual o compartir correo (la columna correo no es única).
+        $dniSesion = preg_match('/^alumno:(\d{7,8})$/', (string) ($_SESSION['id'] ?? ''), $m) ? $m[1] : '';
+        if ($dniSesion === '' && preg_match('/^\d{7,8}$/', (string) ($_SESSION['dni'] ?? ''))) {
+            $dniSesion = (string) $_SESSION['dni'];
+        }
+        if ($dniSesion === '') {
+            return ['id' => null, 'rol' => 'alumno', 'nombre' => $nombre, 'dni' => '', 'correo' => ''];
+        }
 
-        // Buscamos el alumno usando su ID único generado automáticamente o su DNI/Correo.
-        // NUNCA usamos solo el nombre, para permitir múltiples alumnos homónimos con diferentes DNI y Gmail.
         try {
-            $pdo = conectar();
-            $fila = false;
-            if ($alumnoId > 0) {
-                $st = $pdo->prepare('SELECT id, nombre, dni, correo FROM alumnos WHERE id = ? LIMIT 1');
-                $st->execute([$alumnoId]);
-                $fila = $st->fetch();
-            }
-            if ($fila === false && $dniSesion !== '') {
-                $st = $pdo->prepare('SELECT id, nombre, dni, correo FROM alumnos WHERE dni = ? LIMIT 1');
-                $st->execute([$dniSesion]);
-                $fila = $st->fetch();
-            }
-            if ($fila === false && $correoSesion !== '') {
-                $st = $pdo->prepare('SELECT id, nombre, dni, correo FROM alumnos WHERE correo = ? LIMIT 1');
-                $st->execute([$correoSesion]);
-                $fila = $st->fetch();
-            }
+            $st = conectar()->prepare('SELECT id, nombre, dni, correo FROM alumnos WHERE dni = ? LIMIT 1');
+            $st->execute([$dniSesion]);
+            $fila = $st->fetch();
             if ($fila !== false) {
                 return [
                     'id'     => (int) $fila['id'],
                     'rol'    => 'alumno',
                     'nombre' => (string) $fila['nombre'],
-                    'dni'    => (string) ($fila['dni'] ?? $dniSesion),
-                    'correo' => (string) ($fila['correo'] ?? $correoSesion),
+                    'dni'    => (string) ($fila['dni'] ?? ''),
+                    'correo' => (string) ($fila['correo'] ?? ''),
                 ];
             }
         } catch (Throwable $e) {
             error_log('conexion.php (consulta alumno): ' . $e->getMessage());
         }
 
-        // Si es uno de los alumnos de prueba cargados en datos.php, buscamos por DNI o correo
+        // Si es uno de los alumnos de prueba cargados en datos.php, tomamos sus datos de ahí
         global $ALUMNOS;
         if (isset($ALUMNOS) && is_array($ALUMNOS)) {
             foreach ($ALUMNOS as $idx => $al) {
-                if (($dniSesion !== '' && ($al['dni'] ?? '') === $dniSesion) ||
-                    ($correoSesion !== '' && strtolower($al['correo'] ?? '') === $correoSesion)) {
+                if ((string) ($al['dni'] ?? '') === $dniSesion) {
                     return [
                         'id'     => $idx + 1,
                         'rol'    => 'alumno',
@@ -129,26 +118,28 @@ function usuario_mesas(?string $rolRequerido = null): ?array
         }
 
         return [
-            'id'     => $alumnoId > 0 ? $alumnoId : null,
+            'id'     => null,
             'rol'    => 'alumno',
             'nombre' => $nombre,
-            'dni'    => $dniSesion,
-            'correo' => $correoSesion,
+            'dni'    => '',
+            'correo' => '',
         ];
     }
 
     return null;
 }
 
-/** Exige cabecera X-Requested-With en peticiones que modifican datos para mitigar ataques CSRF */
+/** CSRF: lo que modifica datos solo se acepta desde las páginas del módulo, que mandan la cabecera
+ *  X-Requested-With (otro sitio no puede agregarla sin CORS, que este servidor no habilita). */
 function exigir_peticion_propia(): void
 {
     $m = $_SERVER['REQUEST_METHOD'] ?? 'GET';
     if (in_array($m, ['GET', 'HEAD', 'OPTIONS'], true)) {
         return;
     }
-    if (empty($_SERVER['HTTP_X_REQUESTED_WITH'])) {
-        responder_json(['success' => false, 'error' => 'Petición no permitida (falta cabecera CSRF)'], 403);
+    $cabecera = $_SERVER['HTTP_X_REQUESTED_WITH'] ?? '';
+    if (!in_array($cabecera, ['preinscripciones', 'XMLHttpRequest'], true)) {
+        responder_json(['success' => false, 'error' => 'Petición no permitida'], 403);
     }
 }
 

@@ -65,10 +65,9 @@ function buscarAlumnoPorCorreo($correo) {
         $st = $pdo->prepare('SELECT id, nombre, correo, dni, clave_hash FROM alumnos WHERE correo = ? LIMIT 1');
         $st->execute([$correoLimpio]);
         $fila = $st->fetch();
-        if ($fila !== false) {
-            return $fila;
-        }
+        return $fila;   // con base disponible, solo cuenta lo que está en la base
     } catch (PDOException $e) {
+        // Sin base de datos: se usan los usuarios de prueba de datos.php
     }
     global $ALUMNOS;
     if (isset($ALUMNOS) && is_array($ALUMNOS)) {
@@ -91,10 +90,9 @@ function buscarAlumnoPorDni($dni) {
         $st = $pdo->prepare('SELECT id, nombre, correo, dni, clave_hash FROM alumnos WHERE dni = ? LIMIT 1');
         $st->execute([$dniLimpio]);
         $fila = $st->fetch();
-        if ($fila !== false) {
-            return $fila;
-        }
+        return $fila;   // con base disponible, solo cuenta lo que está en la base
     } catch (PDOException $e) {
+        // Sin base de datos: se usan los usuarios de prueba de datos.php
     }
     global $ALUMNOS;
     if (isset($ALUMNOS) && is_array($ALUMNOS)) {
@@ -120,10 +118,9 @@ function buscarAlumnoPorId($id) {
         $st = $pdo->prepare('SELECT id, nombre, correo, dni, clave_hash FROM alumnos WHERE id = ? LIMIT 1');
         $st->execute([$idNum]);
         $fila = $st->fetch();
-        if ($fila !== false) {
-            return $fila;
-        }
+        return $fila;   // con base disponible, solo cuenta lo que está en la base
     } catch (PDOException $e) {
+        // Sin base de datos: se usan los usuarios de prueba de datos.php
     }
     global $ALUMNOS;
     if (isset($ALUMNOS) && is_array($ALUMNOS) && isset($ALUMNOS[$idNum - 1])) {
@@ -197,10 +194,9 @@ function buscarProfesorPorId($id) {
         $st = $pdo->prepare('SELECT id, nombre, dni, correo, codigo_hash FROM profesores WHERE id = ? LIMIT 1');
         $st->execute([$idNum]);
         $fila = $st->fetch();
-        if ($fila !== false) {
-            return $fila;
-        }
+        return $fila;   // con base disponible, solo cuenta lo que está en la base
     } catch (PDOException $e) {
+        // Sin base de datos: se usan los usuarios de prueba de datos.php
     }
     return false;
 }
@@ -214,10 +210,9 @@ function buscarProfesorPorCorreo($correo) {
         $st = $pdo->prepare('SELECT id, nombre, dni, correo, codigo_hash FROM profesores WHERE correo = ? LIMIT 1');
         $st->execute([$correoLimpio]);
         $fila = $st->fetch();
-        if ($fila !== false) {
-            return $fila;
-        }
+        return $fila;   // con base disponible, solo cuenta lo que está en la base
     } catch (PDOException $e) {
+        // Sin base de datos: se usan los usuarios de prueba de datos.php
     }
     return false;
 }
@@ -232,10 +227,9 @@ function buscarProfesorPorDni($dni) {
         $st = $pdo->prepare('SELECT id, nombre, dni, correo, codigo_hash FROM profesores WHERE dni = ? LIMIT 1');
         $st->execute([$dniLimpio]);
         $fila = $st->fetch();
-        if ($fila !== false) {
-            return $fila;
-        }
+        return $fila;   // con base disponible, solo cuenta lo que está en la base
     } catch (PDOException $e) {
+        // Sin base de datos: se usan los usuarios de prueba de datos.php
     }
     return false;
 }

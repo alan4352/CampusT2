@@ -10,17 +10,35 @@ header("Content-Type: application/json; charset=UTF-8");
 // Definimos qué acciones solo las puede hacer un directivo y cuáles también un alumno
 $action = $_GET["action"] ?? "";
 $soloDirectivoActions = ["create_mesa", "save_mesa", "delete_mesa", "clear_enrollments", "update_payment", "update_grade", "save_config"];
+$accionesQueModifican = array_merge($soloDirectivoActions, ["save_enrollment"]);
 $requiereDirectivo = in_array($action, $soloDirectivoActions, true);
 $usuarioSesion = exigir_usuario_api($requiereDirectivo);
+
+// Lo que modifica datos solo por POST (así exige la cabecera anti-CSRF de exigir_usuario_api)
+if (in_array($action, $accionesQueModifican, true) && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    responder_json(['success' => false, 'error' => 'Método no permitido'], 405);
+}
+
+// El detalle técnico va al log del servidor; al navegador solo un mensaje general
+function error_generico(Throwable $e): string {
+    error_log('preinscripciones/api.php: ' . $e->getMessage());
+    return 'Error en la base de datos. Intente nuevamente.';
+}
+
+// Texto recibido del navegador: sin etiquetas HTML y con largo máximo
+function texto_limpio($valor, int $max): string {
+    return mb_substr(trim(strip_tags((string) $valor)), 0, $max);
+}
 
 try {
     $pdo = conectar();
     $dbname = defined("DB_NAME") ? DB_NAME : "campusdigitaldb";
 } catch (Throwable $e) {
+    error_generico($e);
     echo json_encode([
         "success" => false,
         "db_connected" => false,
-        "message" => "Base de datos del campus no conectada: " . $e->getMessage()
+        "message" => "Base de datos del campus no conectada"
     ]);
     exit;
 }
@@ -87,11 +105,10 @@ switch ($action) {
             echo json_encode([
                 'success' => true,
                 'db_connected' => true,
-                'engine' => 'MySQL / MariaDB'
+                'message' => 'Conexión a MySQL exitosa'
             ]);
-        } catch (Throwable $e) {
-            error_log('Error de BD en API mesas (status): ' . $e->getMessage());
-            echo json_encode(['success' => false, 'db_connected' => false, 'error' => 'Error de conexión con la base de datos']);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => error_generico($e)]);
         }
         break;
 
@@ -134,7 +151,7 @@ switch ($action) {
             }
             echo json_encode(['success' => true, 'data' => $mesas]);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'error' => error_generico($e)]);
         }
         break;
 
@@ -276,7 +293,7 @@ switch ($action) {
             ]);
             echo json_encode(['success' => true, 'id' => $id]);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'error' => error_generico($e)]);
         }
         break;
 
@@ -287,7 +304,7 @@ switch ($action) {
             $stmt->execute([$id]);
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'error' => error_generico($e)]);
         }
         break;
 
@@ -295,47 +312,40 @@ switch ($action) {
         try {
             $turn = trim($_GET['turn'] ?? $_GET['exam_turn'] ?? '');
             $currentYear = intval(date('Y'));
-            $esAlumno = (($usuarioSesion['rol'] ?? '') === 'alumno');
-            $dniAlumno = trim((string)($usuarioSesion['dni'] ?? ''));
 
-            // El alumno solo puede consultar sus propias inscripciones por seguridad
-            if ($esAlumno && $dniAlumno === '') {
-                echo json_encode(['success' => true, 'data' => []]);
-                break;
+            // El alumno solo ve sus propias inscripciones; el directivo, todas
+            $filtroDni = '';
+            $paramsDni = [];
+            if ($usuarioSesion['rol'] !== 'directivo') {
+                $dniPropio = (string) ($usuarioSesion['dni'] ?? '');
+                if ($dniPropio === '') {
+                    echo json_encode(['success' => true, 'data' => []]);
+                    break;
+                }
+                $filtroDni = ' AND ai.student_dni = ?';
+                $paramsDni = [$dniPropio];
             }
 
             if (!empty($turn)) {
-                // Renovación por turno y año en curso
-                $sql = "
-                    SELECT DISTINCT ai.* 
+                // Renovación por turno y año en curso (sin acumular instancias de años o llamados pasados)
+                $stmt = $pdo->prepare("
+                    SELECT DISTINCT ai.*
                     FROM alumnos_inscripciones ai
                     INNER JOIN inscripcion_materias im ON ai.id = im.inscripcion_id
-                    WHERE im.exam_turn = ? AND (YEAR(ai.created_at) = ? OR ai.created_at IS NULL)
-                ";
-                $params = [$turn, $currentYear];
-                if ($esAlumno) {
-                    $sql .= " AND ai.student_dni = ?";
-                    $params[] = $dniAlumno;
-                }
-                $sql .= " ORDER BY ai.created_at DESC";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute($params);
+                    WHERE im.exam_turn = ? AND (YEAR(ai.created_at) = ? OR ai.created_at IS NULL)$filtroDni
+                    ORDER BY ai.created_at DESC
+                ");
+                $stmt->execute(array_merge([$turn, $currentYear], $paramsDni));
                 $rows = $stmt->fetchAll();
 
                 $subStmt = $pdo->prepare("SELECT * FROM inscripcion_materias WHERE inscripcion_id = ? AND exam_turn = ?");
             } else {
-                $sql = "
-                    SELECT * FROM alumnos_inscripciones ai
-                    WHERE (YEAR(ai.created_at) = ? OR ai.created_at IS NULL)
-                ";
-                $params = [$currentYear];
-                if ($esAlumno) {
-                    $sql .= " AND ai.student_dni = ?";
-                    $params[] = $dniAlumno;
-                }
-                $sql .= " ORDER BY ai.created_at DESC";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute($params);
+                $stmt = $pdo->prepare("
+                    SELECT ai.* FROM alumnos_inscripciones ai
+                    WHERE (YEAR(ai.created_at) = ? OR ai.created_at IS NULL)$filtroDni
+                    ORDER BY ai.created_at DESC
+                ");
+                $stmt->execute(array_merge([$currentYear], $paramsDni));
                 $rows = $stmt->fetchAll();
                 $subStmt = $pdo->prepare("SELECT * FROM inscripcion_materias WHERE inscripcion_id = ?");
             }
@@ -394,68 +404,68 @@ switch ($action) {
 
             echo json_encode(['success' => true, 'data' => $enrollments]);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'error' => error_generico($e)]);
         }
         break;
 
     case 'save_enrollment':
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            http_response_code(405);
-            echo json_encode(['success' => false, 'error' => 'Método no permitido']);
-            exit;
-        }
-
         try {
-            $esAlumno = (($usuarioSesion['rol'] ?? '') === 'alumno');
-            $courseVal = trim($input['currentCourse'] ?? $input['studentCourse'] ?? $input['student_course'] ?? '');
-            $isEgresado = (stripos($courseVal, 'Egreso') !== false || stripos($courseVal, 'Egresad') !== false);
-            if (!$isEgresado && !empty($input['subjects']) && is_array($input['subjects']) && count($input['subjects']) > 2) {
+            $esAlumno = $usuarioSesion['rol'] === 'alumno';
+            $curso = texto_limpio($input['currentCourse'] ?? $input['studentCourse'] ?? $input['student_course'] ?? '', 50);
+
+            // Límite reglamentario: los alumnos regulares (1ro a 7mo) rinden como máximo 2 materias previas;
+            // los egresados pueden anotarse en todas las que adeuden
+            $esEgresado = (stripos($curso, 'Egreso') !== false || stripos($curso, 'Egresad') !== false);
+            if (!$esEgresado && !empty($input['subjects']) && is_array($input['subjects']) && count($input['subjects']) > 2) {
                 echo json_encode([
                     'success' => false,
                     'error' => 'Los alumnos regulares (de 1ro a 7mo año) solo pueden inscribirse a un máximo de 2 materias previas reglamentarias.'
                 ]);
-                exit;
+                break;
             }
 
-            $id = trim($input['id'] ?? ('INS-' . time()));
+            $id = texto_limpio($input['id'] ?? '', 50);
+            $nombre = texto_limpio($input['studentName'] ?? $input['student_name'] ?? '', 150);
+            $dni = preg_replace('/\D/', '', (string) ($input['studentDni'] ?? $input['student_dni'] ?? ''));
+            $correo = texto_limpio($input['studentEmail'] ?? $input['student_email'] ?? '', 150);
+            $pagado = !empty($input['paid']) ? 1 : 0;
+            $alumnoId = (int) ($input['alumnoId'] ?? $input['alumno_id'] ?? 0);
+            $previas = [];   // materia|turno => [paid, grade] ya guardados
 
-            // Datos protegidos: si es alumno, el nombre, DNI y correo provienen estrictamente de la sesión
             if ($esAlumno) {
-                $studentName  = strip_tags(trim($usuarioSesion['nombre']));
-                $studentDni   = preg_replace('/\D/', '', (string)$usuarioSesion['dni']);
-                $studentEmail = strip_tags(strtolower(trim($usuarioSesion['correo'])));
-                $alumnoId     = (int)($usuarioSesion['id'] ?? 0);
-            } else {
-                $studentName  = strip_tags(trim($input['studentName'] ?? $input['student_name'] ?? ''));
-                $studentDni   = preg_replace('/\D/', '', (string)($input['studentDni'] ?? $input['student_dni'] ?? ''));
-                $studentEmail = strip_tags(strtolower(trim($input['studentEmail'] ?? $input['student_email'] ?? '')));
-                $alumnoId     = !empty($input['alumnoId']) ? (int)$input['alumnoId'] : (!empty($input['alumno_id']) ? (int)$input['alumno_id'] : null);
-            }
-
-            $studentPhone  = strip_tags(trim($input['studentPhone'] ?? $input['student_phone'] ?? ''));
-            $studentCourse = strip_tags(trim($input['currentCourse'] ?? $input['studentCourse'] ?? $input['student_course'] ?? ''));
-
-            // Verificar si la inscripción ya existe
-            $stExist = $pdo->prepare("SELECT id, student_dni, paid FROM alumnos_inscripciones WHERE id = ? LIMIT 1");
-            $stExist->execute([$id]);
-            $existingRow = $stExist->fetch();
-
-            if ($existingRow) {
-                // Un alumno no puede pisar o modificar la inscripción de otro DNI
-                if ($esAlumno && $existingRow['student_dni'] !== $studentDni) {
-                    http_response_code(403);
-                    echo json_encode(['success' => false, 'error' => 'No tiene permiso para modificar una inscripción de otro DNI']);
-                    exit;
+                // El alumno se inscribe a sí mismo: nombre, DNI, correo e ID salen de su sesión, no del navegador
+                $dni = (string) ($usuarioSesion['dni'] ?? '');
+                if ($dni === '') {
+                    responder_json(['success' => false, 'error' => 'No se pudo identificar tu DNI. Volvé a iniciar sesión.'], 403);
                 }
-                // Si ya estaba pagado, se conserva el estado del pago
-                $paidStatus = (int)$existingRow['paid'];
-            } else {
-                // Una nueva inscripción de alumno empieza siempre no pagada
-                $paidStatus = $esAlumno ? 0 : (!empty($input['paid']) ? 1 : 0);
+                $nombre = (string) $usuarioSesion['nombre'];
+                $correo = (string) (($usuarioSesion['correo'] ?? '') ?: $correo);
+                $alumnoId = (int) ($usuarioSesion['id'] ?? 0);
+
+                if ($id !== '') {
+                    $st = $pdo->prepare('SELECT student_dni FROM alumnos_inscripciones WHERE id = ?');
+                    $st->execute([$id]);
+                    $dueno = $st->fetchColumn();
+                    if ($dueno !== false && (string) $dueno !== $dni) {
+                        responder_json(['success' => false, 'error' => 'No podés modificar la inscripción de otro alumno'], 403);
+                    }
+                    // Pagos y notas los carga el directivo: se conservan los que ya estaban
+                    if ($dueno !== false) {
+                        $st = $pdo->prepare('SELECT subject_name, exam_turn, paid, grade FROM inscripcion_materias WHERE inscripcion_id = ?');
+                        $st->execute([$id]);
+                        foreach ($st->fetchAll() as $p) {
+                            $previas[$p['subject_name'] . '|' . $p['exam_turn']] = [(int) $p['paid'], $p['grade'] !== null ? (int) $p['grade'] : null];
+                        }
+                    }
+                }
+                if (!preg_match('/^INS-\d{6,16}$/', $id)) {
+                    $id = 'INS-' . (int) (microtime(true) * 1000);
+                }
+            } elseif ($id === '') {
+                $id = 'INS-' . (int) (microtime(true) * 1000);
             }
 
             $pdo->beginTransaction();
-
             $stmt = $pdo->prepare("
                 INSERT INTO alumnos_inscripciones (id, alumno_id, student_name, student_dni, student_course, student_phone, student_email, paid, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
@@ -471,24 +481,16 @@ switch ($action) {
             $stmt->execute([
                 $id,
                 $alumnoId > 0 ? $alumnoId : null,
-                $studentName,
-                $studentDni,
-                $studentCourse,
-                $studentPhone,
-                $studentEmail,
-                $paidStatus
+                $nombre,
+                $dni,
+                $curso,
+                texto_limpio($input['studentPhone'] ?? $input['student_phone'] ?? '', 50),
+                $correo,
+                $esAlumno ? 0 : $pagado
             ]);
 
-            // Guardar materias preservando pagos y notas existentes cuando edita el alumno
             if (!empty($input['subjects']) && is_array($input['subjects'])) {
-                $stOldSubs = $pdo->prepare("SELECT subject_name, exam_turn, paid, grade FROM inscripcion_materias WHERE inscripcion_id = ?");
-                $stOldSubs->execute([$id]);
-                $oldSubsMap = [];
-                foreach ($stOldSubs->fetchAll() as $os) {
-                    $k = mb_strtolower(trim($os['subject_name'])) . '|' . trim($os['exam_turn']);
-                    $oldSubsMap[$k] = ['paid' => (int)$os['paid'], 'grade' => $os['grade']];
-                }
-
+                // Eliminar materias previas para reemplazar limpiamente
                 $delSub = $pdo->prepare("DELETE FROM inscripcion_materias WHERE inscripcion_id = ?");
                 $delSub->execute([$id]);
 
@@ -497,37 +499,41 @@ switch ($action) {
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 ");
                 foreach ($input['subjects'] as $sub) {
-                    $subName = strip_tags(trim($sub['subjectName'] ?? $sub['subject_name'] ?? ''));
-                    $subTurn = strip_tags(trim($sub['examTurn'] ?? $sub['exam_turn'] ?? 'Febrero / Marzo'));
-                    $subKey = mb_strtolower($subName) . '|' . $subTurn;
-                    $oldInfo = $oldSubsMap[$subKey] ?? null;
-
+                    if (!is_array($sub)) continue;
+                    $materia = texto_limpio($sub['subjectName'] ?? $sub['subject_name'] ?? '', 150);
+                    $turno = texto_limpio($sub['examTurn'] ?? $sub['exam_turn'] ?? 'Febrero / Marzo', 50);
                     if ($esAlumno) {
-                        $subPaid  = $oldInfo ? $oldInfo['paid'] : 0;
-                        $subGrade = $oldInfo ? $oldInfo['grade'] : null;
+                        [$pagoMateria, $nota] = $previas[$materia . '|' . $turno] ?? [0, null];
                     } else {
-                        $subPaid  = !empty($sub['paid']) ? 1 : 0;
-                        $subGrade = ($sub['grade'] !== null && $sub['grade'] !== '') ? intval($sub['grade']) : null;
+                        $pagoMateria = !empty($sub['paid']) ? 1 : 0;
+                        $notaRecibida = $sub['grade'] ?? null;
+                        $nota = ($notaRecibida !== null && $notaRecibida !== '') ? intval($notaRecibida) : null;
                     }
-
                     $subStmt->execute([
                         $id,
-                        $subName,
-                        strip_tags(trim($sub['owedYear'] ?? $sub['subject_year'] ?? '')),
-                        strip_tags(trim($sub['calendarYear'] ?? $sub['subjectFamily'] ?? $sub['subject_family'] ?? '')),
-                        $subTurn,
-                        $subPaid,
-                        $subGrade
+                        $materia,
+                        texto_limpio($sub['owedYear'] ?? $sub['subject_year'] ?? '', 50),
+                        texto_limpio($sub['calendarYear'] ?? $sub['subjectFamily'] ?? $sub['subject_family'] ?? '', 100),
+                        $turno,
+                        $pagoMateria,
+                        $nota
                     ]);
                 }
             }
 
+            if ($esAlumno) {
+                // Estado general: abonado solo si el directivo ya registró el pago de todas sus materias
+                $pend = $pdo->prepare('SELECT COUNT(*) FROM inscripcion_materias WHERE inscripcion_id = ? AND paid = 0');
+                $pend->execute([$id]);
+                $pdo->prepare('UPDATE alumnos_inscripciones SET paid = ? WHERE id = ?')
+                    ->execute([(int) $pend->fetchColumn() === 0 && !empty($previas) ? 1 : 0, $id]);
+            }
+
             $pdo->commit();
             echo json_encode(['success' => true, 'id' => $id]);
-        } catch (Throwable $e) {
+        } catch (Exception $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
-            error_log('Error de BD en save_enrollment: ' . $e->getMessage());
-            echo json_encode(['success' => false, 'error' => 'No se pudo guardar la inscripción en la base de datos']);
+            echo json_encode(['success' => false, 'error' => error_generico($e)]);
         }
         break;
 
@@ -545,7 +551,7 @@ switch ($action) {
             }
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'error' => error_generico($e)]);
         }
         break;
 
@@ -562,7 +568,7 @@ switch ($action) {
 
             if ($isActive) {
                 echo json_encode(['success' => false, 'error' => 'Los abonos solo pueden registrarse y modificarse una vez que finalice el período de preinscripción para los alumnos.']);
-                exit;
+                break;
             }
 
             $enrollmentId = $input['enrollmentId'] ?? '';
@@ -584,7 +590,7 @@ switch ($action) {
 
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'error' => error_generico($e)]);
         }
         break;
 
@@ -599,7 +605,7 @@ switch ($action) {
 
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'error' => error_generico($e)]);
         }
         break;
 
@@ -637,7 +643,7 @@ switch ($action) {
 
             echo json_encode(['success' => true, 'data' => $config]);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'error' => error_generico($e)]);
         }
         break;
 
@@ -739,7 +745,7 @@ switch ($action) {
 
             echo json_encode(['success' => true, 'updated' => $pairs]);
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            echo json_encode(['success' => false, 'error' => error_generico($e)]);
         }
         break;
 

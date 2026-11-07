@@ -1,13 +1,19 @@
-# Dependencias y temporales
+# Configuración real (contraseñas de la base y clave compartida con ProgMesas): copiar config.example.php como config.php
+campus/includes/config.php
+progmesas/.env
+
+# Datos de usuarios y correos simulados del modo prueba (datos personales y contraseñas)
+campus/data/*
+!campus/data/.htaccess
+
+# Dependencias y archivos temporales
 node_modules/
 vendor/
 .vscode/
+progmesas/backend/database.sqlite-*
 *.log
 *.tmp
 *.zip
 *.rar
-
-# Configuración local sensible
-campus/includes/config.php
-campus/data/correos_simulados.txt
-campus/data/usuarios.json
+.DS_Store
+~$*.xlsx

@@ -395,24 +395,6 @@ function verificarTokenJwt(string $token): ?array {
     ];
 }
 
-function iniciarSesionSegura(): void {
-    if (session_status() === PHP_SESSION_NONE) {
-        $esHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-            || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
-
-        session_set_cookie_params([
-            'lifetime' => 0,
-            'path'     => '/',
-            'domain'   => '',
-            'secure'   => $esHttps,
-            'httponly' => true,
-            'samesite' => 'Lax'
-        ]);
-        @ini_set('session.use_strict_mode', '1');
-        @session_start();
-    }
-}
-
 function obtenerUsuarioActual(): ?array {
     $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
     if ($authHeader === '' && function_exists('apache_request_headers')) {
@@ -425,29 +407,30 @@ function obtenerUsuarioActual(): ?array {
         if ($u) return $u;
     }
 
-    // Respaldo: si el usuario ya tiene sesión iniciada en el Campus Virtual en este navegador
-    iniciarSesionSegura();
-
-    // Protección CSRF: si se usa la sesión del campus (en vez del pase Bearer), pedidos que modifican datos exigen cabecera X-Requested-With
-    $metodo = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-    $esModificacion = in_array($metodo, ['POST', 'PUT', 'DELETE', 'PATCH'], true);
-    $cabeceraXrw = $_SERVER['HTTP_X_REQUESTED_WITH'] ?? '';
-    if ($esModificacion && empty($cabeceraXrw)) {
+    // Respaldo: si el usuario ya tiene sesión iniciada en el Campus Virtual en este navegador.
+    // La cookie viaja sola, así que un sitio ajeno podría usarla (CSRF): para modificar datos con la
+    // sesión se exige la cabecera que solo manda la propia página (frontend/common.js).
+    $metodoActual = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    if (!in_array($metodoActual, ['GET', 'HEAD'], true) && ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'progmesas') {
         return null;
     }
-
+    if (session_status() === PHP_SESSION_NONE) {
+        if (is_file(__DIR__ . '/../campus/includes/sesion.php')) {
+            require_once __DIR__ . '/../campus/includes/sesion.php';   // misma cookie segura que el campus
+        } else {
+            @session_start();
+        }
+    }
     // (mismos datos que guarda login.php del campus: rol, nombre, correo e id)
     if (!empty($_SESSION['rol']) && !empty($_SESSION['nombre'])) {
         $rol = mapearRol($_SESSION['rol']);
         if ($rol) {
-            $correo = (string)($_SESSION['correo'] ?? $_SESSION['email'] ?? '');
-            $usuarioId = (string)($_SESSION['usuario_id'] ?? $_SESSION['user_id'] ?? $_SESSION['id'] ?? ($_SESSION['rol'] . ':' . ($correo !== '' ? $correo : $_SESSION['nombre'])));
+            $correo = (string)($_SESSION['correo'] ?? '');
             return [
-                'id' => $usuarioId,
+                'id' => (string)($_SESSION['id'] ?? ($_SESSION['rol'] . ':' . ($correo !== '' ? $correo : $_SESSION['nombre']))),
                 'nombre' => (string)$_SESSION['nombre'],
                 'email' => $correo,
-                'role' => $rol,
-                'usa_sesion' => true
+                'role' => $rol
             ];
         }
     }

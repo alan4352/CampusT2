@@ -60,7 +60,9 @@ function csrf_valido() {
 $PERMISOS = [
     'proyector'  => ['directivo', 'profesor'],                // Reservar proyector (alumnos NO)
     'mesa'       => ['directivo', 'alumno'],                  // Mesa de examen (profesores NO tienen preinscripción)
-    'programa'   => ['directivo', 'profesor', 'alumno'],      // Programas de examen
+    'programa'   => ['directivo', 'profesor', 'preceptor', 'alumno'], // Programas de examen (preceptor: consulta)
+    'cuentas'    => ['directivo'],                            // Gestión de cuentas de todo el personal y alumnos
+    'padron'     => ['preceptor'],                            // Alumnos y códigos de los cursos del preceptor
 ];
 
 
@@ -96,8 +98,35 @@ function tienePermiso($modulo) {
     if (!estaLogueado() || !isset($PERMISOS[$modulo])) {
         return false;
     }
-    // in_array() busca el rol del usuario dentro de la lista de roles permitidos
-    return in_array($_SESSION['rol'], $PERMISOS[$modulo], true);
+    // Una persona puede tener varios roles (por ejemplo, profesor y preceptor): alcanza con uno
+    return (bool) array_intersect(rolesSesion(), $PERMISOS[$modulo]);
+}
+
+
+/* ---------------------------------------------------------------------
+   ROLES DE LA SESIÓN
+   $_SESSION['rol'] es el rol principal (lo usan los módulos viejos);
+   $_SESSION['roles'] son todos los de la persona.
+   --------------------------------------------------------------------- */
+function rolesSesion(): array {
+    if (!estaLogueado()) {
+        return [];
+    }
+    $roles = $_SESSION['roles'] ?? [$_SESSION['rol']];
+    return is_array($roles) ? $roles : [$_SESSION['rol']];
+}
+
+function tieneRol(string $rol): bool {
+    return in_array($rol, rolesSesion(), true);
+}
+
+/** Corta la página si la persona no tiene el permiso (va al panel, o al login si no inició sesión). */
+function requerirPermiso(string $modulo): void {
+    requerirLogin();
+    if (!tienePermiso($modulo)) {
+        header('Location: dashboard.php');
+        exit;
+    }
 }
 
 

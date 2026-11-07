@@ -1,17 +1,50 @@
 <?php
 /* =====================================================================
    ARCHIVO: recuperar.php
-   PARA QUÉ SIRVE: información para alumnos sobre cómo restablecer su
-   contraseña de forma segura. Por motivos de seguridad y privacidad,
-   las contraseñas las restablece el personal directivo de la institución
-   en campus/restablecer.php.
+   PARA QUÉ SIRVE: pedir que se recupere la cuenta. El pedido le aparece
+   al preceptor del curso (alumnos) o a los directivos (todos), que
+   entregan un código de recuperación. Con ese código, la persona elige
+   una contraseña nueva en activar.php.
+   La respuesta es siempre la misma, exista o no la cuenta: así esta
+   página no sirve para averiguar qué DNI o correos están registrados.
    ===================================================================== */
 require_once 'includes/sesion.php';
+require_once 'includes/cuentas.php';
+require_once 'includes/limite_intentos.php';
 
-// Si ya inició sesión, redirigimos al panel
+const RECUPERAR_MAX_PEDIDOS_IP = 10;
+
 if (estaLogueado()) {
     header('Location: dashboard.php');
     exit;
+}
+
+$error = '';
+$enviado = false;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $ci = 'recuperar-ip:' . ipCliente();
+    $bloqueo = bloqueadoHasta($ci);
+    if (!csrf_valido()) {
+        $error = 'La página venció. Recárguela e intente de nuevo.';
+    } elseif ($bloqueo) {
+        $error = 'Demasiados pedidos seguidos. Intente nuevamente en ' . minutosRestantes($bloqueo) . ' minuto(s).';
+    } elseif (trim((string) ($_POST['identificador'] ?? '')) === '') {
+        $error = 'Escriba su DNI o su correo.';
+    } else {
+        try {
+            $pdo = bdCuentas();
+            $u = buscarUsuarioPorIdentificador($pdo, (string) $_POST['identificador']);
+            if ($u && $u['estado'] !== 'bloqueado') {
+                registrarSolicitudRecuperacion($pdo, (int) $u['id']);
+            }
+            sumarFallo($ci, RECUPERAR_MAX_PEDIDOS_IP);   // cuenta todos los pedidos, no solo los fallidos
+            $enviado = true;
+        } catch (PDOException $ex) {
+            error_log('Error de BD en recuperar: ' . $ex->getMessage());
+            $error = 'No se pudo conectar con la base de datos. Intente más tarde.';
+        }
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -19,40 +52,40 @@ if (estaLogueado()) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recuperar contraseña — Campus Virtual</title>
+    <title>Recuperar cuenta — Campus Virtual</title>
     <link rel="stylesheet" href="style.css">
+    <style>.formulario { display: block; }</style>
 </head>
 <body class="fondo-login">
 
 <main class="login">
-    <!-- LOGO DE LA ESCUELA -->
     <img src="img/logo.png" alt="Logo de la escuela" class="logo logo--login" onerror="this.style.display='none'">
-    <h1>Campus Virtual</h1>
-    <p class="login__sub">Recuperar contraseña de Alumno</p>
+    <h1>Recuperar cuenta</h1>
 
-    <div class="formulario" style="display: block; text-align: left; line-height: 1.6; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.12); padding: 1.5rem; border-radius: 10px;">
-        <p style="margin-top: 0; font-size: 1.15rem; color: #ffffff;">
-            <strong>¿Olvidó su contraseña?</strong>
-        </p>
-        
-        <div style="background: rgba(162, 19, 47, 0.18); border-left: 4px solid var(--primary, #a2132f); padding: 1rem 1.15rem; border-radius: 6px; margin: 1.25rem 0;">
-            <p style="margin: 0 0 0.5rem 0; font-size: 1.05rem; font-weight: 700; color: #ffcdd2;">
-                Comuníquese con la institución para generar una nueva contraseña.
-            </p>
-            <p style="margin: 0; font-size: 0.95rem; color: #e5e7eb; line-height: 1.55;">
-                Por motivos de seguridad institucional y protección de datos personales, las contraseñas no se restablecen de forma automática por internet.<br><br>
-                Para obtener una nueva clave de acceso, acérquese a la <strong>Preceptoría, Secretaría o Dirección</strong> de la escuela presentando su <strong>DNI</strong>. El equipo directivo generará y le entregará su nueva contraseña de inmediato.
-            </p>
+    <?php if ($error !== ''): ?>
+        <div class="error"><?php echo e($error); ?></div>
+    <?php endif; ?>
+
+    <?php if ($enviado): ?>
+        <div class="exito">
+            <p><strong>Pedido registrado.</strong></p>
+            <p>Si los datos corresponden a una cuenta, su <strong>preceptor</strong> (alumnos) o un <strong>directivo</strong>
+               le va a entregar un código de recuperación. Con ese código elija una contraseña nueva en
+               <a href="activar.php">Activar cuenta</a>.</p>
         </div>
+    <?php else: ?>
+        <p class="login__sub">Escriba su DNI o su correo. La escuela le va a dar un código para elegir una contraseña nueva.</p>
+        <form method="post" action="recuperar.php" class="formulario">
+            <?php echo csrf_campo(); ?>
+            <label for="identificador">DNI o correo</label>
+            <input type="text" id="identificador" name="identificador" placeholder="Ej: 40123456" autocomplete="username" required autofocus>
+            <button type="submit" class="boton">Pedir recuperación</button>
+        </form>
+        <p class="login__sub" style="margin-top:12px;">¿Ya tiene el código? <a href="activar.php">Úselo acá</a>.</p>
+    <?php endif; ?>
 
-        <p style="margin-bottom: 0; font-size: 0.88rem; color: #9ca3af;">
-            Si es docente y extravió su código de acceso, también puede solicitar el reenvío o blanqueo en la Dirección de la escuela.
-        </p>
-    </div>
-
-    <!-- ACCIONES: VOLVER AL LOGIN Y AL INICIO -->
     <div class="login__acciones">
-        <a href="login.php" class="boton boton--secundario">← Volver a iniciar sesión</a>
+        <a href="login.php" class="boton boton--secundario">← Volver a ingresar</a>
         <a href="index.php" class="boton boton--oscuro">Volver al inicio</a>
     </div>
 </main>

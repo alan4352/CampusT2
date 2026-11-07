@@ -6,8 +6,10 @@
    - ALUMNOS y PROFESORES: estos de ejemplo se copian a data/usuarios.json
      SOLO la primera vez. Después, los nuevos se agregan por registro.php.
      (Si quiere volver a empezar de cero, borre data/usuarios.json.)
-   - DIRECTIVOS: se leen siempre de AQUÍ. No pueden registrarse solos;
-     la escuela los crea editando este archivo.
+   - DIRECTIVOS: se copian a la base UNA sola vez, la primera vez que se
+     usa el campus con includes/cuentas.php. Desde ahí se crean y se
+     gestionan en la «Gestión de cuentas» (cuentas.php): cambiar este
+     archivo después no tiene efecto.
 
    ⚠ Las contraseñas de ejemplo son SOLO PARA PRUEBAS. Cámbielas
    antes de publicar el sitio.

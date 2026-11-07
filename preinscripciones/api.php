@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // Archivo que recibe las consultas desde JavaScript (guardar inscripciones, crear mesas, cargar pagos y notas)
 // y las guarda o lee en la base de datos MySQL.
 date_default_timezone_set('America/Argentina/Buenos_Aires');
@@ -443,19 +443,31 @@ switch ($action) {
                 $alumnoId = (int) ($usuarioSesion['id'] ?? 0);
 
                 if ($id !== '') {
-                    $st = $pdo->prepare('SELECT student_dni FROM alumnos_inscripciones WHERE id = ?');
+                    $st = $pdo->prepare('SELECT student_dni, paid FROM alumnos_inscripciones WHERE id = ?');
                     $st->execute([$id]);
-                    $dueno = $st->fetchColumn();
-                    if ($dueno !== false && (string) $dueno !== $dni) {
+                    $rowExistente = $st->fetch();
+                    if ($rowExistente !== false && (string) $rowExistente['student_dni'] !== $dni) {
                         responder_json(['success' => false, 'error' => 'No podés modificar la inscripción de otro alumno'], 403);
                     }
-                    // Pagos y notas los carga el directivo: se conservan los que ya estaban
-                    if ($dueno !== false) {
+                    if ($rowExistente !== false) {
+                        $stCheckPaid = $pdo->prepare("SELECT COUNT(*) FROM inscripcion_materias WHERE inscripcion_id = ? AND paid = 1");
+                        $stCheckPaid->execute([$id]);
+                        $paidMaterias = (int) $stCheckPaid->fetchColumn();
+                        if ((int) $rowExistente['paid'] === 1 || $paidMaterias > 0) {
+                            responder_json(['success' => false, 'error' => 'La inscripción ya posee abono registrado y confirmado por la institución. No puede ser modificada ni eliminada.'], 403);
+                        }
+
                         $st = $pdo->prepare('SELECT subject_name, exam_turn, paid, grade FROM inscripcion_materias WHERE inscripcion_id = ?');
                         $st->execute([$id]);
                         foreach ($st->fetchAll() as $p) {
                             $previas[$p['subject_name'] . '|' . $p['exam_turn']] = [(int) $p['paid'], $p['grade'] !== null ? (int) $p['grade'] : null];
                         }
+                    }
+                } else {
+                    $stCheckDniPaid = $pdo->prepare("SELECT COUNT(*) FROM alumnos_inscripciones ai LEFT JOIN inscripcion_materias im ON ai.id = im.inscripcion_id WHERE ai.student_dni = ? AND (ai.paid = 1 OR im.paid = 1)");
+                    $stCheckDniPaid->execute([$dni]);
+                    if ((int) $stCheckDniPaid->fetchColumn() > 0) {
+                        responder_json(['success' => false, 'error' => 'Su inscripción ya posee abono registrado y confirmado por la institución. No puede crear ni modificar solicitudes adicionales.'], 403);
                     }
                 }
                 if (!preg_match('/^INS-\d{6,16}$/', $id)) {
@@ -557,20 +569,7 @@ switch ($action) {
 
     case 'update_payment':
         try {
-            // Los abonos solo pueden registrarse y modificarse una vez finalizado el período de preinscripción
-            $cfgStmt = $pdo->query("SELECT clave, valor FROM configuracion");
-            $cfgRows = $cfgStmt ? $cfgStmt->fetchAll(PDO::FETCH_KEY_PAIR) : [];
-            $habilitada = ($cfgRows['preinscripcion_habilitada'] ?? '1') === '1';
-            $fechaInicio = $cfgRows['preinscripcion_fecha_inicio'] ?? '';
-            $fechaFin = $cfgRows['preinscripcion_fecha_fin'] ?? '';
-            $today = date('Y-m-d');
-            $isActive = $habilitada && (!$fechaInicio || $today >= $fechaInicio) && (!$fechaFin || $today <= $fechaFin);
-
-            if ($isActive) {
-                echo json_encode(['success' => false, 'error' => 'Los abonos solo pueden registrarse y modificarse una vez que finalice el período de preinscripción para los alumnos.']);
-                break;
-            }
-
+// El abono se puede marcar o modificar en cualquier momento
             $enrollmentId = $input['enrollmentId'] ?? '';
             $subjectId = $input['subjectId'] ?? '';
             $isPaid = !empty($input['isPaid']) ? 1 : 0;

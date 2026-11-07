@@ -505,22 +505,102 @@ $nombreDirectivo = $usuario['nombre'] !== '' ? $usuario['nombre'] : 'Directivo/a
                                 Generar Acta de Examen para Tribunal Docente
                             </div>
 
-                            <div class="roster-toolbar-grid">
-                                <div class="form-group roster-select-group">
-                                    <label for="selectMesaListado" class="form-label">
-                                        <span class="material-symbols-outlined">event_note</span>
-                                        Seleccionar Mesa de Examen Programada *
-                                    </label>
-                                    <select id="selectMesaListado" class="form-select"></select>
-                                </div>
-                                <div class="roster-buttons-group">
-                                    <button type="button" id="btnDownloadRosterPdf" class="btn-ingresar">
-                                        <span class="material-symbols-outlined">download</span>
-                                        <span>Descargar PDF</span>
+                            <!-- Selector de Modo de Exportación / Impresión -->
+                            <div class="export-mode-selection" style="margin-bottom: 1.25rem;">
+                                <label class="form-label" style="font-weight: 700; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.4rem;">
+                                    <span class="material-symbols-outlined">tune</span>
+                                    Seleccionar Modo de Exportación / Impresión:
+                                </label>
+                                <div class="mode-pills-group" style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+                                    <button type="button" class="btn-mode-pill active" id="btnModeSingle" data-mode="single">
+                                        <span class="material-symbols-outlined">description</span>
+                                        Mesa Individual
                                     </button>
-                                    <button type="button" id="btnPrintRoster" class="btn-secondary-auth">
+                                    <button type="button" class="btn-mode-pill" id="btnModeSelected" data-mode="selected">
+                                        <span class="material-symbols-outlined">checklist</span>
+                                        Marcar Mesas a Descargar
+                                    </button>
+                                    <button type="button" class="btn-mode-pill" id="btnModeAll" data-mode="all">
+                                        <span class="material-symbols-outlined">folder_zip</span>
+                                        Todas las Mesas a la Vez (1 solo PDF)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Panel 1: Mesa Individual -->
+                            <div id="panelModeSingle" class="export-mode-panel">
+                                <div class="roster-toolbar-grid">
+                                    <div class="form-group roster-select-group">
+                                        <label for="selectMesaListado" class="form-label">
+                                            <span class="material-symbols-outlined">event_note</span>
+                                            Seleccionar Mesa de Examen Programada *
+                                        </label>
+                                        <select id="selectMesaListado" class="form-select"></select>
+                                    </div>
+                                    <div class="roster-buttons-group">
+                                        <button type="button" id="btnDownloadRosterPdf" class="btn-ingresar">
+                                            <span class="material-symbols-outlined">download</span>
+                                            <span>Descargar PDF</span>
+                                        </button>
+                                        <button type="button" id="btnPrintRoster" class="btn-secondary-auth">
+                                            <span class="material-symbols-outlined">print</span>
+                                            <span>Imprimir</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Panel 2: Selección Múltiple (Marcar cuáles descargar) -->
+                            <div id="panelModeSelected" class="export-mode-panel" style="display: none;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.85rem; padding: 0.65rem 1rem; background: rgba(0,0,0,0.22); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+                                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                        <button type="button" id="btnSelectAllMesas" class="btn-secondary-auth" style="margin: 0; padding: 6px 14px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 4px;">
+                                            <span class="material-symbols-outlined" style="font-size: 1.05rem;">select_all</span>
+                                            Marcar Todas
+                                        </button>
+                                        <button type="button" id="btnDeselectAllMesas" class="btn-secondary-auth" style="margin: 0; padding: 6px 14px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 4px;">
+                                            <span class="material-symbols-outlined" style="font-size: 1.05rem;">deselect</span>
+                                            Desmarcar
+                                        </button>
+                                    </div>
+                                    <span id="selectedMesasCountBadge" style="font-size: 0.86rem; font-weight: 700; color: var(--color-gold); padding: 5px 12px; background: rgba(0,0,0,0.35); border-radius: 14px; border: 1px solid rgba(255,235,59,0.3);">
+                                        0 mesas marcadas (0 páginas)
+                                    </span>
+                                </div>
+
+                                <div id="mesasCheckboxList" class="mesas-checkbox-container" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.1rem; padding: 0.6rem; background: rgba(0,0,0,0.18); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08);">
+                                    <!-- Checkboxes generados dinámicamente -->
+                                </div>
+
+                                <div class="roster-buttons-group" style="justify-content: flex-end;">
+                                    <button type="button" id="btnDownloadSelectedRostersPdf" class="btn-ingresar">
+                                        <span class="material-symbols-outlined">download</span>
+                                        <span>Descargar PDF Seleccionadas</span>
+                                    </button>
+                                    <button type="button" id="btnPrintSelectedRosters" class="btn-secondary-auth">
                                         <span class="material-symbols-outlined">print</span>
-                                        <span>Imprimir</span>
+                                        <span>Imprimir Seleccionadas</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Panel 3: Todas las Mesas a la Vez -->
+                            <div id="panelModeAll" class="export-mode-panel" style="display: none;">
+                                <div class="alert-custom alert-info" style="display: flex; align-items: center; gap: 0.85rem; margin-bottom: 1.2rem; background: rgba(2, 136, 209, 0.15); border: 1px solid #0288d1; border-radius: 8px; padding: 1rem 1.2rem; color: #b3e5fc;">
+                                    <span class="material-symbols-outlined" style="font-size: 2.2rem; color: #81d4fa; flex-shrink: 0;">auto_stories</span>
+                                    <div>
+                                        <strong id="allMesasSummaryTitle" style="font-size: 1rem; color: #ffffff; display: block; margin-bottom: 3px;">Descarga Masiva de Todas las Actas Volantes</strong>
+                                        <span id="allMesasSummaryText" style="font-size: 0.9rem; line-height: 1.4;">Se generará un único documento PDF con todas las mesas programadas del llamado, manteniendo la estructura oficial reglamentaria (2 hojas por mesa: Acta Volante y Acta de Desaprobación).</span>
+                                    </div>
+                                </div>
+                                <div class="roster-buttons-group" style="justify-content: flex-end;">
+                                    <button type="button" id="btnDownloadAllRostersPdf" class="btn-ingresar">
+                                        <span class="material-symbols-outlined">download</span>
+                                        <span>Descargar Todas las Actas en 1 PDF</span>
+                                    </button>
+                                    <button type="button" id="btnPrintAllRosters" class="btn-secondary-auth">
+                                        <span class="material-symbols-outlined">print</span>
+                                        <span>Imprimir Todas las Actas</span>
                                     </button>
                                 </div>
                             </div>

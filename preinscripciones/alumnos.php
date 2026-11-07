@@ -37,6 +37,35 @@ $nombreAlumno = $usuario['nombre'] !== '' ? $usuario['nombre'] : 'Alumno';
 $dniAlumno    = $usuario['dni'] !== '' ? $usuario['dni'] : '';
 $correoAlumno = $usuario['correo'] !== '' ? $usuario['correo'] : '';
 $idAlumno     = $usuario['id'] ?? '';
+
+// Verificamos si el alumno ya cuenta con inscripción registrada y si el abono fue marcado por directivos
+$inscripcionAbonada = false;
+$inscripcionExistente = null;
+if ($dniAlumno !== '') {
+    try {
+        $pdo = conectar();
+        $st = $pdo->prepare("SELECT * FROM alumnos_inscripciones WHERE student_dni = ? ORDER BY created_at DESC LIMIT 1");
+        $st->execute([$dniAlumno]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $stSub = $pdo->prepare("SELECT * FROM inscripcion_materias WHERE inscripcion_id = ?");
+            $stSub->execute([$row['id']]);
+            $subs = $stSub->fetchAll(PDO::FETCH_ASSOC);
+            $row['subjects'] = $subs;
+            if ((int)$row['paid'] === 1) {
+                $inscripcionAbonada = true;
+            }
+            foreach ($subs as $s) {
+                if ((int)$s['paid'] === 1) {
+                    $inscripcionAbonada = true;
+                }
+            }
+            $inscripcionExistente = $row;
+        }
+    } catch (Throwable $e) {
+        error_log('alumnos.php - Error verificando abono: ' . $e->getMessage());
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -112,6 +141,19 @@ $idAlumno     = $usuario['id'] ?? '';
                 </div>
                 <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5);">
                     Si crees que esto es un error, por favor acércate a la Secretaría de la institución.
+                </div>
+            </div>
+
+            <!-- Cartel de bloqueo cuando el abono ya fue registrado por directivos -->
+            <div id="alertInscripcionAbonada" class="alert-custom alert-success" style="display: <?= $inscripcionAbonada ? 'flex' : 'none' ?>; margin-bottom: 1.25rem; align-items: flex-start; gap: 0.85rem; background: rgba(46, 125, 50, 0.22); border: 1.5px solid #4caf50; border-radius: 12px; padding: 1rem 1.25rem; color: #c8e6c9; text-align: left;">
+                <span class="material-symbols-outlined" style="font-size: 2.2rem; color: #81c784; flex-shrink: 0; margin-top: 2px;">verified</span>
+                <div style="flex: 1;">
+                    <strong style="font-size: 1.05rem; color: #ffffff; display: block; margin-bottom: 4px;">Abono Registrado y Confirmado por la Institución</strong>
+                    <div style="font-size: 0.9rem; line-height: 1.45; color: #e8f5e9;">
+                        Tu inscripción a mesas de examen ya cuenta con el arancel abonado y validado por el equipo directivo. 
+                        <strong>Las opciones de edición y eliminación han sido desactivadas automáticamente.</strong> 
+                        Puedes consultar, descargar o imprimir tu permiso de examen oficial en cualquier momento.
+                    </div>
                 </div>
             </div>
 
@@ -508,6 +550,10 @@ $idAlumno     = $usuario['id'] ?? '';
         </div>
     </div>
 
+    <script>
+        window.INITIAL_STUDENT_ENROLLMENT = <?= json_encode($inscripcionExistente) ?>;
+        window.INITIAL_IS_PAID = <?= $inscripcionAbonada ? 'true' : 'false' ?>;
+    </script>
     <script src="src/js/assets.js"></script>
     <script src="src/js/core.js?v=<?= filemtime(__DIR__ . '/src/js/core.js') ?>"></script>
     <script src="src/js/alumnos.bundle.js?v=<?= filemtime(__DIR__ . '/src/js/alumnos.bundle.js') ?>"></script>

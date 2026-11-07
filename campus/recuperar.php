@@ -1,10 +1,10 @@
 <?php
 /* =====================================================================
    ARCHIVO: recuperar.php
-   PARA QUÉ SIRVE: le explica al alumno cómo recuperar su contraseña.
-   La contraseña NO se restablece desde acá: con el DNI y una clave
-   compartida cualquiera podía quedarse con la cuenta de otro alumno.
-   La restablece un directivo desde restablecer.php.
+   PARA QUÉ SIRVE: información para alumnos sobre cómo restablecer su
+   contraseña de forma segura. Por motivos de seguridad y privacidad,
+   las contraseñas las restablece el personal directivo de la institución
+   en campus/restablecer.php.
    ===================================================================== */
 require_once 'includes/sesion.php';
 
@@ -30,10 +30,24 @@ if (estaLogueado()) {
     <h1>Campus Virtual</h1>
     <p class="login__sub">Recuperar contraseña de Alumno</p>
 
-    <div class="exito">
-        <p><strong>¿Olvidó su contraseña?</strong></p>
-        <p>Pídale a un directivo de la escuela que la restablezca. Le van a pedir su <strong>DNI</strong>
-           y le van a dar una contraseña nueva para ingresar.</p>
+    <div class="formulario" style="display: block; text-align: left; line-height: 1.6; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.12); padding: 1.5rem; border-radius: 10px;">
+        <p style="margin-top: 0; font-size: 1.15rem; color: #ffffff;">
+            <strong>¿Olvidó su contraseña?</strong>
+        </p>
+        
+        <div style="background: rgba(162, 19, 47, 0.18); border-left: 4px solid var(--primary, #a2132f); padding: 1rem 1.15rem; border-radius: 6px; margin: 1.25rem 0;">
+            <p style="margin: 0 0 0.5rem 0; font-size: 1.05rem; font-weight: 700; color: #ffcdd2;">
+                Comuníquese con la institución para generar una nueva contraseña.
+            </p>
+            <p style="margin: 0; font-size: 0.95rem; color: #e5e7eb; line-height: 1.55;">
+                Por motivos de seguridad institucional y protección de datos personales, las contraseñas no se restablecen de forma automática por internet.<br><br>
+                Para obtener una nueva clave de acceso, acérquese a la <strong>Preceptoría, Secretaría o Dirección</strong> de la escuela presentando su <strong>DNI</strong>. El equipo directivo generará y le entregará su nueva contraseña de inmediato.
+            </p>
+        </div>
+
+        <p style="margin-bottom: 0; font-size: 0.88rem; color: #9ca3af;">
+            Si es docente y extravió su código de acceso, también puede solicitar el reenvío o blanqueo en la Dirección de la escuela.
+        </p>
     </div>
 
     <!-- ACCIONES: VOLVER AL LOGIN Y AL INICIO -->

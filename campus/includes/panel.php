@@ -30,6 +30,17 @@ function guardarCodigosParaMostrar(array $codigos): void {
  */
 function menuPanel(): array {
     $menu = [['inicio', 'Mi panel', 'bi-house', 'dashboard.php']];
+    if (tienePermiso('asistencia')) {
+        $menu[] = 'Asistencias';
+        if (tieneRol('profesor') || tieneRol('preceptor')) {
+            $menu[] = ['asistencia:tomar', 'Tomar asistencia', 'bi-clipboard-check', 'asistencia.php?ver=tomar'];
+        }
+        if (tieneRol('directivo') || tieneRol('preceptor')) {
+            $menu[] = ['asistencia:justificar', 'Justificar faltas', 'bi-patch-check', 'asistencia.php?ver=justificar'];
+        }
+        $soloAlumno = rolesSesion() === ['alumno'];
+        $menu[] = ['asistencia:reportes', $soloAlumno ? 'Mis asistencias' : 'Reportes', $soloAlumno ? 'bi-calendar-check' : 'bi-graph-up', 'asistencia.php?ver=reportes'];
+    }
     if (tienePermiso('cuentas')) {
         $menu[] = 'Cuentas';
         $menu[] = ['cuentas:personal', 'Personal', 'bi-person-badge', 'cuentas.php?ver=personal'];

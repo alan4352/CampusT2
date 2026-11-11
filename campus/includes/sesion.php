@@ -65,6 +65,7 @@ $PERMISOS = [
     'padron'     => ['preceptor'],                            // Alumnos y códigos de los cursos del preceptor
     'estructura' => ['directivo'],                            // Materias por curso, docentes e importación de ProgMesas
     'materias'   => ['profesor', 'preceptor'],                // Consulta: materias que dicta / materias de sus cursos
+    'asistencia' => ['directivo', 'profesor', 'preceptor', 'alumno'], // Asistencias: cada rol ve y hace lo suyo (asistencia.php)
 ];
 
 

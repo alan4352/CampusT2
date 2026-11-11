@@ -234,9 +234,17 @@ details > summary { cursor: pointer; font-weight: 600; }
 }
 
 @media print {
-    .no-imprimir, .sidebar, .mobile-header, .panel-header, .contenido > :not(.card-codigos) { display: none !important; }
+    .no-imprimir, .sidebar, .mobile-header, .panel-header, .contenido > :not(.card-codigos):not(.imprimible) { display: none !important; }
     body { background: #fff !important; }
     body::before { display: none; }
+    .col-md-9, .col-lg-10 { width: 100% !important; }
+    .contenido { padding: 0 !important; }
+    .imprimible .card { border: 1px solid #999; box-shadow: none; break-inside: auto; }
+    .imprimible .card-header { background: #eee !important; color: #000 !important; }
+    .imprimible .card-header h5, .imprimible .card-header small { color: #000 !important; }
+    .imprimible .table thead { background: #ddd !important; }
+    .imprimible .table thead th { color: #000; }
+    .imprimible .stats-card { margin-bottom: 0.5rem; }
     .card-codigos { border: 0; box-shadow: none; background: #fff; }
     .card-codigos .card-header { display: none; }
 }

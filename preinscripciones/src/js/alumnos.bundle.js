@@ -18,7 +18,8 @@
     // Acá vamos guardando las materias que el alumno agrega antes de generar el permiso
     const state = {
         addedSubjects: [],
-        editingSubjectId: null
+        editingSubjectId: null,
+        isPaid: false
     };
 
     // Calcula las fechas mínima y máxima de nacimiento tomando la fecha real del dispositivo
@@ -392,6 +393,11 @@
     function handleAddSubject() {
         clearFieldErrors();
 
+        if (state.isPaid) {
+            showAlert("Esta preinscripción ya cuenta con abono registrado y confirmado por la institución. No es posible agregar o modificar materias.", "warning");
+            return;
+        }
+
         const preinscripcionStatus = DB.isPreinscripcionActive();
         if (!preinscripcionStatus.active) {
             showAlert("Las preinscripciones a mesas de examen se encuentran cerradas en este momento.", "danger");
@@ -617,6 +623,7 @@
     }
 
     function startEditSubject(id) {
+        if (state.isPaid) return;
         const item = state.addedSubjects.find(s => s.id === id);
         if (!item) return;
 
@@ -695,6 +702,30 @@
             const isEditing = state.editingSubjectId === item.id;
             const itemEl = document.createElement('div');
             itemEl.className = 'added-subject-item' + (isEditing ? ' is-editing' : '');
+
+            let actionsHtml = '';
+            if (state.isPaid) {
+                actionsHtml = `
+                    <div class="added-subject-actions">
+                        <span class="badge-abonado-tag" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: 6px; background: rgba(76, 175, 80, 0.22); border: 1px solid #4caf50; color: #a5d6a7; font-size: 0.82rem; font-weight: 700;">
+                            <span class="material-symbols-outlined" style="font-size: 1rem;">verified</span>
+                            Abonado (Confirmado)
+                        </span>
+                    </div>
+                `;
+            } else {
+                actionsHtml = `
+                    <div class="added-subject-actions">
+                        <button type="button" class="btn-edit" data-id="${item.id}" title="Editar esta materia">
+                            <span class="material-symbols-outlined" style="font-size: 1rem;">edit</span> ${isEditing ? 'Editando...' : 'Editar'}
+                        </button>
+                        <button type="button" class="btn-remove" data-id="${item.id}" title="Quitar de la lista">
+                            <span class="material-symbols-outlined" style="font-size: 1rem;">delete</span> Quitar
+                        </button>
+                    </div>
+                `;
+            }
+
             itemEl.innerHTML = `
                 <div class="added-subject-info">
                     <div class="subject-name">${index + 1}. ${item.subjectName}</div>
@@ -704,29 +735,28 @@
                         <span class="tag-pill"><span class="material-symbols-outlined">event</span> Turno: ${item.examTurn}</span>
                     </div>
                 </div>
-                <div class="added-subject-actions">
-                    <button type="button" class="btn-edit" data-id="${item.id}" title="Editar esta materia">
-                        <span class="material-symbols-outlined" style="font-size: 1rem;">edit</span> ${isEditing ? 'Editando...' : 'Editar'}
-                    </button>
-                    <button type="button" class="btn-remove" data-id="${item.id}" title="Quitar de la lista">
-                        <span class="material-symbols-outlined" style="font-size: 1rem;">delete</span> Quitar
-                    </button>
-                </div>
+                ${actionsHtml}
             `;
 
-            itemEl.querySelector('.btn-edit').addEventListener('click', () => {
-                startEditSubject(item.id);
-            });
+            if (!state.isPaid) {
+                itemEl.querySelector('.btn-edit')?.addEventListener('click', () => {
+                    startEditSubject(item.id);
+                });
 
-            itemEl.querySelector('.btn-remove').addEventListener('click', () => {
-                removeSubject(item.id);
-            });
+                itemEl.querySelector('.btn-remove')?.addEventListener('click', () => {
+                    removeSubject(item.id);
+                });
+            }
 
             list.appendChild(itemEl);
         });
     }
 
     function removeSubject(id) {
+        if (state.isPaid) {
+            showAlert("Esta preinscripción ya cuenta con abono registrado y confirmado por la institución. No es posible eliminar materias.", "warning");
+            return;
+        }
         if (state.editingSubjectId === id) {
             cancelEditSubject();
         }
@@ -738,6 +768,9 @@
 
     // Guarda o actualiza inmediatamente la solicitud del alumno en la base de datos y localStorage
     function syncActiveStudentEnrollment() {
+        if (state.isPaid) {
+            return;
+        }
         const studentDbId = document.getElementById('studentDbId')?.value || '';
         const studentName = document.getElementById('studentName')?.value.trim() || '';
         const studentDni = document.getElementById('studentDni')?.value.trim() || '';
@@ -1316,11 +1349,112 @@
         }
     }
 
-    window.onServerConfigSynced = updateStudentPreinscripcionStatus;
+    function restoreStudentEnrollmentFromInitialOrStorage() {
+        const dni = document.getElementById('studentDni')?.value.trim();
+        let studentRecord = window.INITIAL_STUDENT_ENROLLMENT;
+
+        if (!studentRecord && dni) {
+            const all = DB.getAll();
+            studentRecord = all.find(r => r.studentDni === dni || r.student_dni === dni);
+        }
+
+        if (studentRecord) {
+            state.currentEnrollmentId = studentRecord.id;
+            if (studentRecord.subjects && Array.isArray(studentRecord.subjects) && studentRecord.subjects.length > 0) {
+                state.addedSubjects = studentRecord.subjects.map(s => ({
+                    id: s.id || ('SUB-' + Math.random().toString(36).substr(2, 9)),
+                    subjectName: s.subjectName || s.subject_name || '',
+                    owedYear: s.owedYear || s.subject_year || '',
+                    calendarYear: s.calendarYear || s.subjectFamily || s.subject_family || '',
+                    examTurn: s.examTurn || s.exam_turn || getCurrentExamTurn(),
+                    paid: !!s.paid,
+                    grade: s.grade
+                }));
+            }
+
+            // Restore course and specialty inputs
+            const courseVal = studentRecord.currentCourse || studentRecord.student_course;
+            if (courseVal) {
+                const courseSelect = document.getElementById('currentCourse');
+                if (courseSelect && !courseSelect.value) {
+                    courseSelect.value = courseVal === 'Egresado' ? 'Egreso' : courseVal;
+                    if (courseSelect._refreshCustomOptions) courseSelect._refreshCustomOptions();
+                }
+            }
+            const specVal = studentRecord.currentSpecialty;
+            if (specVal) {
+                const specSelect = document.getElementById('currentSpecialty');
+                if (specSelect && !specSelect.value) {
+                    specSelect.value = specVal;
+                    if (specSelect._refreshCustomOptions) specSelect._refreshCustomOptions();
+                }
+            }
+        }
+
+        checkAndApplyPaymentLock();
+        renderAddedSubjectsList();
+        updateOwedSubjectsList();
+    }
+
+    function checkAndApplyPaymentLock() {
+        const dni = document.getElementById('studentDni')?.value.trim();
+        const all = DB.getAll();
+        const studentRec = all.find(r => r.studentDni === dni || r.student_dni === dni);
+
+        let isPaid = window.INITIAL_IS_PAID === true;
+        if (!isPaid && studentRec) {
+            if (studentRec.paid === true) isPaid = true;
+            if (studentRec.subjects && studentRec.subjects.some(s => s.paid)) isPaid = true;
+        }
+
+        state.isPaid = !!isPaid;
+        applyPaymentLockUI(state.isPaid);
+    }
+
+    function applyPaymentLockUI(isLocked) {
+        const alertEl = document.getElementById('alertInscripcionAbonada');
+        if (alertEl) {
+            alertEl.style.display = isLocked ? 'flex' : 'none';
+        }
+
+        const btnAdd = document.getElementById('btnAddSubject');
+        const btnAddText = document.getElementById('btnAddSubjectText');
+        const btnAddIcon = document.getElementById('btnAddSubjectIcon');
+        const btnCancel = document.getElementById('btnCancelEditSubject');
+
+        if (btnAdd) {
+            if (isLocked) {
+                btnAdd.disabled = true;
+                btnAdd.style.opacity = '0.65';
+                btnAdd.style.cursor = 'not-allowed';
+                btnAdd.title = 'Inscripción abonada: las opciones de edición y agregar materias se encuentran desactivadas.';
+                if (btnAddText) btnAddText.textContent = 'Inscripción Abonada (No Modificable)';
+                if (btnAddIcon) btnAddIcon.textContent = 'lock';
+            } else {
+                btnAdd.disabled = false;
+                btnAdd.style.opacity = '1';
+                btnAdd.style.cursor = 'pointer';
+                btnAdd.title = '';
+                if (btnAddText) btnAddText.textContent = 'Agregar Materia a Solicitud';
+                if (btnAddIcon) btnAddIcon.textContent = 'add_circle';
+            }
+        }
+        if (isLocked && btnCancel) {
+            btnCancel.style.display = 'none';
+        }
+    }
+
+    window.onServerConfigSynced = () => {
+        updateStudentPreinscripcionStatus();
+        checkAndApplyPaymentLock();
+        renderAddedSubjectsList();
+    };
 
     window.addEventListener("storage", (e) => {
         if (e.key === CONFIG_KEY || e.key === DB_KEY || e.key === MESAS_KEY) {
             updateStudentPreinscripcionStatus();
+            checkAndApplyPaymentLock();
+            renderAddedSubjectsList();
         }
     });
 
@@ -1331,6 +1465,7 @@
         initPdfEvents();
         updateCalendarYearOptions();
         updateStudentPreinscripcionStatus();
+        restoreStudentEnrollmentFromInitialOrStorage();
         initAllCustomSelects();
         DB.syncWithServer();
     }

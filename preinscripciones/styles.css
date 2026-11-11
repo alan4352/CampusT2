@@ -3493,3 +3493,95 @@ select.custom-select-native:disabled,
         width: 100%;
     }
 }
+
+/* Modos de exportación e impresión de Actas Volantes */
+.export-mode-selection {
+    margin-bottom: 1.25rem;
+}
+.mode-pills-group {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-top: 0.4rem;
+}
+.btn-mode-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 8px 16px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: var(--color-secondary);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.btn-mode-pill:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: var(--color-gold);
+}
+.btn-mode-pill.active {
+    background: var(--color-gold);
+    color: #4a0000;
+    border-color: #ffd54f;
+    font-weight: 800;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.mesa-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.65rem 0.9rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    text-align: left;
+}
+.mesa-checkbox-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(212, 175, 55, 0.4);
+}
+.mesa-checkbox-item.is-checked {
+    background: rgba(212, 175, 55, 0.12);
+    border-color: var(--color-gold);
+}
+.mesa-checkbox-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--color-gold);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.mesa-checkbox-info {
+    flex: 1;
+    min-width: 0;
+}
+.mesa-checkbox-title {
+    font-weight: 700;
+    color: #fff;
+    font-size: 0.92rem;
+    margin-bottom: 2px;
+}
+.mesa-checkbox-sub {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+}
+.badge-abonado-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    background: rgba(76, 175, 80, 0.22);
+    border: 1px solid #4caf50;
+    color: #a5d6a7;
+    font-size: 0.82rem;
+    font-weight: 700;
+}

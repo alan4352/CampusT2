@@ -802,153 +802,127 @@
             });
         }
 
-        const selectMesaListado = document.getElementById('selectMesaListado');
-        const btnPrintRoster = document.getElementById('btnPrintRoster');
-        const btnDownloadRosterPdf = document.getElementById('btnDownloadRosterPdf');
+        // Modos de exportación e impresión de Actas Volantes
+        const btnModeSingle = document.getElementById('btnModeSingle');
+        const btnModeSelected = document.getElementById('btnModeSelected');
+        const btnModeAll = document.getElementById('btnModeAll');
 
+        if (btnModeSingle) btnModeSingle.addEventListener('click', () => setExportMode('single'));
+        if (btnModeSelected) btnModeSelected.addEventListener('click', () => setExportMode('selected'));
+        if (btnModeAll) btnModeAll.addEventListener('click', () => setExportMode('all'));
+
+        const btnSelectAllMesas = document.getElementById('btnSelectAllMesas');
+        const btnDeselectAllMesas = document.getElementById('btnDeselectAllMesas');
+
+        if (btnSelectAllMesas) {
+            btnSelectAllMesas.addEventListener('click', () => {
+                document.querySelectorAll('.mesa-checkbox-input').forEach(cb => {
+                    cb.checked = true;
+                    cb.closest('.mesa-checkbox-item')?.classList.add('is-checked');
+                });
+                updateSelectedMesasCount();
+            });
+        }
+
+        if (btnDeselectAllMesas) {
+            btnDeselectAllMesas.addEventListener('click', () => {
+                document.querySelectorAll('.mesa-checkbox-input').forEach(cb => {
+                    cb.checked = false;
+                    cb.closest('.mesa-checkbox-item')?.classList.remove('is-checked');
+                });
+                updateSelectedMesasCount();
+            });
+        }
+
+        const selectMesaListado = document.getElementById('selectMesaListado');
         if (selectMesaListado) {
-            selectMesaListado.addEventListener('change', renderListadosTab);
+            selectMesaListado.addEventListener('change', () => {
+                const mesas = DB.getMesas();
+                const selected = mesas.find(m => m.id === selectMesaListado.value) || mesas[0];
+                populateRosterContainerForMesa(selected);
+            });
+        }
+
+        // 1. Acciones para Modo Individual
+        const btnDownloadRosterPdf = document.getElementById('btnDownloadRosterPdf');
+        const btnPrintRoster = document.getElementById('btnPrintRoster');
+
+        if (btnDownloadRosterPdf) {
+            btnDownloadRosterPdf.addEventListener('click', () => {
+                const selectMesa = document.getElementById('selectMesaListado');
+                const mesas = DB.getMesas();
+                const selected = mesas.find(m => m.id === selectMesa?.value) || mesas[0];
+                if (!selected) {
+                    alert("Por favor selecciona una mesa de examen.");
+                    return;
+                }
+                generateRosterPdf([selected], btnDownloadRosterPdf);
+            });
         }
 
         if (btnPrintRoster) {
             btnPrintRoster.addEventListener('click', () => {
-                renderListadosTab();
-                const escudoSrc = window.ESCUDO_BASE64 || document.getElementById('rosterEscudoImg')?.src || 'imagenes/escudo.png';
-                const logoSrc = window.LOGO_BASE64 || document.getElementById('rosterLogoImg')?.src || 'imagenes/logo.png';
-
-                const page1El = document.querySelector('.roster-page-1');
-                const page2ContentEl = document.querySelector('.roster-page-2-content');
-
-                if (!page1El || !page2ContentEl) {
-                    window.print();
+                const selectMesa = document.getElementById('selectMesaListado');
+                const mesas = DB.getMesas();
+                const selected = mesas.find(m => m.id === selectMesa?.value) || mesas[0];
+                if (!selected) {
+                    alert("Por favor selecciona una mesa de examen.");
                     return;
                 }
-
-                // Clones para asegurar que las imágenes y contenido estén limpios
-                const p1Clone = page1El.cloneNode(true);
-                const p2Clone = page2ContentEl.cloneNode(true);
-
-                const escImg = p1Clone.querySelector('#rosterEscudoImg');
-                const logImg = p1Clone.querySelector('#rosterLogoImg');
-                if (escImg) escImg.src = escudoSrc;
-                if (logImg) logImg.src = logoSrc;
-
-                // Remover iframe previo si existiera
-                const existingFrame = document.getElementById('rosterPrintFrame');
-                if (existingFrame) existingFrame.remove();
-
-                const iframe = document.createElement('iframe');
-                iframe.id = 'rosterPrintFrame';
-                iframe.style.position = 'fixed';
-                iframe.style.right = '0';
-                iframe.style.bottom = '0';
-                iframe.style.width = '0';
-                iframe.style.height = '0';
-                iframe.style.border = '0';
-                iframe.style.visibility = 'hidden';
-                document.body.appendChild(iframe);
-
-                const frameDoc = iframe.contentWindow.document;
-                frameDoc.open();
-                frameDoc.write(`
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset="utf-8">
-                        <title>Acta Volante de Examen</title>
-                        <style>
-                            @page {
-                                size: A4 portrait;
-                                margin: 0;
-                            }
-                            * {
-                                box-sizing: border-box !important;
-                                -webkit-print-color-adjust: exact !important;
-                                print-color-adjust: exact !important;
-                            }
-                            html, body {
-                                margin: 0 !important;
-                                padding: 0 !important;
-                                background: #ffffff !important;
-                                color: #000000 !important;
-                                font-family: Arial, Helvetica, sans-serif !important;
-                            }
-                            .print-sheet-1 {
-                                width: 210mm !important;
-                                height: 297mm !important;
-                                max-width: 210mm !important;
-                                max-height: 297mm !important;
-                                box-sizing: border-box !important;
-                                padding: 9mm 11mm !important;
-                                display: flex !important;
-                                flex-direction: column !important;
-                                justify-content: flex-start !important;
-                                page-break-after: always !important;
-                                break-after: page !important;
-                                overflow: hidden !important;
-                                background: #ffffff !important;
-                            }
-                            .print-sheet-2 {
-                                width: 210mm !important;
-                                height: 297mm !important;
-                                max-width: 210mm !important;
-                                max-height: 297mm !important;
-                                box-sizing: border-box !important;
-                                position: relative !important;
-                                page-break-before: always !important;
-                                break-before: page !important;
-                                overflow: hidden !important;
-                                background: #ffffff !important;
-                            }
-                            .print-sheet-2-inner {
-                                width: 277mm !important;
-                                height: 186mm !important;
-                                position: absolute !important;
-                                top: 10mm !important;
-                                left: 12mm !important;
-                                transform-origin: 0 0 !important;
-                                transform: rotate(90deg) translateY(-100%) !important;
-                                display: flex !important;
-                                flex-direction: column !important;
-                                justify-content: flex-start !important;
-                                background: #ffffff !important;
-                            }
-                            table {
-                                width: 100% !important;
-                                border-collapse: collapse !important;
-                                background: #ffffff !important;
-                            }
-                            th, td {
-                                border: 1px solid #000000 !important;
-                                color: #000000 !important;
-                                box-sizing: border-box !important;
-                            }
-                            .roster-desaprobacion-table {
-                                flex: 1 !important;
-                                height: 100% !important;
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="print-sheet-1">${p1Clone.innerHTML}</div>
-                        <div class="print-sheet-2"><div class="print-sheet-2-inner">${p2Clone.innerHTML}</div></div>
-                    </body>
-                    </html>
-                `);
-                frameDoc.close();
-
-                setTimeout(() => {
-                    iframe.contentWindow.focus();
-                    iframe.contentWindow.print();
-                    setTimeout(() => {
-                        iframe.remove();
-                    }, 5000);
-                }, 250);
+                printRosters([selected]);
             });
         }
 
-        if (btnDownloadRosterPdf) {
-            btnDownloadRosterPdf.addEventListener('click', handleDownloadRosterPdf);
+        // 2. Acciones para Modo Selección Múltiple
+        const btnDownloadSelectedRostersPdf = document.getElementById('btnDownloadSelectedRostersPdf');
+        const btnPrintSelectedRosters = document.getElementById('btnPrintSelectedRosters');
+
+        if (btnDownloadSelectedRostersPdf) {
+            btnDownloadSelectedRostersPdf.addEventListener('click', () => {
+                const selectedMesas = getSelectedMesasFromCheckboxes();
+                if (selectedMesas.length === 0) {
+                    alert("Por favor marca al menos una mesa de examen para descargar el acta volante.");
+                    return;
+                }
+                generateRosterPdf(selectedMesas, btnDownloadSelectedRostersPdf);
+            });
+        }
+
+        if (btnPrintSelectedRosters) {
+            btnPrintSelectedRosters.addEventListener('click', () => {
+                const selectedMesas = getSelectedMesasFromCheckboxes();
+                if (selectedMesas.length === 0) {
+                    alert("Por favor marca al menos una mesa de examen para imprimir.");
+                    return;
+                }
+                printRosters(selectedMesas);
+            });
+        }
+
+        // 3. Acciones para Modo Todas las Mesas a la Vez
+        const btnDownloadAllRostersPdf = document.getElementById('btnDownloadAllRostersPdf');
+        const btnPrintAllRosters = document.getElementById('btnPrintAllRosters');
+
+        if (btnDownloadAllRostersPdf) {
+            btnDownloadAllRostersPdf.addEventListener('click', () => {
+                const allMesas = DB.getMesas();
+                if (allMesas.length === 0) {
+                    alert("No hay mesas de examen programadas en el sistema.");
+                    return;
+                }
+                generateRosterPdf(allMesas, btnDownloadAllRostersPdf);
+            });
+        }
+
+        if (btnPrintAllRosters) {
+            btnPrintAllRosters.addEventListener('click', () => {
+                const allMesas = DB.getMesas();
+                if (allMesas.length === 0) {
+                    alert("No hay mesas de examen programadas en el sistema.");
+                    return;
+                }
+                printRosters(allMesas);
+            });
         }
 
         const searchStatSubjectInput = document.getElementById('searchStatSubjectInput');
@@ -2577,24 +2551,10 @@
         const countBadge = document.getElementById('abonosFilterCount');
         if (countBadge) countBadge.textContent = `${records.length} alumno(s)`;
 
-        // Control de estado del período de preinscripción para habilitar o bloquear el registro de abonos
-        const preinscStatus = typeof DB.isPreinscripcionActive === 'function' ? DB.isPreinscripcionActive() : { active: false };
-        const isPreinscripcionActive = !!preinscStatus.active;
+        // El registro y modificación de abonos está habilitado en todo momento
         const noticeEl = document.getElementById('abonosPeriodNotice');
         if (noticeEl) {
-            if (isPreinscripcionActive) {
-                const endDateFormatted = preinscStatus.endDate ? preinscStatus.endDate.split('-').reverse().join('/') : '';
-                noticeEl.style.display = 'flex';
-                noticeEl.innerHTML = `
-                    <span class="material-symbols-outlined" style="font-size: 1.8rem; color: #ffeb3b; flex-shrink: 0;">lock_clock</span>
-                    <div>
-                        <strong>Período de Preinscripción en Curso ${endDateFormatted ? '(Abierto hasta el ' + endDateFormatted + ')' : ''}</strong><br>
-                        El registro y modificación de abonos se habilitará una vez que finalice el período de preinscripción de los alumnos. Esto asegura que ninguna solicitud registrada como abonada pueda ser editada posteriormente por el estudiante.
-                    </div>
-                `;
-            } else {
-                noticeEl.style.display = 'none';
-            }
+            noticeEl.style.display = 'none';
         }
 
         const tbody = document.getElementById('abonosTableBody');
@@ -2608,82 +2568,139 @@
 
         records.forEach(r => {
             const tr = document.createElement('tr');
-            if (isPreinscripcionActive) {
-                tr.innerHTML = `
-                    <td><strong>${esc(r.studentName)}</strong><br><small class="text-dni-sub">DNI: ${esc(r.studentDni)}</small></td>
-                    <td><strong>${esc(r.owedYear)}</strong></td>
-                    <td>${esc(r.subjectName)}</td>
-                    <td>${esc(r.examTurn)}</td>
-                    <td>
-                        <span class="status-badge ${r.paid ? 'paid' : 'unpaid'}">
-                            <span class="material-symbols-outlined">${r.paid ? 'check_circle' : 'pending'}</span>
-                            ${r.paid ? 'ABONADO' : 'PENDIENTE'}
-                        </span>
-                    </td>
-                    <td>
-                        <button type="button" class="btn-toggle-pay is-locked" disabled title="El registro de abonos se habilitará al finalizar el período de preinscripción">
-                            <span class="material-symbols-outlined" style="font-size: 0.95rem; vertical-align: middle;">lock</span>
-                            Bloqueado
-                        </button>
-                    </td>
-                `;
-            } else {
-                tr.innerHTML = `
-                    <td><strong>${esc(r.studentName)}</strong><br><small class="text-dni-sub">DNI: ${esc(r.studentDni)}</small></td>
-                    <td><strong>${esc(r.owedYear)}</strong></td>
-                    <td>${esc(r.subjectName)}</td>
-                    <td>${esc(r.examTurn)}</td>
-                    <td>
-                        <span class="status-badge ${r.paid ? 'paid' : 'unpaid'}">
-                            <span class="material-symbols-outlined">${r.paid ? 'check_circle' : 'pending'}</span>
-                            ${r.paid ? 'ABONADO' : 'PENDIENTE'}
-                        </span>
-                    </td>
-                    <td>
-                        <button type="button" class="btn-toggle-pay ${r.paid ? 'cancel' : 'pay'}" data-enrollment="${esc(r.enrollmentId)}" data-subject="${esc(r.subjectId)}">
-                            ${r.paid ? 'Marcar Pendiente' : 'Registrar Pago'}
-                        </button>
-                    </td>
-                `;
+            tr.innerHTML = `
+                <td><strong>${esc(r.studentName)}</strong><br><small class="text-dni-sub">DNI: ${esc(r.studentDni)}</small></td>
+                <td><strong>${esc(r.owedYear)}</strong></td>
+                <td>${esc(r.subjectName)}</td>
+                <td>${esc(r.examTurn)}</td>
+                <td>
+                    <span class="status-badge ${r.paid ? 'paid' : 'unpaid'}">
+                        <span class="material-symbols-outlined">${r.paid ? 'check_circle' : 'pending'}</span>
+                        ${r.paid ? 'ABONADO' : 'PENDIENTE'}
+                    </span>
+                </td>
+                <td>
+                    <button type="button" class="btn-toggle-pay ${r.paid ? 'cancel' : 'pay'}" data-enrollment="${esc(r.enrollmentId)}" data-subject="${esc(r.subjectId)}" title="${r.paid ? 'Clic para marcar como pendiente' : 'Clic para registrar abono del alumno'}">
+                        ${r.paid ? 'Marcar Pendiente' : 'Registrar Pago'}
+                    </button>
+                </td>
+            `;
 
-                tr.querySelector('.btn-toggle-pay').addEventListener('click', () => {
-                    DB.updatePaymentStatus(r.enrollmentId, r.subjectId, !r.paid);
-                    populateAbonoFilters();
-                    renderAbonosTab();
-                    renderStatsTab();
-                });
-            }
+            tr.querySelector('.btn-toggle-pay').addEventListener('click', () => {
+                DB.updatePaymentStatus(r.enrollmentId, r.subjectId, !r.paid);
+                populateAbonoFilters();
+                renderAbonosTab();
+                renderStatsTab();
+            });
 
             tbody.appendChild(tr);
         });
     }
 
-    function renderListadosTab() {
-        const selectMesa = document.getElementById('selectMesaListado');
-        const mesas = DB.getMesas();
+    let currentExportMode = 'single';
 
-        if (selectMesa) {
-            const currentVal = selectMesa.value;
-            selectMesa.innerHTML = '<option value="" disabled>-- Seleccionar Mesa de Examen --</option>';
-            mesas.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m.id;
-                opt.textContent = `${m.subjectName} - ${m.course} (${m.examTurn})`;
-                selectMesa.appendChild(opt);
-            });
-            if (currentVal && mesas.some(m => m.id === currentVal)) {
-                selectMesa.value = currentVal;
-            } else if (mesas.length > 0) {
-                selectMesa.value = mesas[mesas.length - 1].id;
+    function setExportMode(mode) {
+        currentExportMode = mode;
+        const pills = [
+            { id: 'btnModeSingle', mode: 'single', panel: 'panelModeSingle' },
+            { id: 'btnModeSelected', mode: 'selected', panel: 'panelModeSelected' },
+            { id: 'btnModeAll', mode: 'all', panel: 'panelModeAll' }
+        ];
+
+        pills.forEach(p => {
+            const btn = document.getElementById(p.id);
+            const panel = document.getElementById(p.panel);
+            if (btn) {
+                if (p.mode === mode) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
             }
-            if (selectMesa._refreshCustomOptions) {
-                selectMesa._refreshCustomOptions();
+            if (panel) {
+                panel.style.display = p.mode === mode ? 'block' : 'none';
             }
+        });
+
+        if (mode === 'selected') {
+            populateMesasCheckboxList();
+        } else if (mode === 'all') {
+            updateAllMesasSummary();
+        }
+    }
+
+    function populateMesasCheckboxList() {
+        const container = document.getElementById('mesasCheckboxList');
+        if (!container) return;
+        const mesas = DB.getMesas();
+        container.innerHTML = '';
+
+        if (mesas.length === 0) {
+            container.innerHTML = '<div style="color: rgba(255,255,255,0.6); padding: 1rem; text-align: center;">No hay mesas de examen programadas en el sistema.</div>';
+            updateSelectedMesasCount();
+            return;
         }
 
-        const selectedMesaId = selectMesa?.value;
-        const selectedMesa = mesas.find(m => m.id === selectedMesaId) || mesas[0];
+        mesas.forEach(m => {
+            const item = document.createElement('label');
+            item.className = 'mesa-checkbox-item';
+            item.innerHTML = `
+                <input type="checkbox" class="mesa-checkbox-input" value="${esc(m.id)}">
+                <div class="mesa-checkbox-info">
+                    <div class="mesa-checkbox-title">${esc(m.subjectName)} - ${esc(m.course)}</div>
+                    <div class="mesa-checkbox-sub">
+                        <span><strong style="color: var(--color-gold);">Turno:</strong> ${esc(m.examTurn)}</span>
+                        <span><strong style="color: var(--color-gold);">Fecha:</strong> ${m.examDate ? m.examDate.split('-').reverse().join('/') : '--/--/----'} ${esc(m.examTime || '')}</span>
+                        <span><strong style="color: var(--color-gold);">Aula:</strong> ${esc(m.classroom || 'Por determinar')}</span>
+                    </div>
+                </div>
+            `;
 
+            const cb = item.querySelector('.mesa-checkbox-input');
+            cb.addEventListener('change', () => {
+                if (cb.checked) {
+                    item.classList.add('is-checked');
+                } else {
+                    item.classList.remove('is-checked');
+                }
+                updateSelectedMesasCount();
+            });
+
+            container.appendChild(item);
+        });
+
+        updateSelectedMesasCount();
+    }
+
+    function updateSelectedMesasCount() {
+        const checked = document.querySelectorAll('.mesa-checkbox-input:checked');
+        const badge = document.getElementById('selectedMesasCountBadge');
+        if (badge) {
+            const count = checked.length;
+            badge.textContent = `${count} mesa(s) marcada(s) (${count * 2} páginas)`;
+        }
+    }
+
+    function updateAllMesasSummary() {
+        const mesas = DB.getMesas();
+        const count = mesas.length;
+        const titleEl = document.getElementById('allMesasSummaryTitle');
+        const textEl = document.getElementById('allMesasSummaryText');
+        if (titleEl) {
+            titleEl.textContent = `Descarga Masiva de Todas las Actas Volantes (${count} mesas programadas)`;
+        }
+        if (textEl) {
+            textEl.textContent = `Se generará un único documento PDF con las ${count} mesas programadas del llamado (total de ${count * 2} hojas A4 correlativas, manteniendo la estructura oficial reglamentaria: Frente y Reverso).`;
+        }
+    }
+
+    function getSelectedMesasFromCheckboxes() {
+        const checked = Array.from(document.querySelectorAll('.mesa-checkbox-input:checked')).map(cb => cb.value);
+        const mesas = DB.getMesas();
+        return mesas.filter(m => checked.includes(m.id));
+    }
+
+    function populateRosterContainerForMesa(selectedMesa) {
         const container = document.getElementById('rosterPrintContainer');
         if (!selectedMesa) {
             if (container) container.style.display = 'none';
@@ -2703,13 +2720,13 @@
         if (selectedMesa.examDate) {
             const parts = selectedMesa.examDate.split('-');
             if (parts.length === 3) {
-                anio = parts[0].slice(-2); // Solo '26', sin el 20 adelante
+                anio = parts[0].slice(-2);
                 mes = parts[1];
                 dia = parts[2];
             }
         }
         if (selectedMesa.examTime) {
-            hora = selectedMesa.examTime; // Solo los números (ej. 08:00 sin el hs)
+            hora = selectedMesa.examTime;
         }
 
         const elDia = document.getElementById('rosterFechaDia');
@@ -2828,32 +2845,47 @@
         }
     }
 
-    async function handleDownloadRosterPdf() {
-        // Actualizamos primero la vista previa del acta con los datos de la mesa seleccionada
-        renderListadosTab();
-
+    function renderListadosTab() {
         const selectMesa = document.getElementById('selectMesaListado');
         const mesas = DB.getMesas();
-        const selectedMesa = mesas.find(m => m.id === selectMesa?.value) || mesas[mesas.length - 1];
 
-        if (!selectedMesa) {
-            alert("Por favor selecciona una mesa de examen para descargar el acta.");
+        if (selectMesa) {
+            const currentVal = selectMesa.value;
+            selectMesa.innerHTML = '<option value="" disabled>-- Seleccionar Mesa de Examen --</option>';
+            mesas.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.textContent = `${m.subjectName} - ${m.course} (${m.examTurn})`;
+                selectMesa.appendChild(opt);
+            });
+            if (currentVal && mesas.some(m => m.id === currentVal)) {
+                selectMesa.value = currentVal;
+            } else if (mesas.length > 0) {
+                selectMesa.value = mesas[mesas.length - 1].id;
+            }
+            if (selectMesa._refreshCustomOptions) {
+                selectMesa._refreshCustomOptions();
+            }
+        }
+
+        populateMesasCheckboxList();
+        updateAllMesasSummary();
+
+        const selectedMesaId = selectMesa?.value;
+        const selectedMesa = mesas.find(m => m.id === selectedMesaId) || mesas[0];
+        populateRosterContainerForMesa(selectedMesa);
+    }
+
+    async function generateRosterPdf(mesasToExport, btn) {
+        if (!mesasToExport || mesasToExport.length === 0) {
+            alert("Por favor selecciona al menos una mesa de examen para descargar el acta.");
             return;
         }
 
-        const page1El = document.querySelector('.roster-page-1');
-        const page2ContainerEl = document.querySelector('.roster-page-2-container');
-        const page2ContentEl = document.querySelector('.roster-page-2-content');
-
-        if (!page1El || !page2ContentEl) return;
-
-        const filename = `Acta_Volante_${selectedMesa.subjectName.replace(/\s+/g, '_')}_${selectedMesa.course.replace(/\s+/g, '_')}.pdf`;
-
-        const btn = document.getElementById('btnDownloadRosterPdf');
         const origText = btn ? btn.innerHTML : '';
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '<span class="material-symbols-outlined">hourglass_top</span> Generando PDF A4...';
+            btn.innerHTML = '<span class="material-symbols-outlined">hourglass_top</span> Preparando PDF...';
         }
 
         const escudoImg = document.getElementById('rosterEscudoImg');
@@ -2863,7 +2895,13 @@
 
         try {
             if (window.jspdf && window.html2canvas) {
-                // Contenedor temporal ubicado en (0, 0) para que html2canvas no recorte los datos al hacer scroll
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF({
+                    unit: 'mm',
+                    format: 'a4',
+                    orientation: 'portrait'
+                });
+
                 const staging = document.createElement('div');
                 staging.id = 'pdfStagingArea';
                 staging.style.position = 'fixed';
@@ -2877,169 +2915,320 @@
                 staging.style.padding = '0';
                 document.body.appendChild(staging);
 
-                // --- PÁGINA 1: A4 VERTICAL EXACTO (794px x 1123px) ---
-                const p1 = document.createElement('div');
-                p1.style.width = '794px';
-                p1.style.minWidth = '794px';
-                p1.style.maxWidth = '794px';
-                p1.style.height = '1123px';
-                p1.style.minHeight = '1123px';
-                p1.style.maxHeight = '1123px';
-                p1.style.padding = '32px 42px';
-                p1.style.boxSizing = 'border-box';
-                p1.style.display = 'flex';
-                p1.style.flexDirection = 'column';
-                p1.style.justifyContent = 'flex-start';
-                p1.style.background = '#ffffff';
-                p1.style.color = '#000000';
-                p1.style.fontFamily = 'Arial, Helvetica, sans-serif';
-                p1.innerHTML = page1El.innerHTML;
-                staging.appendChild(p1);
+                const totalMesas = mesasToExport.length;
 
-                const esc1 = p1.querySelector('#rosterEscudoImg');
-                const log1 = p1.querySelector('#rosterLogoImg');
-                if (esc1 && window.ESCUDO_BASE64) esc1.src = window.ESCUDO_BASE64;
-                if (log1 && window.LOGO_BASE64) log1.src = window.LOGO_BASE64;
-
-                const table1 = p1.querySelector('.roster-main-table');
-                if (table1) {
-                    table1.style.width = '100%';
-                    table1.style.borderCollapse = 'collapse';
-                }
-
-                // 1. Capturar Página 1 (A4 Vertical) sin desfase por scroll
-                const canvas1 = await window.html2canvas(p1, {
-                    scale: 2,
-                    useCORS: true,
-                    allowTaint: true,
-                    logging: false,
-                    backgroundColor: '#ffffff',
-                    width: 794,
-                    height: 1123,
-                    x: 0,
-                    y: 0,
-                    scrollX: 0,
-                    scrollY: 0,
-                    windowWidth: 1400,
-                    windowHeight: 1400
-                });
-
-                p1.remove();
-
-                // --- PÁGINA 2: Captura en 1123px x 794px y rotación de 90° en sentido horario hacia A4 Vertical (794px x 1123px) ---
-                const p2 = document.createElement('div');
-                p2.style.width = '1123px';
-                p2.style.minWidth = '1123px';
-                p2.style.maxWidth = '1123px';
-                p2.style.height = '794px';
-                p2.style.minHeight = '794px';
-                p2.style.maxHeight = '794px';
-                p2.style.padding = '38px 42px';
-                p2.style.boxSizing = 'border-box';
-                p2.style.display = 'flex';
-                p2.style.flexDirection = 'column';
-                p2.style.justifyContent = 'flex-start';
-                p2.style.background = '#ffffff';
-                p2.style.color = '#000000';
-                p2.style.fontFamily = 'Arial, Helvetica, sans-serif';
-                p2.innerHTML = page2ContentEl.innerHTML;
-                staging.appendChild(p2);
-
-                const table2 = p2.querySelector('.roster-desaprobacion-table');
-                if (table2) {
-                    table2.style.width = '100%';
-                    table2.style.borderCollapse = 'collapse';
-                    table2.style.flex = '1';
-                    const ths = table2.querySelectorAll('thead th');
-                    if (ths.length >= 4) {
-                        ths[0].style.width = '23%';
-                        ths[1].style.width = '49%';
-                        ths[2].style.width = '14%';
-                        ths[3].style.width = '14%';
+                for (let mIdx = 0; mIdx < totalMesas; mIdx++) {
+                    const mesa = mesasToExport[mIdx];
+                    if (btn) {
+                        btn.innerHTML = `<span class="material-symbols-outlined">hourglass_top</span> Procesando mesa ${mIdx + 1} de ${totalMesas}...`;
                     }
-                }
 
-                // 2. Capturar Página 2 en (0, 0) y rotarla 90° en sentido horario
-                const canvas2Raw = await window.html2canvas(p2, {
-                    scale: 2,
-                    useCORS: true,
-                    allowTaint: true,
-                    logging: false,
-                    backgroundColor: '#ffffff',
-                    width: 1123,
-                    height: 794,
-                    x: 0,
-                    y: 0,
-                    scrollX: 0,
-                    scrollY: 0,
-                    windowWidth: 1400,
-                    windowHeight: 1400
-                });
+                    // Renderizar los datos de esta mesa en el contenedor
+                    populateRosterContainerForMesa(mesa);
+
+                    const page1El = document.querySelector('.roster-page-1');
+                    const page2ContentEl = document.querySelector('.roster-page-2-content');
+                    if (!page1El || !page2ContentEl) continue;
+
+                    // --- PÁGINA 1: A4 VERTICAL EXACTO (794px x 1123px) ---
+                    const p1 = document.createElement('div');
+                    p1.style.width = '794px';
+                    p1.style.minWidth = '794px';
+                    p1.style.maxWidth = '794px';
+                    p1.style.height = '1123px';
+                    p1.style.minHeight = '1123px';
+                    p1.style.maxHeight = '1123px';
+                    p1.style.padding = '32px 42px';
+                    p1.style.boxSizing = 'border-box';
+                    p1.style.display = 'flex';
+                    p1.style.flexDirection = 'column';
+                    p1.style.justifyContent = 'flex-start';
+                    p1.style.background = '#ffffff';
+                    p1.style.color = '#000000';
+                    p1.style.fontFamily = 'Arial, Helvetica, sans-serif';
+                    p1.innerHTML = page1El.innerHTML;
+                    staging.appendChild(p1);
+
+                    const esc1 = p1.querySelector('#rosterEscudoImg');
+                    const log1 = p1.querySelector('#rosterLogoImg');
+                    if (esc1 && window.ESCUDO_BASE64) esc1.src = window.ESCUDO_BASE64;
+                    if (log1 && window.LOGO_BASE64) log1.src = window.LOGO_BASE64;
+
+                    const table1 = p1.querySelector('.roster-main-table');
+                    if (table1) {
+                        table1.style.width = '100%';
+                        table1.style.borderCollapse = 'collapse';
+                    }
+
+                    const canvas1 = await window.html2canvas(p1, {
+                        scale: 2,
+                        useCORS: true,
+                        allowTaint: true,
+                        logging: false,
+                        backgroundColor: '#ffffff',
+                        width: 794,
+                        height: 1123,
+                        x: 0,
+                        y: 0,
+                        scrollX: 0,
+                        scrollY: 0,
+                        windowWidth: 1400,
+                        windowHeight: 1400
+                    });
+                    p1.remove();
+
+                    // --- PÁGINA 2: A4 HORIZONTAL (1123px x 794px) rotada a 90° ---
+                    const p2 = document.createElement('div');
+                    p2.style.width = '1123px';
+                    p2.style.minWidth = '1123px';
+                    p2.style.maxWidth = '1123px';
+                    p2.style.height = '794px';
+                    p2.style.minHeight = '794px';
+                    p2.style.maxHeight = '794px';
+                    p2.style.padding = '38px 42px';
+                    p2.style.boxSizing = 'border-box';
+                    p2.style.display = 'flex';
+                    p2.style.flexDirection = 'column';
+                    p2.style.justifyContent = 'flex-start';
+                    p2.style.background = '#ffffff';
+                    p2.style.color = '#000000';
+                    p2.style.fontFamily = 'Arial, Helvetica, sans-serif';
+                    p2.innerHTML = page2ContentEl.innerHTML;
+                    staging.appendChild(p2);
+
+                    const table2 = p2.querySelector('.roster-desaprobacion-table');
+                    if (table2) {
+                        table2.style.width = '100%';
+                        table2.style.borderCollapse = 'collapse';
+                        table2.style.flex = '1';
+                        const ths = table2.querySelectorAll('thead th');
+                        if (ths.length >= 4) {
+                            ths[0].style.width = '23%';
+                            ths[1].style.width = '49%';
+                            ths[2].style.width = '14%';
+                            ths[3].style.width = '14%';
+                        }
+                    }
+
+                    const canvas2Raw = await window.html2canvas(p2, {
+                        scale: 2,
+                        useCORS: true,
+                        allowTaint: true,
+                        logging: false,
+                        backgroundColor: '#ffffff',
+                        width: 1123,
+                        height: 794,
+                        x: 0,
+                        y: 0,
+                        scrollX: 0,
+                        scrollY: 0,
+                        windowWidth: 1400,
+                        windowHeight: 1400
+                    });
+                    p2.remove();
+
+                    const canvas2 = document.createElement('canvas');
+                    canvas2.width = canvas2Raw.height;
+                    canvas2.height = canvas2Raw.width;
+                    const ctx2 = canvas2.getContext('2d');
+                    ctx2.fillStyle = '#ffffff';
+                    ctx2.fillRect(0, 0, canvas2.width, canvas2.height);
+                    ctx2.translate(canvas2.width, 0);
+                    ctx2.rotate(Math.PI / 2);
+                    ctx2.drawImage(canvas2Raw, 0, 0);
+
+                    // Si no es la primera página del PDF, agregar hoja
+                    if (mIdx > 0) {
+                        pdf.addPage('a4', 'portrait');
+                    }
+
+                    // Hoja 1: Acta Volante de Examen (A4 vertical: 210mm x 297mm)
+                    const imgData1 = canvas1.toDataURL('image/jpeg', 0.98);
+                    pdf.addImage(imgData1, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+
+                    // Hoja 2: Acta de Desaprobación rotada a 90° en hoja A4 vertical (210mm x 297mm)
+                    pdf.addPage('a4', 'portrait');
+                    const imgData2 = canvas2.toDataURL('image/jpeg', 0.98);
+                    pdf.addImage(imgData2, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+                }
 
                 staging.remove();
 
-                const canvas2 = document.createElement('canvas');
-                canvas2.width = canvas2Raw.height;
-                canvas2.height = canvas2Raw.width;
-                const ctx2 = canvas2.getContext('2d');
-                ctx2.fillStyle = '#ffffff';
-                ctx2.fillRect(0, 0, canvas2.width, canvas2.height);
-                ctx2.translate(canvas2.width, 0);
-                ctx2.rotate(Math.PI / 2);
-                ctx2.drawImage(canvas2Raw, 0, 0);
-
-                // 3. Crear PDF A4 con ambas hojas Verticales (210mm x 297mm) idénticas al PDF oficial
-                const { jsPDF } = window.jspdf;
-                const pdf = new jsPDF({
-                    unit: 'mm',
-                    format: 'a4',
-                    orientation: 'portrait'
-                });
-
-                // Hoja 1: Acta Volante de Examen (A4 vertical: 210mm x 297mm)
-                const imgData1 = canvas1.toDataURL('image/jpeg', 0.98);
-                pdf.addImage(imgData1, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
-
-                // Hoja 2: Acta de Desaprobación rotada a 90° en hoja A4 vertical (210mm x 297mm)
-                pdf.addPage('a4', 'portrait');
-                const imgData2 = canvas2.toDataURL('image/jpeg', 0.98);
-                pdf.addImage(imgData2, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+                // Nombre de archivo descriptivo
+                let filename = 'Actas_Volantes_Mesas_Examen.pdf';
+                if (mesasToExport.length === 1) {
+                    const m = mesasToExport[0];
+                    filename = `Acta_Volante_${(m.subjectName || 'Mesa').replace(/\s+/g, '_')}_${(m.course || '').replace(/\s+/g, '_')}.pdf`;
+                } else {
+                    filename = `Actas_Volantes_Mesas_Examen_${mesasToExport.length}_mesas.pdf`;
+                }
 
                 pdf.save(filename);
-
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = origText;
-                }
-            } else if (window.html2pdf) {
-                const opt = {
-                    margin:       0,
-                    filename:     filename,
-                    image:        { type: 'jpeg', quality: 0.98 },
-                    html2canvas:  { scale: 2, useCORS: true, allowTaint: true, logging: false },
-                    pagebreak:    { mode: ['css', 'legacy'] },
-                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                };
-                await window.html2pdf().set(opt).from(document.getElementById('rosterPrintContainer')).save();
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = origText;
-                }
             } else {
                 window.print();
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = origText;
-                }
             }
         } catch (err) {
-            console.error('Error al generar PDF A4 del acta:', err);
+            console.error('Error al generar PDF de las actas:', err);
+            alert("Ocurrió un error al generar el PDF de las actas.");
+        } finally {
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = origText;
             }
-            window.print();
+            // Restaurar la mesa actualmente seleccionada en el visor
+            const selectMesa = document.getElementById('selectMesaListado');
+            const mesas = DB.getMesas();
+            const selectedMesa = mesas.find(m => m.id === selectMesa?.value) || mesas[0];
+            populateRosterContainerForMesa(selectedMesa);
         }
+    }
+
+    function printRosters(mesasToPrint) {
+        if (!mesasToPrint || mesasToPrint.length === 0) {
+            alert("Por favor selecciona al menos una mesa de examen para imprimir.");
+            return;
+        }
+
+        const escudoSrc = window.ESCUDO_BASE64 || document.getElementById('rosterEscudoImg')?.src || 'imagenes/escudo.png';
+        const logoSrc = window.LOGO_BASE64 || document.getElementById('rosterLogoImg')?.src || 'imagenes/logo.png';
+
+        const existingFrame = document.getElementById('rosterPrintFrame');
+        if (existingFrame) existingFrame.remove();
+
+        const iframe = document.createElement('iframe');
+        iframe.id = 'rosterPrintFrame';
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        iframe.style.visibility = 'hidden';
+        document.body.appendChild(iframe);
+
+        let sheetsHtml = '';
+
+        mesasToPrint.forEach(mesa => {
+            populateRosterContainerForMesa(mesa);
+            const page1El = document.querySelector('.roster-page-1');
+            const page2ContentEl = document.querySelector('.roster-page-2-content');
+            if (!page1El || !page2ContentEl) return;
+
+            const p1Clone = page1El.cloneNode(true);
+            const p2Clone = page2ContentEl.cloneNode(true);
+
+            const escImg = p1Clone.querySelector('#rosterEscudoImg');
+            const logImg = p1Clone.querySelector('#rosterLogoImg');
+            if (escImg) escImg.src = escudoSrc;
+            if (logImg) logImg.src = logoSrc;
+
+            sheetsHtml += `
+                <div class="print-sheet-1">${p1Clone.innerHTML}</div>
+                <div class="print-sheet-2"><div class="print-sheet-2-inner">${p2Clone.innerHTML}</div></div>
+            `;
+        });
+
+        // Restaurar la mesa actualmente seleccionada en la pantalla
+        const selectMesa = document.getElementById('selectMesaListado');
+        const mesas = DB.getMesas();
+        const selectedMesa = mesas.find(m => m.id === selectMesa?.value) || mesas[0];
+        populateRosterContainerForMesa(selectedMesa);
+
+        const frameDoc = iframe.contentWindow.document;
+        frameDoc.open();
+        frameDoc.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Actas Volantes de Examen - EET N°2</title>
+                <style>
+                    @page {
+                        size: A4 portrait;
+                        margin: 0;
+                    }
+                    * {
+                        box-sizing: border-box !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    html, body {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background: #ffffff !important;
+                        color: #000000 !important;
+                        font-family: Arial, Helvetica, sans-serif !important;
+                    }
+                    .print-sheet-1 {
+                        width: 210mm !important;
+                        height: 297mm !important;
+                        max-width: 210mm !important;
+                        max-height: 297mm !important;
+                        box-sizing: border-box !important;
+                        padding: 9mm 11mm !important;
+                        display: flex !important;
+                        flex-direction: column !important;
+                        justify-content: flex-start !important;
+                        page-break-after: always !important;
+                        break-after: page !important;
+                        overflow: hidden !important;
+                        background: #ffffff !important;
+                    }
+                    .print-sheet-2 {
+                        width: 210mm !important;
+                        height: 297mm !important;
+                        max-width: 210mm !important;
+                        max-height: 297mm !important;
+                        box-sizing: border-box !important;
+                        position: relative !important;
+                        page-break-after: always !important;
+                        break-after: page !important;
+                        overflow: hidden !important;
+                        background: #ffffff !important;
+                    }
+                    .print-sheet-2-inner {
+                        width: 277mm !important;
+                        height: 186mm !important;
+                        position: absolute !important;
+                        top: 10mm !important;
+                        left: 12mm !important;
+                        transform-origin: 0 0 !important;
+                        transform: rotate(90deg) translateY(-100%) !important;
+                        display: flex !important;
+                        flex-direction: column !important;
+                        justify-content: flex-start !important;
+                        background: #ffffff !important;
+                    }
+                    table {
+                        width: 100% !important;
+                        border-collapse: collapse !important;
+                        background: #ffffff !important;
+                    }
+                    th, td {
+                        border: 1px solid #000000 !important;
+                        color: #000000 !important;
+                        box-sizing: border-box !important;
+                    }
+                    .roster-desaprobacion-table {
+                        flex: 1 !important;
+                        height: 100% !important;
+                    }
+                </style>
+            </head>
+            <body>
+                ${sheetsHtml}
+            </body>
+            </html>
+        `);
+        frameDoc.close();
+
+        setTimeout(() => {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+            setTimeout(() => {
+                iframe.remove();
+            }, 5000);
+        }, 250);
     }
 
     function renderNotasTab() {

@@ -11,12 +11,21 @@
    Toda acción va por POST con token CSRF y queda en el log del servidor.
    ===================================================================== */
 require_once 'includes/sesion.php';
-require_once 'includes/cuentas.php';
+require_once 'includes/academico.php';   // incluye cuentas.php
 require_once 'includes/panel.php';
 
 requerirPermiso('cuentas');
 
-$pdo = bdCuentas();
+$pdo = bdAcademico();
+
+/** Si el profesor nuevo coincide con docentes de la planilla, avisa para vincularlo. */
+function avisarDocentesSugeridos(PDO $pdo, int $usuarioId): void {
+    $sugeridos = sugerenciasParaProfesor($pdo, $usuarioId);
+    if ($sugeridos) {
+        avisar('exito', 'Esta persona podría ser «' . implode('», «', array_column($sugeridos, 'docente_nombre'))
+            . '» en la planilla de asignaciones. Confírmelo en Estructura académica → Docentes.');
+    }
+}
 $yo  = (int) ($_SESSION['usuario_id'] ?? 0);
 
 $secciones = ['personal' => 'Personal', 'alumnos' => 'Alumnos', 'preceptores' => 'Cursos de preceptores', 'pedidos' => 'Pedidos de recuperación'];
@@ -43,6 +52,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 guardarCodigosParaMostrar([$c + ['nombre' => $u['nombre'], 'dni' => $u['dni']]]);
                 auditarCuentas("creó la cuenta de {$u['nombre']} ({$rol}) y generó su código de alta");
                 avisar('exito', 'Cuenta creada. Entréguele el código para que elija su contraseña.');
+                if ($rol === 'profesor') {
+                    avisarDocentesSugeridos($pdo, $nuevo);
+                }
                 break;
 
             case 'codigo':
@@ -85,6 +97,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 agregarRolACuenta($pdo, $uid, $rol, (int) ($_POST['curso_id'] ?? 0));
                 auditarCuentas("agregó el rol $rol a la cuenta $uid");
                 avisar('exito', 'Rol agregado. Se aplica la próxima vez que esa persona inicie sesión.');
+                if ($rol === 'profesor') {
+                    avisarDocentesSugeridos($pdo, $uid);
+                }
                 break;
 
             case 'asignar_cursos':
@@ -134,17 +149,18 @@ $pedidos = solicitudesPendientes($pdo);
 
 function botonesCuenta(array $u, int $yo): void {
     $tieneClave = $u['estado'] !== 'pendiente';
+    $bloq = $u['estado'] === 'bloqueado';
     ?>
-    <div class="acciones">
-        <form method="post"><?php echo csrf_campo(); ?>
+    <div class="d-flex flex-wrap gap-1">
+        <form method="post" class="d-inline"><?php echo csrf_campo(); ?>
             <input type="hidden" name="accion" value="codigo"><input type="hidden" name="usuario_id" value="<?php echo (int) $u['id']; ?>">
-            <button class="boton-mini" <?php echo $u['estado'] === 'bloqueado' ? 'disabled' : ''; ?>><?php echo $tieneClave ? 'Código de recuperación' : 'Código de alta'; ?></button>
+            <button class="btn btn-outline-primary btn-sm" <?php echo $bloq ? 'disabled' : ''; ?>><i class="bi bi-key"></i> <?php echo $tieneClave ? 'Código de recuperación' : 'Código de alta'; ?></button>
         </form>
         <?php if ((int) $u['id'] !== $yo): ?>
-            <form method="post" onsubmit="return confirm('¿<?php echo $u['estado'] === 'bloqueado' ? 'Reactivar' : 'Suspender'; ?> esta cuenta?');"><?php echo csrf_campo(); ?>
-                <input type="hidden" name="accion" value="<?php echo $u['estado'] === 'bloqueado' ? 'desbloquear' : 'bloquear'; ?>">
+            <form method="post" class="d-inline" onsubmit="return confirm('¿<?php echo $bloq ? 'Reactivar' : 'Suspender'; ?> esta cuenta?');"><?php echo csrf_campo(); ?>
+                <input type="hidden" name="accion" value="<?php echo $bloq ? 'desbloquear' : 'bloquear'; ?>">
                 <input type="hidden" name="usuario_id" value="<?php echo (int) $u['id']; ?>">
-                <button class="boton-mini <?php echo $u['estado'] === 'bloqueado' ? '' : 'boton-mini--peligro'; ?>"><?php echo $u['estado'] === 'bloqueado' ? 'Reactivar' : 'Suspender'; ?></button>
+                <button class="btn btn-sm <?php echo $bloq ? 'btn-outline-success' : 'btn-outline-danger'; ?>"><i class="bi <?php echo $bloq ? 'bi-unlock' : 'bi-lock'; ?>"></i> <?php echo $bloq ? 'Reactivar' : 'Suspender'; ?></button>
             </form>
         <?php endif; ?>
     </div>
@@ -154,56 +170,60 @@ function botonesCuenta(array $u, int $yo): void {
 function chipsRoles(string $roles): string {
     $html = '';
     foreach (array_filter(explode(',', $roles)) as $r) {
-        $html .= '<span class="rol-chip">' . e(ETIQUETAS_ROL[$r] ?? $r) . '</span>';
+        $html .= '<span class="profesor-badge">' . e(ETIQUETAS_ROL[$r] ?? $r) . '</span>';
     }
     return $html;
 }
 
-encabezadoPanel('Gestión de cuentas');
+function opcionesCursos(array $cursos, int $elegido = 0): string {
+    $html = '';
+    foreach ($cursos as $c) {
+        $html .= '<option value="' . (int) $c['id'] . '"' . ((int) $c['id'] === $elegido ? ' selected' : '') . '>' . e(nombreCurso($c)) . '</option>';
+    }
+    return $html;
+}
+
+$encabezados = [
+    'personal'    => ['Personal', 'bi-person-badge', 'Cree las cuentas de profesores, preceptores y directivos, y entrégueles su código de alta.'],
+    'alumnos'     => ['Alumnos', 'bi-people', 'Alumnos por curso: cuentas, códigos y cambios de curso.'],
+    'preceptores' => ['Cursos de preceptores', 'bi-person-gear', 'Qué cursos atiende cada preceptor.'],
+    'pedidos'     => ['Pedidos de recuperación', 'bi-key', 'Personas que pidieron recuperar su cuenta.'],
+];
+[$tit, $ico, $sub] = $encabezados[$ver];
+encabezadoPanel($tit, $ico, $sub, "cuentas:$ver", ['cuentas:pedidos' => count($pedidos)]);
 ?>
-<nav class="pestanas-gestion no-imprimir">
-    <?php foreach ($secciones as $clave => $titulo): ?>
-        <a href="cuentas.php?ver=<?php echo $clave; ?>" class="<?php echo $ver === $clave ? 'activa' : ''; ?>">
-            <?php echo e($titulo); ?><?php if ($clave === 'pedidos' && $pedidos): ?><span class="contador"><?php echo count($pedidos); ?></span><?php endif; ?>
-        </a>
-    <?php endforeach; ?>
-</nav>
 
 <?php if ($ver === 'personal'): ?>
-    <section class="caja no-imprimir">
-        <h2>Crear cuenta de personal</h2>
-        <form method="post" class="form-linea"><?php echo csrf_campo(); ?>
+    <?php tarjeta('Crear cuenta de personal', 'bi-person-plus', '', '', 'no-imprimir'); ?>
+        <form method="post" class="row g-3 align-items-end"><?php echo csrf_campo(); ?>
             <input type="hidden" name="accion" value="crear">
-            <label>Rol
-                <select name="rol" required>
+            <div class="col-md-2">
+                <label class="form-label" for="rol">Rol</label>
+                <select id="rol" name="rol" class="form-select" required>
                     <option value="profesor">Profesor/a</option>
                     <option value="preceptor">Preceptor/a</option>
                     <option value="directivo">Directivo/a</option>
                 </select>
-            </label>
-            <label>Nombre y apellido <input name="nombre" maxlength="150" required></label>
-            <label>DNI <input name="dni" inputmode="numeric" maxlength="8" pattern="[0-9]{7,8}" placeholder="Sin puntos"></label>
-            <label>Correo <input type="email" name="correo" maxlength="150" required></label>
-            <button class="boton">Crear y generar código</button>
+            </div>
+            <div class="col-md-3"><label class="form-label" for="nombre">Nombre y apellido</label><input id="nombre" name="nombre" class="form-control" maxlength="150" required></div>
+            <div class="col-md-2"><label class="form-label" for="dni">DNI</label><input id="dni" name="dni" class="form-control" inputmode="numeric" maxlength="8" pattern="[0-9]{7,8}" placeholder="Sin puntos"></div>
+            <div class="col-md-3"><label class="form-label" for="correo">Correo</label><input id="correo" type="email" name="correo" class="form-control" maxlength="150" required></div>
+            <div class="col-md-2"><button class="btn btn-primary w-100"><i class="bi bi-key"></i> Crear y generar código</button></div>
         </form>
-        <p style="margin-top:8px;">La persona elige su contraseña con el código. Si ya tiene cuenta (por ejemplo, un profesor que también es preceptor), agréguele el rol en la tabla.</p>
-    </section>
+        <p class="mt-3 mb-0 small">La persona elige su contraseña con el código. Si ya tiene cuenta (por ejemplo, un profesor que también es preceptor), agréguele el rol en la tabla.</p>
+    <?php finTarjeta(); ?>
 
-    <section class="caja no-imprimir">
-        <div class="caja__titulo">
-            <h2>Personal</h2>
-            <form method="get" class="form-linea"><input type="hidden" name="ver" value="personal">
-                <input name="q" value="<?php echo e($buscar); ?>" placeholder="Buscar nombre, DNI o correo">
-                <button class="boton-mini">Buscar</button>
-            </form>
-        </div>
-        <?php
-        $personal = array_filter(listarCuentas($pdo, '', $buscar), fn($u) => trim(str_replace('alumno', '', (string) $u['roles']), ',') !== '');
-        ?>
+    <?php
+    $personal = array_filter(listarCuentas($pdo, '', $buscar), fn($u) => trim(str_replace('alumno', '', (string) $u['roles']), ',') !== '');
+    $buscador = '<form method="get" class="d-flex gap-2"><input type="hidden" name="ver" value="personal">'
+              . '<input name="q" class="form-control form-control-sm" value="' . e($buscar) . '" placeholder="Nombre, DNI o correo" aria-label="Buscar personal">'
+              . '<button class="btn btn-light btn-sm"><i class="bi bi-search"></i></button></form>';
+    tarjeta('Personal', 'bi-person-badge', '(' . count($personal) . ')', $buscador, 'no-imprimir');
+    ?>
         <?php if (!$personal): ?>
-            <p class="vacio">No hay cuentas de personal<?php echo $buscar !== '' ? ' que coincidan' : ''; ?>.</p>
+            <?php sinDatos('No hay cuentas de personal' . ($buscar !== '' ? ' que coincidan' : '') . '.'); ?>
         <?php else: ?>
-            <div class="tabla-scroll"><table class="tabla-gestion">
+            <div class="table-responsive"><table class="table table-hover">
                 <thead><tr><th>Nombre</th><th>DNI</th><th>Correo</th><th>Roles</th><th>Estado</th><th>Último ingreso</th><th>Acciones</th></tr></thead>
                 <tbody>
                 <?php foreach ($personal as $u): [$txt, $cls] = estadoCuenta($u); ?>
@@ -212,114 +232,98 @@ encabezadoPanel('Gestión de cuentas');
                         <td><?php echo e($u['dni'] ?? ''); ?></td>
                         <td><?php echo e($u['correo'] ?? ''); ?></td>
                         <td><?php echo chipsRoles((string) $u['roles']); ?></td>
-                        <td><span class="estado <?php echo $cls; ?>"><?php echo $txt; ?></span></td>
+                        <td><span class="badge <?php echo $cls; ?>"><?php echo $txt; ?></span></td>
                         <td><?php echo $u['ultimo_ingreso'] ? e(date('d/m/Y H:i', strtotime($u['ultimo_ingreso']))) : '—'; ?></td>
                         <td>
                             <?php botonesCuenta($u, $yo); ?>
-                            <form method="post" class="form-linea" style="margin-top:6px;"><?php echo csrf_campo(); ?>
-                                <input type="hidden" name="accion" value="agregar_rol"><input type="hidden" name="usuario_id" value="<?php echo (int) $u['id']; ?>">
-                                <select name="rol" style="min-width:0;">
-                                    <?php foreach (['profesor', 'preceptor', 'directivo'] as $r): if (strpos((string) $u['roles'], $r) === false): ?>
-                                        <option value="<?php echo $r; ?>"><?php echo ETIQUETAS_ROL[$r]; ?></option>
-                                    <?php endif; endforeach; ?>
-                                </select>
-                                <button class="boton-mini">+ Rol</button>
-                            </form>
+                            <?php $faltan = array_filter(['profesor', 'preceptor', 'directivo'], fn($r) => strpos((string) $u['roles'], $r) === false); ?>
+                            <?php if ($faltan): ?>
+                                <form method="post" class="d-flex gap-1 mt-1"><?php echo csrf_campo(); ?>
+                                    <input type="hidden" name="accion" value="agregar_rol"><input type="hidden" name="usuario_id" value="<?php echo (int) $u['id']; ?>">
+                                    <select name="rol" class="form-select form-select-sm" aria-label="Rol para agregar">
+                                        <?php foreach ($faltan as $r): ?><option value="<?php echo $r; ?>"><?php echo ETIQUETAS_ROL[$r]; ?></option><?php endforeach; ?>
+                                    </select>
+                                    <button class="btn btn-outline-primary btn-sm text-nowrap"><i class="bi bi-plus"></i> Rol</button>
+                                </form>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
             </table></div>
         <?php endif; ?>
-    </section>
+    <?php finTarjeta(); ?>
 
 <?php elseif ($ver === 'alumnos'): ?>
-    <section class="caja no-imprimir">
-        <h2>Crear cuenta de alumno</h2>
-        <form method="post" class="form-linea"><?php echo csrf_campo(); ?>
+    <?php tarjeta('Crear cuenta de alumno', 'bi-person-plus', '', '', 'no-imprimir'); ?>
+        <form method="post" class="row g-3 align-items-end"><?php echo csrf_campo(); ?>
             <input type="hidden" name="accion" value="crear"><input type="hidden" name="rol" value="alumno">
-            <label>Nombre y apellido <input name="nombre" maxlength="150" required></label>
-            <label>DNI <input name="dni" inputmode="numeric" maxlength="8" pattern="[0-9]{7,8}" required placeholder="Sin puntos"></label>
-            <label>Curso
-                <select name="curso_id" required>
-                    <?php foreach ($cursos as $c): ?>
-                        <option value="<?php echo (int) $c['id']; ?>" <?php echo (int) $c['id'] === $cursoF ? 'selected' : ''; ?>><?php echo e(nombreCurso($c)); ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
-            <button class="boton">Crear y generar código</button>
+            <div class="col-md-4"><label class="form-label" for="nombre">Nombre y apellido</label><input id="nombre" name="nombre" class="form-control" maxlength="150" required></div>
+            <div class="col-md-2"><label class="form-label" for="dni">DNI</label><input id="dni" name="dni" class="form-control" inputmode="numeric" maxlength="8" pattern="[0-9]{7,8}" required placeholder="Sin puntos"></div>
+            <div class="col-md-3"><label class="form-label" for="curso_id">Curso</label><select id="curso_id" name="curso_id" class="form-select" required><?php echo opcionesCursos($cursos, $cursoF); ?></select></div>
+            <div class="col-md-3"><button class="btn btn-primary w-100"><i class="bi bi-key"></i> Crear y generar código</button></div>
         </form>
-        <p style="margin-top:8px;">Normalmente lo hace el preceptor de cada curso desde su panel.</p>
-    </section>
+        <p class="mt-3 mb-0 small">Normalmente lo hace el preceptor de cada curso desde su panel.</p>
+    <?php finTarjeta(); ?>
 
-    <section class="caja no-imprimir">
-        <div class="caja__titulo">
-            <h2>Alumnos</h2>
-            <form method="get" class="form-linea"><input type="hidden" name="ver" value="alumnos">
-                <select name="curso">
-                    <option value="0">Todos los cursos</option>
-                    <option value="-1" <?php echo $cursoF === -1 ? 'selected' : ''; ?>>Sin curso asignado</option>
-                    <?php foreach ($cursos as $c): ?>
-                        <option value="<?php echo (int) $c['id']; ?>" <?php echo (int) $c['id'] === $cursoF ? 'selected' : ''; ?>><?php echo e(nombreCurso($c)); ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <input name="q" value="<?php echo e($buscar); ?>" placeholder="Nombre o DNI">
-                <button class="boton-mini">Ver</button>
-            </form>
-        </div>
-        <?php
-        $sinCurso = count(alumnosDeCurso($pdo, null));
-        if ($sinCurso && $cursoF !== -1): ?>
-            <p class="aviso-codigos">Hay <strong><?php echo $sinCurso; ?> alumno(s) sin curso</strong>: no aparecen en el panel de ningún preceptor.
-                <a href="cuentas.php?ver=alumnos&amp;curso=-1">Asignarles curso →</a></p>
-        <?php endif;
-        $alumnos = [];
-        if ($cursoF) {
-            $alumnos = alumnosDeCurso($pdo, $cursoF === -1 ? null : $cursoF);
-            if ($buscar !== '') {
-                $alumnos = array_filter($alumnos, fn($a) => stripos($a['nombre'] . ' ' . $a['dni'], $buscar) !== false);
-            }
-        } elseif ($buscar !== '') {
-            $alumnos = listarCuentas($pdo, 'alumno', $buscar);
+    <?php
+    $filtroAlumnos = '<form method="get" class="d-flex flex-wrap gap-2"><input type="hidden" name="ver" value="alumnos">'
+        . '<select name="curso" class="form-select form-select-sm" aria-label="Curso"><option value="0">Todos los cursos</option>'
+        . '<option value="-1"' . ($cursoF === -1 ? ' selected' : '') . '>Sin curso asignado</option>' . opcionesCursos($cursos, $cursoF) . '</select>'
+        . '<input name="q" class="form-control form-control-sm" value="' . e($buscar) . '" placeholder="Nombre o DNI" aria-label="Buscar alumno">'
+        . '<button class="btn btn-light btn-sm"><i class="bi bi-search"></i> Ver</button></form>';
+    tarjeta('Alumnos', 'bi-people', '', $filtroAlumnos, 'no-imprimir');
+
+    $sinCurso = count(alumnosDeCurso($pdo, null));
+    if ($sinCurso && $cursoF !== -1): ?>
+        <div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> Hay <strong><?php echo $sinCurso; ?> alumno(s) sin curso</strong>: no aparecen en el panel de ningún preceptor.
+            <a href="cuentas.php?ver=alumnos&amp;curso=-1">Asignarles curso →</a></div>
+    <?php endif;
+    $alumnos = [];
+    if ($cursoF) {
+        $alumnos = alumnosDeCurso($pdo, $cursoF === -1 ? null : $cursoF);
+        if ($buscar !== '') {
+            $alumnos = array_filter($alumnos, fn($a) => stripos($a['nombre'] . ' ' . $a['dni'], $buscar) !== false);
         }
-        ?>
+    } elseif ($buscar !== '') {
+        $alumnos = listarCuentas($pdo, 'alumno', $buscar);
+    }
+    ?>
         <?php if (!$cursoF && $buscar === ''): ?>
-            <p class="vacio">Elija un curso o busque por nombre o DNI.</p>
+            <?php sinDatos('Elija un curso o busque por nombre o DNI.'); ?>
         <?php elseif (!$alumnos): ?>
-            <p class="vacio">No hay alumnos para mostrar.</p>
+            <?php sinDatos('No hay alumnos para mostrar.'); ?>
         <?php else: ?>
-            <?php if ($cursoF > 0): ?>
-                <form method="post" style="margin-bottom:10px;" onsubmit="return confirm('Se generan códigos nuevos para todos los alumnos sin activar de este curso. Los códigos anteriores dejan de servir. ¿Continuar?');"><?php echo csrf_campo(); ?>
-                    <input type="hidden" name="accion" value="codigos_curso"><input type="hidden" name="curso_id" value="<?php echo $cursoF; ?>">
-                    <button class="boton boton--chico">Generar códigos para los que no activaron</button>
-                </form>
-            <?php endif; ?>
-            <!-- Las casillas de la tabla pertenecen a este formulario (atributo form) -->
-            <form method="post" id="mover-curso" class="form-linea" style="margin-bottom:10px;"><?php echo csrf_campo(); ?>
-                <input type="hidden" name="accion" value="cambiar_curso">
-                <label>Pasar los alumnos marcados a
-                    <select name="curso_id" required>
-                        <option value="">Elegir curso…</option>
-                        <?php foreach ($cursos as $c): ?>
-                            <option value="<?php echo (int) $c['id']; ?>"><?php echo e(nombreCurso($c)); ?></option>
-                        <?php endforeach; ?>
+            <div class="d-flex flex-wrap gap-3 align-items-end mb-3">
+                <?php if ($cursoF > 0): ?>
+                    <form method="post" onsubmit="return confirm('Se generan códigos nuevos para todos los alumnos sin activar de este curso. Los códigos anteriores dejan de servir. ¿Continuar?');"><?php echo csrf_campo(); ?>
+                        <input type="hidden" name="accion" value="codigos_curso"><input type="hidden" name="curso_id" value="<?php echo $cursoF; ?>">
+                        <button class="btn btn-primary btn-sm"><i class="bi bi-printer"></i> Generar códigos para los que no activaron</button>
+                    </form>
+                <?php endif; ?>
+                <!-- Las casillas de la tabla pertenecen a este formulario (atributo form) -->
+                <form method="post" id="mover-curso" class="d-flex flex-wrap gap-2 align-items-center"><?php echo csrf_campo(); ?>
+                    <input type="hidden" name="accion" value="cambiar_curso">
+                    <label class="form-label mb-0" for="mover-destino">Pasar los marcados a</label>
+                    <select id="mover-destino" name="curso_id" class="form-select form-select-sm w-auto" required>
+                        <option value="">Elegir curso…</option><?php echo opcionesCursos($cursos); ?>
                     </select>
-                </label>
-                <button class="boton-mini">Cambiar curso</button>
-            </form>
-            <div class="tabla-scroll"><table class="tabla-gestion">
+                    <button class="btn btn-outline-primary btn-sm"><i class="bi bi-arrow-left-right"></i> Cambiar curso</button>
+                </form>
+            </div>
+            <div class="table-responsive"><table class="table table-hover">
                 <thead><tr>
-                    <th><input type="checkbox" aria-label="Marcar todos" onclick="document.querySelectorAll('.marca-alumno').forEach(c => c.checked = this.checked)"></th>
+                    <th><input type="checkbox" class="form-check-input" aria-label="Marcar todos" onclick="document.querySelectorAll('.marca-alumno').forEach(c => c.checked = this.checked)"></th>
                     <th>Nombre</th><th>DNI</th><th>Curso</th><th>Estado</th><th>Último ingreso</th><th>Acciones</th>
                 </tr></thead>
                 <tbody>
                 <?php foreach ($alumnos as $u): [$txt, $cls] = estadoCuenta($u); $cid = (int) ($u['curso_id'] ?? 0); ?>
                     <tr>
-                        <td><input type="checkbox" class="marca-alumno" name="alumnos[]" value="<?php echo (int) $u['id']; ?>" form="mover-curso" aria-label="Marcar a <?php echo e($u['nombre']); ?>"></td>
+                        <td><input type="checkbox" class="form-check-input marca-alumno" name="alumnos[]" value="<?php echo (int) $u['id']; ?>" form="mover-curso" aria-label="Marcar a <?php echo e($u['nombre']); ?>"></td>
                         <td><strong><?php echo e($u['nombre']); ?></strong></td>
                         <td><?php echo e($u['dni'] ?? ''); ?></td>
                         <td><?php echo e($cursoNombre[$cid] ?? 'Sin curso'); ?></td>
-                        <td><span class="estado <?php echo $cls; ?>"><?php echo $txt; ?></span></td>
+                        <td><span class="badge <?php echo $cls; ?>"><?php echo $txt; ?></span></td>
                         <td><?php echo $u['ultimo_ingreso'] ? e(date('d/m/Y H:i', strtotime($u['ultimo_ingreso']))) : '—'; ?></td>
                         <td><?php botonesCuenta($u, $yo); ?></td>
                     </tr>
@@ -327,36 +331,34 @@ encabezadoPanel('Gestión de cuentas');
                 </tbody>
             </table></div>
         <?php endif; ?>
-    </section>
+    <?php finTarjeta(); ?>
 
 <?php elseif ($ver === 'preceptores'): ?>
     <?php $preceptores = listarCuentas($pdo, 'preceptor'); ?>
     <?php if (!$preceptores): ?>
-        <section class="caja"><p class="vacio">Todavía no hay preceptores. Créelos en la pestaña «Personal».</p></section>
+        <?php sinDatos('Todavía no hay preceptores. Créelos en <a href="cuentas.php?ver=personal">Personal</a>.'); ?>
     <?php endif; ?>
     <?php foreach ($preceptores as $p): $asignados = array_map(fn($c) => (int) $c['id'], cursosDePreceptor($pdo, (int) $p['id'])); ?>
-        <section class="caja no-imprimir">
-            <h2><?php echo e($p['nombre']); ?> <small style="color:#6b7280;font-weight:400;"><?php echo e($p['correo'] ?? ''); ?> · <?php echo count($asignados); ?> curso(s)</small></h2>
+        <?php tarjeta($p['nombre'], 'bi-person-gear', ($p['correo'] ?? '') . ' · ' . count($asignados) . ' curso(s)', '', 'no-imprimir'); ?>
             <form method="post"><?php echo csrf_campo(); ?>
                 <input type="hidden" name="accion" value="asignar_cursos"><input type="hidden" name="usuario_id" value="<?php echo (int) $p['id']; ?>">
                 <div class="cursos-grilla">
                     <?php foreach ($cursos as $c): ?>
-                        <label><input type="checkbox" name="cursos[]" value="<?php echo (int) $c['id']; ?>" <?php echo in_array((int) $c['id'], $asignados, true) ? 'checked' : ''; ?>> <?php echo e(nombreCurso($c)); ?></label>
+                        <label class="form-check-label"><input type="checkbox" class="form-check-input" name="cursos[]" value="<?php echo (int) $c['id']; ?>" <?php echo in_array((int) $c['id'], $asignados, true) ? 'checked' : ''; ?>> <?php echo e(nombreCurso($c)); ?></label>
                     <?php endforeach; ?>
                 </div>
-                <button class="boton boton--chico">Guardar cursos</button>
+                <button class="btn btn-primary btn-sm"><i class="bi bi-save"></i> Guardar cursos</button>
             </form>
-        </section>
+        <?php finTarjeta(); ?>
     <?php endforeach; ?>
 
 <?php else: ?>
-    <section class="caja no-imprimir">
-        <h2>Pedidos de recuperación pendientes</h2>
+    <?php tarjeta('Pedidos de recuperación pendientes', 'bi-key', '(' . count($pedidos) . ')', '', 'no-imprimir'); ?>
         <p>Antes de entregar el código, verifique que quien lo pide es la persona de la cuenta.</p>
         <?php if (!$pedidos): ?>
-            <p class="vacio">No hay pedidos pendientes.</p>
+            <?php sinDatos('No hay pedidos pendientes.'); ?>
         <?php else: ?>
-            <div class="tabla-scroll"><table class="tabla-gestion">
+            <div class="table-responsive"><table class="table table-hover">
                 <thead><tr><th>Nombre</th><th>DNI</th><th>Rol</th><th>Curso</th><th>Pedido</th><th>Acciones</th></tr></thead>
                 <tbody>
                 <?php foreach ($pedidos as $s): ?>
@@ -366,14 +368,14 @@ encabezadoPanel('Gestión de cuentas');
                         <td><?php echo chipsRoles((string) $s['roles']); ?></td>
                         <td><?php echo e($s['curso_id'] ? ($cursoNombre[(int) $s['curso_id']] ?? '') : ''); ?></td>
                         <td><?php echo e(date('d/m/Y H:i', strtotime($s['pedida_en']))); ?></td>
-                        <td><div class="acciones">
-                            <form method="post"><?php echo csrf_campo(); ?>
+                        <td><div class="d-flex flex-wrap gap-1">
+                            <form method="post" class="d-inline"><?php echo csrf_campo(); ?>
                                 <input type="hidden" name="accion" value="codigo"><input type="hidden" name="usuario_id" value="<?php echo (int) $s['usuario_id']; ?>">
-                                <button class="boton-mini">Generar código</button>
+                                <button class="btn btn-primary btn-sm"><i class="bi bi-key"></i> Generar código</button>
                             </form>
-                            <form method="post"><?php echo csrf_campo(); ?>
+                            <form method="post" class="d-inline"><?php echo csrf_campo(); ?>
                                 <input type="hidden" name="accion" value="descartar"><input type="hidden" name="solicitud_id" value="<?php echo (int) $s['id']; ?>">
-                                <button class="boton-mini boton-mini--peligro">Descartar</button>
+                                <button class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i> Descartar</button>
                             </form>
                         </div></td>
                     </tr>
@@ -381,7 +383,7 @@ encabezadoPanel('Gestión de cuentas');
                 </tbody>
             </table></div>
         <?php endif; ?>
-    </section>
+    <?php finTarjeta(); ?>
 <?php endif; ?>
 
 <?php piePanel(); ?>

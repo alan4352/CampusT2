@@ -58,6 +58,20 @@ $nombre = $_SESSION['nombre'];
             </a>
         <?php endif; ?>
 
+        <?php if (tienePermiso('estructura')): ?>
+            <a class="modulo" href="estructura.php">
+                <h2>Estructura académica</h2>
+                <p>Materias de cada curso y sus docentes. Impórtelas de ProgMesas y vincule a cada docente con su cuenta.</p>
+            </a>
+        <?php endif; ?>
+
+        <?php if (tienePermiso('materias')): ?>
+            <a class="modulo" href="materias.php">
+                <h2><?php echo tieneRol('profesor') ? 'Mis materias' : 'Materias de mis cursos'; ?></h2>
+                <p><?php echo tieneRol('profesor') ? 'Los cursos y materias que dicta.' : 'Qué materias tiene cada uno de sus cursos y quién las dicta.'; ?></p>
+            </a>
+        <?php endif; ?>
+
         <?php if (tienePermiso('padron')): ?>
             <a class="modulo" href="preceptor.php">
                 <h2>Alumnos y cuentas</h2>

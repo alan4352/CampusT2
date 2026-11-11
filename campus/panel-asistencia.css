@@ -1,0 +1,242 @@
+/* =====================================================================
+   ARCHIVO: panel-asistencia.css
+   PARA QUÉ SIRVE: estilo de los paneles de gestión del campus (cuentas,
+   preceptor, estructura académica, materias). Es el mismo estilo del
+   sistema de asistencias (PROJECT_ASIST, admin/styles.css): bordó y beige,
+   barra lateral con el escudo y tarjetas. Se usa junto con Bootstrap 5.3.
+   ===================================================================== */
+
+:root {
+    --color-primary: #7a0000;
+    --color-secondary: beige;
+    --color-accent: #9d0000;
+    --color-success: #2e7d32;
+    --color-warning: #f57c00;
+    --color-info: #0288d1;
+}
+
+html, body { overflow-y: auto !important; height: auto !important; }
+
+body {
+    background-color: var(--color-primary);
+    color: var(--color-secondary);
+    font-family: 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Montserrat', sans-serif;
+    color: var(--color-primary);
+    font-weight: 700;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 300px; right: 0; bottom: 0;
+    background: url('img/escudo.png') no-repeat center;
+    background-size: 1300px;
+    opacity: 0.1;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* ---------- Barra lateral ---------- */
+.sidebar {
+    background: linear-gradient(180deg, var(--color-secondary) 0%, #f5f5dc 100%);
+    min-height: 100vh;
+    box-shadow: 3px 0 15px rgba(0,0,0,0.1);
+    border-right: 3px solid var(--color-primary);
+}
+.sidebar-content { padding: 1.5rem; height: 100%; display: flex; flex-direction: column; }
+.sidebar .nav-link {
+    color: var(--color-primary);
+    padding: 10px 18px;
+    border-radius: 8px;
+    margin: 4px 0;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    display: flex; align-items: center; gap: 8px;
+}
+.sidebar .nav-link:hover {
+    background-color: var(--color-primary);
+    color: var(--color-secondary);
+    transform: translateX(5px);
+    border-color: var(--color-primary);
+}
+.sidebar .nav-link.active {
+    background-color: var(--color-primary);
+    color: var(--color-secondary);
+    box-shadow: 0 4px 8px rgba(122,0,0,0.3);
+    border-color: var(--color-primary);
+}
+.sidebar .nav-link .badge { margin-left: auto; }
+.sidebar .nav-grupo {
+    color: #8a6d3b; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; margin: 14px 0 2px 6px;
+}
+.nav-divider {
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, var(--color-primary) 50%, transparent 100%);
+    margin: 20px 0;
+}
+.escudo-sidebar { width: 100px; height: auto; margin: 0 auto 20px; display: block; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2)); }
+.escudo-mobile { width: 60px; height: auto; margin-right: 15px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
+.institution-name {
+    font-family: 'Montserrat', sans-serif; font-weight: 800; color: var(--color-primary);
+    text-align: center; margin-bottom: 25px; font-size: 1.1rem; line-height: 1.3;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.institution-name-mobile {
+    font-family: 'Montserrat', sans-serif; font-weight: 700; color: var(--color-secondary);
+    font-size: 1.1rem; text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.panel-perfil {
+    background: var(--color-secondary);
+    width: 80px; height: 80px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 15px;
+    border: 3px solid var(--color-primary);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+.panel-perfil i { color: var(--color-primary); font-size: 2rem; }
+.panel-info { color: var(--color-primary); text-align: center; }
+.panel-info strong { font-weight: 700; display: block; margin-bottom: 5px; }
+
+/* ---------- Encabezado ---------- */
+.panel-header {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+    color: var(--color-secondary);
+    padding: 2.5rem 0;
+    margin-bottom: 1rem;
+    border-radius: 0 0 25px 25px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+.panel-header h2, .panel-header p { color: var(--color-secondary); text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+
+/* ---------- Tarjetas ---------- */
+.card {
+    background-color: var(--color-secondary);
+    color: var(--color-primary);
+    border: 2px solid var(--color-primary);
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    transition: box-shadow 0.3s ease;
+    margin-bottom: 1.5rem;
+}
+.card:hover { box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
+.card-header {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%) !important;
+    color: var(--color-secondary) !important;
+    border-bottom: 3px solid var(--color-primary);
+    border-radius: 13px 13px 0 0 !important;
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+}
+.card-header h5 { color: var(--color-secondary); margin: 0; }
+.card-header small { color: var(--color-secondary); opacity: 0.85; font-weight: 400; }
+.stats-card { border-left: 5px solid var(--color-primary); border-radius: 12px; overflow: hidden; }
+.stats-card h3 { margin: 0; }
+
+/* ---------- Botones ---------- */
+.btn-primary {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+    border: 2px solid var(--color-primary);
+    color: var(--color-secondary);
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+.btn-primary:hover, .btn-primary:focus {
+    background: linear-gradient(135deg, var(--color-accent) 0%, #b30000 100%);
+    border-color: var(--color-accent);
+    color: var(--color-secondary);
+    box-shadow: 0 5px 15px rgba(122,0,0,0.3);
+}
+.btn-outline-primary { color: var(--color-primary); border: 2px solid var(--color-primary); background: transparent; font-weight: 600; }
+.btn-outline-primary:hover { background-color: var(--color-primary); border-color: var(--color-primary); color: var(--color-secondary); }
+.btn-outline-danger { border-width: 2px; font-weight: 600; }
+
+/* ---------- Tablas ---------- */
+.table { color: var(--color-primary); margin-bottom: 0; --bs-table-bg: transparent; --bs-table-color: var(--color-primary); }
+.table thead { background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%); }
+.table thead th { color: var(--color-secondary); border: none; font-weight: 600; padding: 0.8rem 1rem; white-space: nowrap; }
+.table td { padding: 0.65rem 1rem; border-color: #e0d9c0; vertical-align: middle; }
+.table-hover > tbody > tr:hover > * { --bs-table-hover-bg: rgba(122,0,0,0.05); color: var(--color-primary); }
+.table-responsive { border-radius: 10px; }
+.table .btn { white-space: nowrap; }
+.table .form-control-sm { min-width: 190px; }
+
+/* ---------- Formularios ---------- */
+.form-control, .form-select {
+    border: 2px solid var(--color-primary);
+    border-radius: 8px;
+    color: var(--color-primary);
+    font-weight: 500;
+}
+.form-control:focus, .form-select:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 0.25rem rgba(122,0,0,0.25);
+    color: var(--color-primary);
+}
+.form-label { color: var(--color-primary); font-weight: 600; margin-bottom: 6px; }
+.form-check-input:checked { background-color: var(--color-primary); border-color: var(--color-primary); }
+
+/* ---------- Avisos y etiquetas ---------- */
+.alert-success { background-color: #e8f5e9; color: #1b5e20; border: 2px solid #c8e6c9; border-radius: 10px; }
+.alert-danger  { background-color: #ffebee; color: #b71c1c; border: 2px solid #ffcdd2; border-radius: 10px; }
+.alert-info    { background-color: #e3f2fd; color: #0d47a1; border: 2px solid #bbdefb; border-radius: 10px; }
+.alert-warning { background-color: #fff8e1; color: #8a4b00; border: 2px solid #ffe0b2; border-radius: 10px; }
+.alert a { color: inherit; font-weight: 700; }
+.badge.bg-success { background: linear-gradient(135deg, var(--color-success) 0%, #4caf50 100%) !important; }
+.badge.bg-danger  { background: linear-gradient(135deg, #c62828 0%, #f44336 100%) !important; }
+.badge.bg-warning { background: linear-gradient(135deg, var(--color-warning) 0%, #ff9800 100%) !important; color: #000 !important; }
+.badge.bg-primary { background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%) !important; }
+.profesor-badge {
+    background-color: #e9ecef; border: 1px solid #dee2e6; border-radius: 15px;
+    padding: 2px 8px; margin: 2px; font-size: 0.8em; display: inline-block; color: #333;
+}
+.nav-pills .nav-link { color: var(--color-secondary); border: 2px solid var(--color-secondary); border-radius: 8px; font-weight: 600; margin: 0 6px 6px 0; }
+.nav-pills .nav-link.active, .nav-pills .nav-link:hover { background-color: var(--color-secondary); color: var(--color-primary); }
+
+/* Grilla de cursos (estructura y preceptores) */
+.cursos-grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 14px; margin: 6px 0 14px; }
+.cursos-grilla label { display: flex; gap: 6px; align-items: center; }
+.curso-enlace {
+    display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 8px 12px;
+    border: 2px solid var(--color-primary); border-radius: 8px; color: var(--color-primary);
+    text-decoration: none; font-weight: 600; font-size: 0.9rem; transition: all 0.2s ease;
+}
+.curso-enlace:hover, .curso-enlace.active { background: var(--color-primary); color: var(--color-secondary); }
+.lista-chica { margin: 6px 0 0 18px; font-size: 0.85rem; }
+details > summary { cursor: pointer; font-weight: 600; }
+
+/* ---------- Códigos para imprimir ---------- */
+.codigos { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.codigo-tarjeta { background: #fff; border: 1.5px dashed #9ca3af; border-radius: 8px; padding: 10px 12px; color: #111827; break-inside: avoid; }
+.codigo-tarjeta__escuela { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; }
+.codigo-tarjeta__nombre { font-weight: 700; margin-top: 2px; }
+.codigo-tarjeta__codigo { font: 700 1.35rem/1.4 Consolas, "Courier New", monospace; letter-spacing: 2px; margin: 6px 0; }
+.codigo-tarjeta__pie { font-size: 0.75rem; color: #4b5563; }
+
+/* ---------- Pantallas ---------- */
+@media (min-width: 768px) {
+    .sidebar { position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+    .sidebar-content { padding: 2rem 1.5rem; }
+    .panel-header { padding: 3rem 0; }
+}
+@media (max-width: 767.98px) {
+    .offcanvas-header { background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%); color: var(--color-secondary); }
+    .mobile-header { background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%); padding: 1rem; }
+    body::before { left: 0; background-size: 1000px; background-position: center -70px; }
+    .panel-header { padding: 1.5rem 0; border-radius: 0 0 18px 18px; }
+}
+
+@media print {
+    .no-imprimir, .sidebar, .mobile-header, .panel-header, .contenido > :not(.card-codigos) { display: none !important; }
+    body { background: #fff !important; }
+    body::before { display: none; }
+    .card-codigos { border: 0; box-shadow: none; background: #fff; }
+    .card-codigos .card-header { display: none; }
+}

@@ -20,10 +20,7 @@ $yo  = (int) ($_SESSION['usuario_id'] ?? 0);
 
 $misCursos = cursosDePreceptor($pdo, $yo);
 $misIds = array_map(fn($c) => (int) $c['id'], $misCursos);
-$cursoSel = (int) ($_GET['curso'] ?? ($misIds[0] ?? 0));
-if (!in_array($cursoSel, $misIds, true)) {
-    $cursoSel = $misIds[0] ?? 0;
-}
+$cursoSel = cursoActivo($misIds, $_GET['curso'] ?? null);   // se recuerda entre pantallas
 $volver = 'preceptor.php' . ($cursoSel ? '?curso=' . $cursoSel : '');
 
 /* ------------------------------ ACCIONES ------------------------------ */
@@ -110,18 +107,12 @@ foreach ($misCursos as $c) {
 $sinActivar = count(array_filter($alumnos, fn($a) => $a['estado'] === 'pendiente'));
 $activos = count(array_filter($alumnos, fn($a) => $a['estado'] === 'activo'));
 
-encabezadoPanel('Alumnos y cuentas', 'bi-key', 'Cargue a los alumnos de sus cursos y entrégueles el código de primer ingreso.', 'padron');
+encabezadoPanel('Alumnos y cuentas', 'bi-key', ($cursoNombre[$cursoSel] ?? '') . ' · Cargue a los alumnos y entrégueles el código de primer ingreso.', 'padron', [], true);
 ?>
 
 <?php if (!$misCursos): ?>
     <?php sinDatos('Todavía no tiene cursos asignados. Pídale a un directivo que se los asigne en «Gestión de cuentas».'); ?>
 <?php else: ?>
-
-    <ul class="nav nav-pills mb-3 no-imprimir">
-        <?php foreach ($misCursos as $c): $act = (int) $c['id'] === $cursoSel; ?>
-            <li class="nav-item"><a href="preceptor.php?curso=<?php echo (int) $c['id']; ?>" class="nav-link <?php echo $act ? 'active' : ''; ?>"<?php echo $act ? ' aria-current="page"' : ''; ?>><i class="bi bi-book"></i> <?php echo e(nombreCurso($c)); ?></a></li>
-        <?php endforeach; ?>
-    </ul>
 
     <div class="row no-imprimir">
         <?php foreach ([['Alumnos', count($alumnos), 'bi-people', 'text-primary'], ['Cuentas activas', $activos, 'bi-person-check', 'text-success'],

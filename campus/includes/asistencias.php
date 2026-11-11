@@ -385,6 +385,97 @@ function descartarAlerta(PDO $pdo, int $preceptorId, int $alumnoId): void {
                    ON DUPLICATE KEY UPDATE descartada_en = VALUES(descartada_en)')->execute([$preceptorId, $alumnoId, hoy()]);
 }
 
+/* ---------------------------------------------------------------------
+   TABLERO DEL DÍA Y PENDIENTES (pantalla «Hoy»)
+   --------------------------------------------------------------------- */
+
+/**
+ * Estado de hoy de cada curso: [curso_id => fila]. Cada fila: curso (datos), alumnos,
+ * sin_activar, preceptores (texto), general (null si no se tomó, o [registros, ausentes, tardes]),
+ * materias_hoy (cuántas materias tomaron asistencia hoy) y materias (total del curso).
+ * $cursoIds null = todos los cursos activos.
+ */
+function tableroHoy(PDO $pdo, ?array $cursoIds = null): array {
+    $tab = [];
+    foreach (listarCursos($pdo) as $c) {
+        if ($cursoIds === null || in_array((int) $c['id'], $cursoIds, true)) {
+            $tab[(int) $c['id']] = ['curso' => $c, 'alumnos' => 0, 'sin_activar' => 0, 'preceptores' => '',
+                                    'general' => null, 'materias_hoy' => 0, 'materias' => 0];
+        }
+    }
+    if (!$tab) {
+        return [];
+    }
+    foreach ($pdo->query("SELECT a.curso_id, COUNT(*) n, SUM(u.estado = 'pendiente') p FROM alumnos a
+                          JOIN usuarios u ON u.id = a.usuario_id JOIN usuario_roles r ON r.usuario_id = u.id AND r.rol = 'alumno'
+                          WHERE a.curso_id IS NOT NULL GROUP BY a.curso_id") as $r) {
+        if (isset($tab[$r['curso_id']])) {
+            $tab[$r['curso_id']]['alumnos'] = (int) $r['n'];
+            $tab[$r['curso_id']]['sin_activar'] = (int) $r['p'];
+        }
+    }
+    foreach ($pdo->query("SELECT pc.curso_id, GROUP_CONCAT(u.nombre ORDER BY u.nombre SEPARATOR ', ') n
+                          FROM preceptor_cursos pc JOIN usuarios u ON u.id = pc.usuario_id GROUP BY pc.curso_id") as $r) {
+        if (isset($tab[$r['curso_id']])) {
+            $tab[$r['curso_id']]['preceptores'] = $r['n'];
+        }
+    }
+    foreach ($pdo->query('SELECT curso_id, COUNT(*) n FROM curso_materias GROUP BY curso_id') as $r) {
+        if (isset($tab[$r['curso_id']])) {
+            $tab[$r['curso_id']]['materias'] = (int) $r['n'];
+        }
+    }
+    $st = $pdo->prepare("SELECT curso_id, curso_materia_id IS NULL AS gen, COUNT(*) n, SUM(estado = 'ausente') aus,
+                                SUM(estado = 'tarde') tar, COUNT(DISTINCT curso_materia_id) mats
+                         FROM asistencias WHERE fecha = ? GROUP BY curso_id, gen");
+    $st->execute([hoy()]);
+    foreach ($st as $r) {
+        if (!isset($tab[$r['curso_id']])) {
+            continue;
+        }
+        if ($r['gen']) {
+            $tab[$r['curso_id']]['general'] = ['registros' => (int) $r['n'], 'ausentes' => (int) $r['aus'], 'tardes' => (int) $r['tar']];
+        } else {
+            $tab[$r['curso_id']]['materias_hoy'] = (int) $r['mats'];
+        }
+    }
+    return $tab;
+}
+
+/**
+ * Lo que un directivo tiene pendiente para que el campus funcione, con el enlace
+ * para resolverlo: [texto, cantidad, enlace, ícono, explicación].
+ */
+function pendientesDirectivo(PDO $pdo): array {
+    $n = fn(string $sql) => (int) $pdo->query($sql)->fetchColumn();
+    $p = [
+        ['Pedidos de recuperación', count(solicitudesPendientes($pdo)), 'cuentas.php?ver=pedidos', 'bi-key',
+         'Personas que esperan un código para volver a entrar.'],
+        ['Alumnos sin curso', count(alumnosDeCurso($pdo, null)), 'cuentas.php?ver=alumnos&curso=-1', 'bi-people',
+         'No aparecen en la planilla de asistencia ni en el panel de ningún preceptor.'],
+        ['Cursos sin preceptor', $n('SELECT COUNT(*) FROM cursos c WHERE c.activo = 1 AND NOT EXISTS (SELECT 1 FROM preceptor_cursos pc WHERE pc.curso_id = c.id)'),
+         'cuentas.php?ver=preceptores', 'bi-person-gear', 'Nadie toma la asistencia general ni gestiona sus alumnos.'],
+        ['Docentes de la planilla sin vincular', $n('SELECT COUNT(DISTINCT d.docente_clave) FROM curso_materia_docentes d
+                                                     LEFT JOIN docentes_vinculos v ON v.docente_clave = d.docente_clave WHERE v.usuario_id IS NULL'),
+         'estructura.php?ver=docentes&f=sin', 'bi-person-dash', 'Sus materias no tienen quién tome asistencia.'],
+        ['Profesores sin materias', $n("SELECT COUNT(*) FROM usuario_roles r JOIN usuarios u ON u.id = r.usuario_id
+                                        WHERE r.rol = 'profesor' AND u.estado <> 'bloqueado'
+                                          AND NOT EXISTS (SELECT 1 FROM docentes_vinculos v WHERE v.usuario_id = r.usuario_id)"),
+         'estructura.php?ver=docentes&f=sin', 'bi-journal-x', 'Tienen cuenta pero todavía no se vincularon con la planilla.'],
+        ['Cuentas de personal sin activar', $n("SELECT COUNT(DISTINCT u.id) FROM usuarios u JOIN usuario_roles r ON r.usuario_id = u.id
+                                                WHERE u.estado = 'pendiente' AND r.rol <> 'alumno'"),
+         'cuentas.php?ver=personal', 'bi-hourglass-split', 'Todavía no usaron su código de alta.'],
+    ];
+    try {
+        $plan = planImportacion($pdo, leerPlanillaAsignaciones());
+        $p[] = ['Cambios de la planilla de ProgMesas sin importar', count($plan['nuevas']) + count($plan['cambios']),
+                'estructura.php?ver=importar', 'bi-cloud-download', 'Materias o docentes que cambiaron en ProgMesas.'];
+    } catch (RuntimeException $e) {
+        // sin planilla: no es un pendiente del campus
+    }
+    return $p;
+}
+
 function auditarAsistencias(string $accion): void {
     $quien = ($_SESSION['correo'] ?? '') ?: ($_SESSION['nombre'] ?? 'sistema');
     error_log('[CAMPUS ASISTENCIAS] ' . preg_replace('/[\x00-\x1F\x7F]+/u', ' ', "$quien: $accion"));

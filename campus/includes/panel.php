@@ -19,6 +19,21 @@ function redirigir(string $url): void {
     exit;
 }
 
+/**
+ * Curso con el que trabaja el preceptor. Se recuerda en la sesión: lo que elige en una
+ * pantalla (planilla, justificar, reportes, alumnos) queda elegido en las demás.
+ * $ids: cursos que puede usar; $pedido: el que viene en el enlace o el selector.
+ */
+function cursoActivo(array $ids, $pedido = null): int {
+    $p = (int) $pedido;
+    if ($p && in_array($p, $ids, true)) {
+        $_SESSION['curso_activo'] = $p;
+        return $p;
+    }
+    $s = (int) ($_SESSION['curso_activo'] ?? 0);
+    return in_array($s, $ids, true) ? $s : (int) ($ids[0] ?? 0);
+}
+
 /** Guarda códigos recién generados para mostrarlos UNA vez (no quedan en ningún otro lado). */
 function guardarCodigosParaMostrar(array $codigos): void {
     $_SESSION['codigos_nuevos'] = $codigos;
@@ -30,6 +45,9 @@ function guardarCodigosParaMostrar(array $codigos): void {
  */
 function menuPanel(): array {
     $menu = [['inicio', 'Mi panel', 'bi-house', 'dashboard.php']];
+    if (tieneRol('directivo') || tieneRol('preceptor')) {
+        $menu[] = ['hoy', tieneRol('directivo') ? 'Hoy y pendientes' : 'Hoy', 'bi-sun', 'hoy.php'];
+    }
     if (tienePermiso('asistencia')) {
         $menu[] = 'Asistencias';
         if (tieneRol('profesor') || tieneRol('preceptor')) {
@@ -45,7 +63,7 @@ function menuPanel(): array {
         $menu[] = 'Cuentas';
         $menu[] = ['cuentas:personal', 'Personal', 'bi-person-badge', 'cuentas.php?ver=personal'];
         $menu[] = ['cuentas:alumnos', 'Alumnos', 'bi-people', 'cuentas.php?ver=alumnos'];
-        $menu[] = ['cuentas:preceptores', 'Cursos de preceptores', 'bi-person-gear', 'cuentas.php?ver=preceptores'];
+        $menu[] = ['cuentas:preceptores', 'Preceptores por curso', 'bi-person-gear', 'cuentas.php?ver=preceptores'];
         $menu[] = ['cuentas:pedidos', 'Pedidos de recuperación', 'bi-key', 'cuentas.php?ver=pedidos'];
     }
     if (tienePermiso('estructura')) {
@@ -67,8 +85,13 @@ function menuPanel(): array {
  * Abre la página: barra lateral, encabezado y avisos.
  *   $activo    : clave del menú a resaltar (ver menuPanel)
  *   $contadores: números para mostrar junto a una entrada del menú, por clave
+ *   $selectorCurso: muestra en el encabezado el curso activo del preceptor, para cambiarlo
  */
-function encabezadoPanel(string $titulo, string $icono = 'bi-grid', string $subtitulo = '', string $activo = '', array $contadores = []): void {
+function encabezadoPanel(string $titulo, string $icono = 'bi-grid', string $subtitulo = '', string $activo = '', array $contadores = [], bool $selectorCurso = false): void {
+    $cursosSel = [];
+    if ($selectorCurso && tieneRol('preceptor') && function_exists('cursosDePreceptor')) {
+        $cursosSel = cursosDePreceptor(bdCuentas(), (int) ($_SESSION['usuario_id'] ?? 0));
+    }
     $nombre = $_SESSION['nombre'] ?? '';
     $rolesTxt = etiquetaRoles(rolesSesion());
     $etiquetaPanel = tieneRol('directivo') ? 'Panel Directivo' : (tieneRol('preceptor') ? 'Panel Preceptor' : (tieneRol('profesor') ? 'Panel Profesor' : 'Mi panel'));
@@ -151,6 +174,20 @@ function encabezadoPanel(string $titulo, string $icono = 'bi-grid', string $subt
                             <div class="bg-white bg-opacity-25 rounded-pill px-3 py-1 d-inline-block">
                                 <i class="bi bi-calendar-check"></i> <?php echo date('d/m/Y'); ?>
                             </div>
+                            <?php if (count($cursosSel) > 1): $actual = cursoActivo(array_map(fn($c) => (int) $c['id'], $cursosSel)); ?>
+                                <!-- Curso activo: se recuerda al pasar de una pantalla a otra -->
+                                <form method="get" class="selector-curso mt-2">
+                                    <?php if (isset($_GET['ver'])): ?><input type="hidden" name="ver" value="<?php echo e((string) $_GET['ver']); ?>"><?php endif; ?>
+                                    <label for="curso-activo" class="visually-hidden">Curso</label>
+                                    <i class="bi bi-book"></i>
+                                    <select id="curso-activo" name="curso" class="form-select form-select-sm" onchange="this.form.submit()">
+                                        <?php foreach ($cursosSel as $c): ?>
+                                            <option value="<?php echo (int) $c['id']; ?>" <?php echo (int) $c['id'] === $actual ? 'selected' : ''; ?>><?php echo e(nombreCurso($c)); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <noscript><button class="btn btn-light btn-sm">Cambiar</button></noscript>
+                                </form>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>

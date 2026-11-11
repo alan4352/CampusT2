@@ -94,6 +94,15 @@ Es el sistema de asistencias de la escuela (PROJECT_ASIST) integrado al campus, 
   (presentes + tardes sobre el total), resumen por alumno y detalle. El botón **Imprimir / PDF** arma una versión para
   imprimir o guardar como PDF desde el navegador.
 - La asistencia general del preceptor y la de cada materia se guardan por separado.
+- **Hoy** (`campus/hoy.php`), la pantalla de inicio del trabajo diario:
+  - **preceptor:** una tarjeta por curso con la asistencia de hoy (tomada o no), las alertas, los pedidos y los
+    alumnos sin activar, con un botón para cada cosa;
+  - **directivo:** los pendientes (pedidos, alumnos sin curso, cursos sin preceptor, docentes sin vincular, cuentas
+    sin activar, cambios de la planilla) y la asistencia de hoy de todos los cursos.
+- **Curso activo:** el preceptor elige el curso una vez, en el encabezado o en cualquier pantalla, y queda elegido en
+  la planilla, justificar, reportes y alumnos.
+- **Preceptores por curso** (Gestión de cuentas): una tabla con cada curso, su preceptor y un botón para asignar o
+  quitar; los cursos sin preceptor quedan marcados.
 
 ## Requisitos
 

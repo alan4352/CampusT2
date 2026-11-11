@@ -100,7 +100,23 @@ $titulos = [
         : ['Reportes de asistencia', 'bi-graph-up', 'Filtre, revise e imprima las asistencias.'],
 ];
 [$tit, $ico, $sub] = $titulos[$ver];
-encabezadoPanel($tit, $ico, $sub, "asistencia:$ver");
+
+// Curso activo del preceptor: lo que elige en una pantalla queda elegido en las demás
+$idsPrec = tieneRol('preceptor') ? array_map(fn($c) => (int) $c['id'], cursosDePreceptor($pdo, $yo)) : [];
+if ($idsPrec && isset($_GET['curso'])) {
+    cursoActivo($idsPrec, $_GET['curso']);
+}
+if ($ver === 'tomar' && $opciones) {
+    if (array_key_exists($_GET['clase'] ?? '', $opciones)) {
+        $clave = $_GET['clase'];
+        cursoActivo($idsPrec, $opciones[$clave]['curso_id']);
+    } else {
+        $cur = cursoActivo($idsPrec);
+        $delCurso = array_filter($opciones, fn($o) => $o['curso_id'] === $cur);
+        $clave = isset($opciones["g-$cur"]) ? "g-$cur" : (array_key_first($delCurso) ?? array_key_first($opciones));
+    }
+}
+encabezadoPanel($tit, $ico, $sub, "asistencia:$ver", [], (bool) $idsPrec);
 
 /* ============================== TOMAR ============================== */
 if ($ver === 'tomar' && !$opciones):
@@ -111,7 +127,6 @@ if ($ver === 'tomar' && !$opciones):
     finTarjeta();
 
 elseif ($ver === 'tomar'):
-    $clave = array_key_exists($_GET['clase'] ?? '', $opciones) ? $_GET['clase'] : array_key_first($opciones);
     $op = $opciones[$clave];
     $alumnos = alumnosParaToma($pdo, $op['curso_id']);
     $cargado = asistenciasDelDia($pdo, $op['curso_id'], $op['cm_id'], hoy());
@@ -178,7 +193,9 @@ elseif ($ver === 'tomar'):
 elseif ($ver === 'justificar'):
     $cursosJ = tieneRol('directivo') ? listarCursos($pdo) : cursosDePreceptor($pdo, $yo);
     $idsJ = array_map(fn($c) => (int) $c['id'], $cursosJ);
-    $cursoJ = in_array((int) ($_GET['curso'] ?? 0), $idsJ, true) ? (int) $_GET['curso'] : ($idsJ[0] ?? 0);
+    $cursoJ = tieneRol('directivo')
+        ? (in_array((int) ($_GET['curso'] ?? 0), $idsJ, true) ? (int) $_GET['curso'] : ($idsJ[0] ?? 0))
+        : cursoActivo($idsJ);
     $fechaJ = fechaValida((string) ($_GET['fecha'] ?? '')) ?? hoy();
     $filtro = '<form method="get" class="d-flex flex-wrap gap-2"><input type="hidden" name="ver" value="justificar">'
         . '<select name="curso" class="form-select form-select-sm w-auto" aria-label="Curso">';
@@ -232,6 +249,9 @@ else:
     $f = filtrosAsistencia($_GET);
     if ($soloAlumno) {
         $f['alumno'] = 0;   // el alumno ve solo lo suyo: el alcance ya lo limita
+    }
+    if ($idsPrec && !tieneRol('directivo') && !isset($_GET['curso'])) {
+        $f['curso'] = cursoActivo($idsPrec);   // el preceptor entra a su curso activo («Todos» sigue disponible)
     }
 
     // Cursos que puede elegir

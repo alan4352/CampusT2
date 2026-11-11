@@ -51,6 +51,15 @@ $nombre = $_SESSION['nombre'];
 
     <div class="modulos">
 
+        <?php if (tieneRol('directivo') || tieneRol('preceptor')): ?>
+            <a class="modulo" href="hoy.php">
+                <h2><?php echo tieneRol('directivo') ? 'Hoy y pendientes' : 'Hoy en mis cursos'; ?></h2>
+                <p><?php echo tieneRol('directivo')
+                    ? 'Lo que falta resolver para que el campus funcione y cómo va la asistencia de hoy en cada curso.'
+                    : 'Asistencia de hoy, alertas y pedidos de cada uno de sus cursos, con un botón para cada cosa.'; ?></p>
+            </a>
+        <?php endif; ?>
+
         <?php
         /* Asistencias: el texto depende de lo que puede hacer cada rol */
         if (tienePermiso('asistencia')):

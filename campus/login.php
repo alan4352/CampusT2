@@ -201,6 +201,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <a href="recuperar.php" class="login__olvido" style="color: #f87171; font-size: 0.88rem; font-weight: 600; text-decoration: underline;">
                 ¿Olvidó su contraseña?
             </a>
+           <a href="https://www.youtube.com/watch?v=i9HK0pbfm_U" target="_blank" rel="noopener noreferrer" style="color: #93c5fd; font-size: 0.85rem; text-decoration: underline;">
+    ▶ Video: cómo recuperarla
+</a>
         </div>
 
         <button type="submit" class="boton" style="margin-top: 1.25rem; width: 100%;">Ingresar</button>
@@ -209,6 +212,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- ACCIONES: PRIMER INGRESO Y VOLVER -->
     <div class="login__acciones" style="margin-top: 1.5rem;">
         <a href="activar.php" class="boton boton--secundario">¿Primer ingreso? Active su cuenta con su código</a>
+       <a href="https://www.youtube.com/watch?v=sECroR7dNGo" target="_blank" rel="noopener noreferrer" class="boton boton--oscuro" style="display: block; margin-top: 8px;">
+    ▶ Video tutorial: cómo ingresar y crear usuario
+</a>
         <a href="index.php" class="boton boton--oscuro">← Volver al inicio</a>
     </div>
 </main>

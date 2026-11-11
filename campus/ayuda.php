@@ -1,9 +1,8 @@
 <?php
 /* =====================================================================
    ARCHIVO: ayuda.php
-   PARA QUÉ SIRVE: página pública con tutoriales en video y explicaciones
-   paso a paso sobre cómo registrarse (Alumno y Profesor) y cómo recuperar
-   la contraseña si fue olvidada.
+   PARA QUÉ SIRVE: página pública que explica cómo se obtiene la cuenta
+   (código de primer ingreso), cómo se ingresa y cómo recuperarla.
    ===================================================================== */
 require_once 'includes/sesion.php';
 ?>
@@ -12,7 +11,7 @@ require_once 'includes/sesion.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Centro de Ayuda y Tutoriales — Campus Virtual</title>
+    <title>Centro de Ayuda — Campus Virtual</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="fondo-panel">
@@ -26,7 +25,7 @@ require_once 'includes/sesion.php';
         </a>
         <nav class="barra__menu">
             <a href="login.php" class="boton boton--chico boton--secundario">Ingresar</a>
-            <a href="registro.php" class="boton boton--chico">Registrarse</a>
+            <a href="activar.php" class="boton boton--chico">Activar cuenta</a>
             <a href="index.php" class="boton boton--chico boton--borde">Inicio</a>
         </nav>
     </div>
@@ -34,97 +33,69 @@ require_once 'includes/sesion.php';
 
 <main class="ayuda-pagina">
 
-    <!-- ENCABEZADO -->
     <div class="ayuda-header">
-        <h1>Centro de Ayuda y Tutoriales</h1>
-        <p>Encontrá aquí los videos explicativos y el paso a paso detallado para registrarte o recuperar el acceso a tu cuenta.</p>
+        <h1>Centro de Ayuda</h1>
+        <p>Cómo obtener tu cuenta, ingresar al campus y recuperarla si olvidaste la contraseña.</p>
     </div>
 
-    <!-- =========================================================
-         GUÍA 1: REGISTRO DE ALUMNO
-         ========================================================= -->
-    <article class="tarjeta-tutorial" id="alumno">
+    <!-- GUÍA 1: PRIMER INGRESO -->
+    <article class="tarjeta-tutorial" id="primer-ingreso">
         <div class="tarjeta-tutorial__cuerpo">
             <div class="tarjeta-tutorial__titulo">
-                <h2>1. Cómo registrarte como Alumno</h2>
-                <span class="badge-rol">Alumno</span>
+                <h2>1. Tu primer ingreso</h2>
+                <span class="badge-rol">Todos</span>
             </div>
 
-            <h3 class="pasos-titulo">📋 Paso a paso para Alumnos:</h3>
+            <div class="aviso-importante">
+                <strong>🏛️ Las cuentas las crea la escuela.</strong>
+                No hay registro libre: a los <strong>alumnos</strong> los carga su <strong>preceptor</strong>, y al
+                <strong>personal</strong> (profesores, preceptores y directivos) un <strong>directivo</strong>.
+            </div>
+
+            <h3 class="pasos-titulo">📋 Paso a paso:</h3>
             <ol class="pasos-lista">
-                <li>Dirigite a la página de <strong>Registro</strong> y seleccioná la pestaña <strong>Alumno</strong>.</li>
-                <li>Escribí tu <strong>Nombre y apellido</strong> completo.</li>
-                <li>Ingresá tu <strong>Correo electrónico</strong> activo.</li>
-                <li>Completá tu <strong>DNI</strong>: solo números (sin puntos, espacios ni letras).</li>
-                <li>Hacé clic en el botón rojo <strong>"Registrarme"</strong>.</li>
-                <li>
-                    <strong>⚠️ Muy importante:</strong> En la siguiente pantalla se mostrará tu <strong>contraseña generada automáticamente</strong>.
-                    Anotala o guardala en un lugar seguro, ya que la vas a necesitar para iniciar sesión junto con tu DNI.
-                </li>
+                <li>Pedí tu <strong>código de acceso</strong> (por ejemplo <code>ABCDE-FGHJK</code>): a tu preceptor si sos alumno, o en Dirección si sos docente.</li>
+                <li>Entrá a <a href="activar.php"><strong>Activar cuenta</strong></a> y escribí el código.</li>
+                <li>Revisá que la cuenta sea la tuya (nombre y últimos números del DNI).</li>
+                <li>Elegí tu <strong>contraseña</strong> (al menos 8 caracteres) y, si te lo pide, tu correo.</li>
+                <li>Listo: desde ahí ingresás siempre con tu <strong>DNI o correo</strong> y tu contraseña.</li>
             </ol>
+            <p class="pasos-titulo">⚠️ El código sirve <strong>una sola vez</strong> y vence a los 7 días. Si se te venció, pedí otro.</p>
         </div>
     </article>
 
-
-    <!-- =========================================================
-         GUÍA 2: REGISTRO DE PROFESOR
-         ========================================================= -->
+    <!-- GUÍA 2: PROFESORES CON CÓDIGO PROF- -->
     <article class="tarjeta-tutorial" id="profesor">
         <div class="tarjeta-tutorial__cuerpo">
             <div class="tarjeta-tutorial__titulo">
-                <h2>2. Cómo registrarte como Profesor</h2>
+                <h2>2. Profesores que ya tenían un código PROF-</h2>
                 <span class="badge-rol badge-rol--profesor">Profesor</span>
             </div>
-
-            <!-- AVISO MESA DE ENTRADA -->
-            <div class="aviso-importante">
-                <strong>🏛️ Requisito previo obligatorio:</strong>
-                Antes de iniciar el registro, el docente debe solicitar a la <strong>Dirección o Secretaría de la escuela</strong> la <strong>Clave institucional de registro</strong>. Sin esta clave provista por la institución, no podrá habilitar su cuenta.
-            </div>
-
-            <h3 class="pasos-titulo">📋 Paso a paso para Docentes:</h3>
             <ol class="pasos-lista">
-                <li>Solicitá en la institución la clave institucional para registro de profesores.</li>
-                <li>Accedé a la sección de <strong>Registro</strong> y hacé clic en la pestaña <strong>Profesor</strong>.</li>
-                <li>Ingresá tu <strong>Nombre y apellido</strong>, tu número de <strong>DNI</strong> y tu <strong>Correo electrónico</strong>.</li>
-                <li>En el casillero <strong>"Clave de la escuela"</strong>, escribí exactamente el código provisto por la institución.</li>
-                <li>Hacé clic en el botón <strong>"Registrarme"</strong>.</li>
-                <li>
-                    <strong>⚠️ Guardá tu código:</strong> El sistema te entregará un <strong>Código de Profesor</strong> único (por ejemplo: <code>PROF-A1B2C3</code>). Ese código será tu llave de acceso para iniciar sesión siempre que ingreses al campus.
-                </li>
+                <li>Entrá a <a href="login.php"><strong>Ingresar</strong></a> y escribí tu código <code>PROF-…</code> en el campo del DNI o correo.</li>
+                <li>El sistema te lleva a elegir tu <strong>contraseña</strong>.</li>
+                <li>Desde ese momento ingresás con tu DNI o correo y esa contraseña: el código <code>PROF-</code> deja de servir.</li>
             </ol>
         </div>
     </article>
 
-
-    <!-- =========================================================
-         GUÍA 3: RECUPERAR CONTRASEÑA
-         ========================================================= -->
+    <!-- GUÍA 3: RECUPERAR -->
     <article class="tarjeta-tutorial" id="recuperar">
         <div class="tarjeta-tutorial__cuerpo">
             <div class="tarjeta-tutorial__titulo">
                 <h2>3. Si olvidaste tu contraseña</h2>
                 <span class="badge-rol badge-rol--recuperar">Recuperación</span>
             </div>
-
-            <!-- AVISO INSTITUCIONAL -->
-            <div class="aviso-importante" style="background: rgba(162, 19, 47, 0.15); border-left: 4px solid var(--primary, #a2132f); color: #fff;">
-                <strong>🏛️ Contacte a la institución para generar una nueva contraseña:</strong><br>
-                Por razones de seguridad y protección de la privacidad, el blanqueo de contraseñas ya no se realiza de forma automática por internet.
-            </div>
-
-            <h3 class="pasos-titulo">📋 Cómo solicitar una nueva clave:</h3>
             <ol class="pasos-lista">
-                <li>Acercate personalmente a la <strong>Preceptoría, Secretaría o Dirección</strong> de la escuela.</li>
-                <li>Presentá tu número de <strong>DNI</strong> para acreditar tu identidad.</li>
-                <li>El personal directivo generará y te entregará tu nueva clave de acceso en el momento.</li>
+                <li>Entrá a <a href="recuperar.php"><strong>Recuperar cuenta</strong></a> y escribí tu DNI o correo. También podés pedirlo en persona.</li>
+                <li>Tu <strong>preceptor</strong> (alumnos) o un <strong>directivo</strong> verifica que seas vos y te da un <strong>código de recuperación</strong>.</li>
+                <li>Con ese código, en <a href="activar.php"><strong>Activar cuenta</strong></a>, elegí una contraseña nueva.</li>
             </ol>
         </div>
     </article>
 
-    <!-- ACCIONES FINALES -->
     <div class="ayuda-acciones">
-        <a href="registro.php" class="boton">Ir al formulario de registro →</a>
+        <a href="activar.php" class="boton">Tengo un código →</a>
         <a href="login.php" class="boton boton--secundario">Ingresar al campus →</a>
         <a href="index.php" class="boton boton--gris">← Volver al inicio</a>
     </div>

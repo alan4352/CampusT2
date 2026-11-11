@@ -12,24 +12,44 @@ Todos los módulos inician la sesión con `campus/includes/sesion.php` (ProgMesa
   (`X-Forwarded-Proto`).
 - **`use_strict_mode`**: el servidor no acepta identificadores de sesión inventados.
 - Al iniciar sesión se regenera el identificador (`session_regenerate_id`).
-- Datos que guarda `login.php` y usan los módulos (no cambiar el formato):
+- Datos que guarda `iniciarSesionCuenta()` (`campus/includes/cuentas.php`) y usan los módulos (no cambiar el formato):
 
   | Clave | Contenido |
   |---|---|
-  | `rol` | `alumno`, `profesor` o `directivo` |
+  | `rol` | Rol **principal**: el primero de `directivo`, `profesor`, `preceptor`, `alumno` que tenga la persona |
+  | `roles` | Todos los roles de la persona. `tienePermiso()` y `tieneRol()` revisan esta lista |
   | `nombre`, `correo` | Datos de la cuenta |
-  | `id` | `alumno:<DNI>`, `profesor:<correo>` o `directivo:<correo>`. Lo usan ProgMesas y proyectores |
-  | `usuario_id`, `dni` | ID numérico de la tabla y DNI. Los usa preinscripciones |
+  | `id` | `alumno:<DNI>`, o `profesor:` / `preceptor:` / `directivo:` + correo. Lo usan ProgMesas y proyectores |
+  | `usuario_id`, `dni` | ID de la tabla `usuarios` y DNI. Los usa preinscripciones |
 
-## Inicio de sesión y cuentas
+## Cuentas e inicio de sesión
 
-- **Límite de intentos** (`campus/login.php`): 5 fallos seguidos por cuenta o 30 por IP bloquean 15 minutos. Los
-  contadores se guardan en la carpeta temporal del sistema (`campus_login/`). La IP sale del último valor de
-  `X-Forwarded-For`, que es el que agrega el proxy.
-- **Recuperación de contraseña:** solo un directivo puede restablecerla, desde `campus/restablecer.php`, con token CSRF.
-  La contraseña nueva es aleatoria (10 caracteres), se muestra solo al directivo y cada cambio queda en el log del
-  servidor (`[CAMPUS AUDITORIA]`).
-- Contraseñas y códigos se guardan con `password_hash`.
+- **Una cuenta por persona** en la tabla `usuarios`, con sus roles en `usuario_roles`. `alumnos` y `profesores` son
+  fichas enlazadas por `usuario_id`, que siguen usando los demás módulos.
+- **No hay registro libre.** El preceptor crea las cuentas de los alumnos de sus cursos y los directivos las de todos.
+- **Códigos de acceso** (`codigos_acceso`), para el primer ingreso y para recuperar la cuenta:
+  - 10 caracteres al azar con `random_int`, sin letras ni números que se confundan;
+  - se guarda solo su hash SHA-256: el código en claro se muestra una vez, al generarlo;
+  - sirven una sola vez y vencen (alta: 7 días; recuperación: 48 horas);
+  - generar uno nuevo anula los anteriores de esa cuenta;
+  - se marca como usado dentro de la misma transacción que guarda la contraseña: no se puede usar dos veces.
+- **Recuperación** (`campus/recuperar.php`): registra un pedido y responde lo mismo exista o no la cuenta, para que no
+  sirva para averiguar qué DNI o correos están registrados. El preceptor (alumnos de sus cursos) o un directivo
+  entrega el código después de verificar quién lo pide.
+- **Límite de intentos** (`campus/includes/limite_intentos.php`):
+  - ingreso: 5 fallos seguidos por cuenta o 30 por IP;
+  - «Activar cuenta»: 10 códigos incorrectos por IP;
+  - «Recuperar cuenta»: 10 pedidos por IP.
+
+  Cada uno bloquea 15 minutos. Los contadores se guardan en la carpeta temporal del sistema (`campus_login/`). La IP sale
+  del último valor de `X-Forwarded-For`, que es el que agrega el proxy.
+- **Cuentas suspendidas:** no entran ni reciben códigos. El mensaje de «suspendida» solo aparece con la contraseña
+  correcta, para no revelar el estado de una cuenta ajena.
+- **Panel del preceptor:** cada acción verifica en el servidor que el alumno sea de un curso asignado a ese preceptor.
+- **Auditoría:** las altas, los códigos, las suspensiones y los cambios de roles y cursos quedan en el log del servidor
+  como `[CAMPUS CUENTAS]`.
+- Las contraseñas se guardan con `password_hash`, y se actualiza el hash si PHP cambia el algoritmo por defecto.
+- **Profesores anteriores:** su código `PROF-…` sirve una sola vez, para elegir la contraseña, y después se borra.
 
 ## Permisos
 
@@ -56,7 +76,7 @@ CORS, que este servidor no habilita.
 | Preinscripciones | Modificar solo por **POST** y con `X-Requested-With: XMLHttpRequest` (o `preinscripciones`). Todas las llamadas usan `apiFetch()` de `src/js/core.js` |
 | Proyectores | `X-Requested-With: reservas` en POST, PUT y DELETE |
 | ProgMesas | `X-Requested-With: progmesas` cuando se usa la sesión del campus en lugar del pase |
-| Formularios del campus | Token con `csrf_campo()` dentro del `<form>` y `csrf_valido()` antes de procesar el POST |
+| Formularios del campus (activar, recuperar, gestión de cuentas, panel del preceptor) | Token con `csrf_campo()` dentro del `<form>` y `csrf_valido()` antes de procesar el POST |
 
 ## Datos que se muestran en pantalla (XSS)
 
@@ -81,7 +101,8 @@ punto (`.env`, `.git`) y los `.sql`, `.sqlite`, `.zip` y `.xlsx`.
 
 ## Reglas para quien programe
 
-1. Toda página privada empieza con `requerirLogin()` o revisa el rol con `tienePermiso()` / `$_SESSION['rol']`.
+1. Toda página privada empieza con `requerirLogin()` o `requerirPermiso('modulo')`. Para revisar un rol usar
+   `tieneRol()` (todos los roles de la persona), no `$_SESSION['rol']` (solo el principal).
 2. Todo endpoint revisa el rol **en el servidor** antes de leer o modificar datos.
 3. Nunca usar como identidad lo que manda el navegador (nombre, DNI, correo, ID de usuario): tomarlo de `$_SESSION`.
 4. Lo que modifica datos va por POST (o PUT/DELETE) y exige la cabecera o el token CSRF del módulo.
@@ -93,10 +114,8 @@ punto (`.env`, `.git`) y los `.sql`, `.sqlite`, `.zip` y `.xlsx`.
 
 ## Pendientes conocidos
 
-- **Registro abierto de alumnos:** cualquiera puede registrarse con el DNI de otra persona. La propuesta es que la
-  escuela cargue el padrón y el preceptor entregue un código de alta por alumno.
-- **Clave compartida para profesores:** quien la tenga puede crearse una cuenta de profesor. Conviene cambiarla
-  periódicamente y, a futuro, usar un código de invitación por profesor.
 - **Bloqueo por cuenta:** cualquiera que conozca un DNI puede bloquear esa cuenta 15 minutos con 5 intentos fallidos.
-- **`MODO_PRUEBA`:** mientras esté en `true`, las contraseñas nuevas se muestran en pantalla y los códigos de profesor
-  quedan en `campus/data/correos_simulados.txt`.
+- **Módulos que miran solo el rol principal:** preinscripciones y proyectores revisan `$_SESSION['rol']`. Una persona
+  con dos roles usa esos módulos con el principal (por ejemplo, profesor antes que preceptor).
+- **Correo:** el sistema no envía correos. Los códigos se entregan en persona; para mandarlos por mail haría falta un
+  servicio de correo.

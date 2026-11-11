@@ -344,12 +344,20 @@ function aplicarImportacion(PDO $pdo, array $plan, bool $quitarAusentes): array 
             }
         }
 
-        $quitadas = 0;
+        $quitadas = $conservadas = 0;
         if ($quitarAusentes && $plan['solo_campus']) {
             $del = $pdo->prepare('DELETE FROM curso_materias WHERE id = ?');
             foreach ($plan['solo_campus'] as $s) {
-                $del->execute([$s['id']]);
-                $quitadas += $del->rowCount();
+                try {
+                    $del->execute([$s['id']]);
+                    $quitadas += $del->rowCount();
+                } catch (PDOException $e) {
+                    // 1451: ya tiene asistencias tomadas; se conserva para no perder el historial
+                    if ((int) ($e->errorInfo[1] ?? 0) !== 1451) {
+                        throw $e;
+                    }
+                    $conservadas++;
+                }
             }
         }
         $pdo->commit();
@@ -358,7 +366,7 @@ function aplicarImportacion(PDO $pdo, array $plan, bool $quitarAusentes): array 
         throw $e;
     }
     return ['materias' => count($plan['materias_nuevas']), 'nuevas' => count($plan['nuevas']),
-            'cambios' => count($plan['cambios']), 'quitadas' => $quitadas];
+            'cambios' => count($plan['cambios']), 'quitadas' => $quitadas, 'conservadas' => $conservadas];
 }
 
 

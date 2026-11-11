@@ -53,6 +53,9 @@ eligen su contraseña; después ese código deja de servir.
 
 **Cursos:** se cargan los 29 cursos de 2026 (con su turno) tomados de las asignaciones de ProgMesas. Están en la tabla
 `cursos`.
+### Tutoriales en video (YouTube)
+- [Cómo crear usuario y activar cuenta (Primer ingreso)](https://www.youtube.com/watch?v=sECroR7dNGo)
+- [Qué hacer si olvidaste tu contraseña (Recuperar cuenta)](https://www.youtube.com/watch?v=i9HK0pbfm_U)
 
 ## Materias y docentes (estructura académica)
 

@@ -11,12 +11,21 @@
    Toda acción va por POST con token CSRF y queda en el log del servidor.
    ===================================================================== */
 require_once 'includes/sesion.php';
-require_once 'includes/cuentas.php';
+require_once 'includes/academico.php';   // incluye cuentas.php
 require_once 'includes/panel.php';
 
 requerirPermiso('cuentas');
 
-$pdo = bdCuentas();
+$pdo = bdAcademico();
+
+/** Si el profesor nuevo coincide con docentes de la planilla, avisa para vincularlo. */
+function avisarDocentesSugeridos(PDO $pdo, int $usuarioId): void {
+    $sugeridos = sugerenciasParaProfesor($pdo, $usuarioId);
+    if ($sugeridos) {
+        avisar('exito', 'Esta persona podría ser «' . implode('», «', array_column($sugeridos, 'docente_nombre'))
+            . '» en la planilla de asignaciones. Confírmelo en Estructura académica → Docentes.');
+    }
+}
 $yo  = (int) ($_SESSION['usuario_id'] ?? 0);
 
 $secciones = ['personal' => 'Personal', 'alumnos' => 'Alumnos', 'preceptores' => 'Cursos de preceptores', 'pedidos' => 'Pedidos de recuperación'];
@@ -43,6 +52,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 guardarCodigosParaMostrar([$c + ['nombre' => $u['nombre'], 'dni' => $u['dni']]]);
                 auditarCuentas("creó la cuenta de {$u['nombre']} ({$rol}) y generó su código de alta");
                 avisar('exito', 'Cuenta creada. Entréguele el código para que elija su contraseña.');
+                if ($rol === 'profesor') {
+                    avisarDocentesSugeridos($pdo, $nuevo);
+                }
                 break;
 
             case 'codigo':
@@ -85,6 +97,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 agregarRolACuenta($pdo, $uid, $rol, (int) ($_POST['curso_id'] ?? 0));
                 auditarCuentas("agregó el rol $rol a la cuenta $uid");
                 avisar('exito', 'Rol agregado. Se aplica la próxima vez que esa persona inicie sesión.');
+                if ($rol === 'profesor') {
+                    avisarDocentesSugeridos($pdo, $uid);
+                }
                 break;
 
             case 'asignar_cursos':

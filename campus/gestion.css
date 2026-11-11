@@ -58,6 +58,20 @@
 
 .vacio { color: #6b7280; font-style: italic; }
 
+/* Estructura académica */
+.curso-enlace {
+    display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 6px 10px;
+    border: 1px solid #e5e7eb; border-radius: 8px; color: #111827; text-decoration: none; font-size: 0.9rem;
+}
+.curso-enlace:hover, .curso-enlace.activa { border-color: var(--primary); background: #eef2ff; }
+.contador-suave { color: #6b7280; font-size: 0.8rem; font-weight: 700; }
+.docente-linea { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0; }
+.form-sugerencia { display: flex !important; align-items: center; gap: 6px; margin-bottom: 6px !important; }
+.lista-chica { margin: 6px 0 0 18px; font-size: 0.85rem; color: #374151; }
+.resumen-import { margin: 8px 0 12px 18px; }
+.casilla { display: flex; gap: 8px; align-items: center; margin: 8px 0; }
+small.sub { color: #6b7280; font-weight: 400; }
+
 /* Códigos para imprimir */
 .caja--codigos { border-top: 5px solid var(--primary); }
 .aviso-codigos { background: #fef3e6; border-radius: 8px; padding: 8px 12px; }

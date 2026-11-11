@@ -2,7 +2,7 @@
 /* =====================================================================
    ARCHIVO: includes/panel.php
    PARA QUÉ SIRVE: piezas comunes de los paneles de gestión
-   (cuentas.php y preceptor.php): encabezado, mensajes después de una
+   (cuentas.php, preceptor.php, estructura.php y materias.php): encabezado, mensajes después de una
    acción y la tabla de códigos para imprimir y repartir.
    ===================================================================== */
 

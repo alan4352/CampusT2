@@ -63,6 +63,11 @@ Todos los módulos inician la sesión con `campus/includes/sesion.php` (ProgMesa
   - mesas, pagos, notas, configuración y vaciado de inscripciones son solo para directivos.
 - **Proyectores:** el profesor reserva a su nombre y cancela solo sus reservas. Se lo identifica por correo e ID
   (`reservas.profesor_id`); las reservas viejas sin ID se comparan por nombre.
+- **Estructura académica** (`campus/estructura.php`): solo directivos. La importación vuelve a calcular el plan en el
+  servidor y lo aplica solo si coincide con la vista previa que vio el directivo (huella SHA-256), en una transacción.
+  Un docente de la planilla solo se vincula con una cuenta que tenga el rol de profesor. «Mis materias»
+  (`campus/materias.php`) muestra al profesor solo lo vinculado a su cuenta y al preceptor solo sus cursos. Las
+  importaciones y los vínculos quedan en el log como `[CAMPUS ESTRUCTURA]`.
 - **ProgMesas:** cada ruta de `progmesas/api.php` exige su rol con `exigirRol()`. El pase de ingreso es un token firmado
   con `PROGMESAS_SECRETO`; sin esa clave configurada no se acepta ningún pase.
 
@@ -76,7 +81,7 @@ CORS, que este servidor no habilita.
 | Preinscripciones | Modificar solo por **POST** y con `X-Requested-With: XMLHttpRequest` (o `preinscripciones`). Todas las llamadas usan `apiFetch()` de `src/js/core.js` |
 | Proyectores | `X-Requested-With: reservas` en POST, PUT y DELETE |
 | ProgMesas | `X-Requested-With: progmesas` cuando se usa la sesión del campus en lugar del pase |
-| Formularios del campus (activar, recuperar, gestión de cuentas, panel del preceptor) | Token con `csrf_campo()` dentro del `<form>` y `csrf_valido()` antes de procesar el POST |
+| Formularios del campus (activar, recuperar, gestión de cuentas, panel del preceptor, estructura académica) | Token con `csrf_campo()` dentro del `<form>` y `csrf_valido()` antes de procesar el POST |
 
 ## Datos que se muestran en pantalla (XSS)
 

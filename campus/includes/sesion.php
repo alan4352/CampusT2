@@ -63,6 +63,8 @@ $PERMISOS = [
     'programa'   => ['directivo', 'profesor', 'preceptor', 'alumno'], // Programas de examen (preceptor: consulta)
     'cuentas'    => ['directivo'],                            // Gestión de cuentas de todo el personal y alumnos
     'padron'     => ['preceptor'],                            // Alumnos y códigos de los cursos del preceptor
+    'estructura' => ['directivo'],                            // Materias por curso, docentes e importación de ProgMesas
+    'materias'   => ['profesor', 'preceptor'],                // Consulta: materias que dicta / materias de sus cursos
 ];
 
 

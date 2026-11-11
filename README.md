@@ -22,9 +22,9 @@ acceso** de un solo uso.
 | Rol | Quién crea la cuenta | Módulos |
 |---|---|---|
 | **Alumno** | Su **preceptor** (panel «Alumnos y cuentas»), o un directivo | Preinscripción a mesa, programas de examen |
-| **Profesor** | Un **directivo** (panel «Gestión de cuentas») | Reserva de proyectores, subir programas de examen |
-| **Preceptor** | Un **directivo**, que además le asigna sus cursos | Alumnos y cuentas de sus cursos, consulta de programas |
-| **Directivo** | Otro **directivo** | Todo lo anterior, gestión de mesas, control de programas y gestión de cuentas |
+| **Profesor** | Un **directivo** (panel «Gestión de cuentas») | Reserva de proyectores, subir programas de examen, mis materias |
+| **Preceptor** | Un **directivo**, que además le asigna sus cursos | Alumnos y cuentas de sus cursos, materias de sus cursos, consulta de programas |
+| **Directivo** | Otro **directivo** | Todo lo anterior, gestión de mesas, control de programas, gestión de cuentas y estructura académica |
 
 Una persona puede tener **varios roles** (por ejemplo, profesor y preceptor): el directivo se los agrega a la misma
 cuenta.
@@ -53,6 +53,24 @@ eligen su contraseña; después ese código deja de servir.
 
 **Cursos:** se cargan los 29 cursos de 2026 (con su turno) tomados de las asignaciones de ProgMesas. Están en la tabla
 `cursos`.
+
+## Materias y docentes (estructura académica)
+
+Las materias de cada curso y quién las dicta salen de la planilla de ProgMesas
+(`progmesas/backend/data/asignaciones.xlsx`). Un directivo las trae al campus desde **Estructura académica**
+(`campus/estructura.php`):
+
+1. **Importar de ProgMesas:** muestra una **vista previa** (materias nuevas, cambios de docentes y lo que ya no figura en
+   la planilla) y no cambia nada hasta confirmar. Se puede repetir cada vez que se actualiza la planilla: agrega y
+   actualiza, y solo quita lo que ya no está si se marca esa opción.
+2. **Docentes:** en la planilla cada docente figura por **apellido** (a veces con el nombre). Hay que **vincularlo** con
+   su cuenta de profesor. El campus sugiere la cuenta cuyo nombre coincide, y avisa al crear un profesor si su apellido
+   está en la planilla; el directivo confirma. Si alguien figura de dos formas («Bailoni» y «Bailoni Cecilia»), se
+   vinculan las dos con la misma cuenta.
+3. **Materias por curso:** qué se dicta en cada curso, con sus docentes y si ya están vinculados.
+
+Con el vínculo hecho, el profesor ve sus cursos y materias en **Mis materias** (`campus/materias.php`), y el preceptor
+ve las materias y docentes de sus cursos. El módulo de asistencias (próxima etapa) usa estos datos.
 
 ## Requisitos
 
@@ -89,6 +107,8 @@ Al usarse por primera vez, el código crea las tablas que faltan y agrega column
   `usuario_roles`, `codigos_acceso`, `solicitudes_recuperacion`, `cursos` y `preceptor_cursos`; columnas
   `alumnos.usuario_id`, `alumnos.curso_id` y `profesores.usuario_id`; `alumnos.correo`, `alumnos.clave_hash` y
   `profesores.codigo_hash` pasan a aceptar valores vacíos. Después pasa las cuentas existentes a `usuarios`;
+- **Estructura académica** (`campus/includes/academico.php`, versión 2 de `campus_migraciones`): tablas `materias`,
+  `curso_materias`, `curso_materia_docentes` y `docentes_vinculos`, vacías hasta que un directivo importa la planilla;
 - `profesores.dni` (lo agrega `campus/includes/usuarios.php`);
 - `reservas.profesor_id`, `profesores.id` si no existe, y un índice único por proyector + día + hora en `reservas`
   (lo agrega `proyectores/conexion.php`). Si ya hay reservas duplicadas, el índice no se crea y queda anotado en el log.

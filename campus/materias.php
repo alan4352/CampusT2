@@ -15,60 +15,66 @@ requerirPermiso('materias');
 $pdo = bdAcademico();
 $yo  = (int) ($_SESSION['usuario_id'] ?? 0);
 
-encabezadoPanel('Materias');
+$esProfesor = tieneRol('profesor');
+encabezadoPanel($esProfesor ? 'Mis materias' : 'Materias de mis cursos', 'bi-journal-bookmark',
+    $esProfesor ? 'Los cursos y materias que dicta.' : 'Qué materias tiene cada uno de sus cursos y quién las dicta.', 'materias');
 
-if (tieneRol('profesor')):
-    $mias = materiasDeProfesor($pdo, $yo);
+if ($esProfesor):
     $porCurso = [];
-    foreach ($mias as $m) {
+    foreach (materiasDeProfesor($pdo, $yo) as $m) {
         $porCurso[nombreCurso($m)][] = $m['materia'];
     }
+    tarjeta('Mis materias', 'bi-journal-bookmark', $porCurso ? count($porCurso) . ' curso(s)' : '');
 ?>
-    <section class="caja">
-        <h2>Mis materias</h2>
         <?php if (!$porCurso): ?>
-            <p class="vacio">Todavía no tiene materias asignadas. Si dicta clases en la escuela, pídale a un directivo que vincule su
-                cuenta con su nombre en la planilla de asignaciones.</p>
+            <?php sinDatos('Todavía no tiene materias asignadas. Si dicta clases en la escuela, pídale a un directivo que vincule su cuenta con su nombre en la planilla de asignaciones.'); ?>
         <?php else: ?>
-            <div class="tabla-scroll"><table class="tabla-gestion">
+            <div class="table-responsive"><table class="table table-hover">
                 <thead><tr><th>Curso</th><th>Materias</th></tr></thead>
                 <tbody>
                 <?php foreach ($porCurso as $curso => $materias): ?>
-                    <tr><td><strong><?php echo e($curso); ?></strong></td><td><?php echo e(implode(' · ', $materias)); ?></td></tr>
+                    <tr>
+                        <td class="text-nowrap"><strong><i class="bi bi-book"></i> <?php echo e($curso); ?></strong></td>
+                        <td><?php foreach ($materias as $m): ?><span class="profesor-badge"><?php echo e($m); ?></span><?php endforeach; ?></td>
+                    </tr>
                 <?php endforeach; ?>
                 </tbody>
             </table></div>
-            <p style="margin-top:8px;">¿Falta o sobra alguna? Avísele a un directivo: los datos salen de la planilla de asignaciones de ProgMesas.</p>
+            <p class="mt-3 mb-0 small">¿Falta o sobra alguna? Avísele a un directivo: los datos salen de la planilla de asignaciones de ProgMesas.</p>
         <?php endif; ?>
-    </section>
-<?php endif;
+<?php
+    finTarjeta();
+endif;
 
 if (tieneRol('preceptor')):
     $cursos = cursosDePreceptor($pdo, $yo);
+    if (!$cursos) {
+        tarjeta('Mis cursos', 'bi-book');
+        sinDatos('Todavía no tiene cursos asignados. Pídaselo a un directivo.');
+        finTarjeta();
+    }
+    foreach ($cursos as $c):
+        $materias = materiasDeCurso($pdo, (int) $c['id']);
+        tarjeta(nombreCurso($c), 'bi-book', count($materias) . ' materia(s)');
 ?>
-    <?php if (!$cursos): ?>
-        <section class="caja"><h2>Mis cursos</h2><p class="vacio">Todavía no tiene cursos asignados. Pídaselo a un directivo.</p></section>
-    <?php endif; ?>
-    <?php foreach ($cursos as $c): $materias = materiasDeCurso($pdo, (int) $c['id']); ?>
-        <section class="caja">
-            <h2><?php echo e(nombreCurso($c)); ?></h2>
             <?php if (!$materias): ?>
-                <p class="vacio">Este curso no tiene materias cargadas.</p>
+                <?php sinDatos('Este curso no tiene materias cargadas.'); ?>
             <?php else: ?>
-                <div class="tabla-scroll"><table class="tabla-gestion">
+                <div class="table-responsive"><table class="table table-hover">
                     <thead><tr><th>Materia</th><th>Docentes</th></tr></thead>
                     <tbody>
                     <?php foreach ($materias as $m): ?>
                         <tr>
                             <td><strong><?php echo e($m['materia']); ?></strong></td>
-                            <td><?php echo $m['docentes'] ? e(implode(' / ', array_map(fn($d) => $d['cuenta'] ?: $d['nombre'], $m['docentes']))) : '<span class="vacio">Sin docente</span>'; ?></td>
+                            <td><?php echo $m['docentes'] ? e(implode(' / ', array_map(fn($d) => $d['cuenta'] ?: $d['nombre'], $m['docentes']))) : '<span class="badge bg-warning">Sin docente</span>'; ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
                 </table></div>
             <?php endif; ?>
-        </section>
-    <?php endforeach; ?>
-<?php endif;
+<?php
+        finTarjeta();
+    endforeach;
+endif;
 
 piePanel();

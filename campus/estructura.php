@@ -83,63 +83,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $cursos = listarCursos($pdo);
 $conteo = materiasPorCurso($pdo);
 
-encabezadoPanel('Estructura académica');
+$encabezados = [
+    'cursos'   => ['Materias por curso', 'bi-journal', 'Qué se dicta en cada curso y quién lo dicta.'],
+    'docentes' => ['Docentes', 'bi-person-check', 'Vincule a cada docente de la planilla de ProgMesas con su cuenta de profesor.'],
+    'importar' => ['Importar de ProgMesas', 'bi-cloud-download', 'Traiga las materias y los docentes de la planilla de asignaciones.'],
+];
+[$tit, $ico, $sub] = $encabezados[$ver];
+encabezadoPanel($tit, $ico, $sub, "estructura:$ver");
 ?>
-<nav class="pestanas-gestion no-imprimir">
-    <?php foreach ($secciones as $k => $titulo): ?>
-        <a href="estructura.php?ver=<?php echo $k; ?>" class="<?php echo $ver === $k ? 'activa' : ''; ?>"><?php echo e($titulo); ?></a>
-    <?php endforeach; ?>
-</nav>
 
 <?php if ($ver === 'cursos'): ?>
-    <section class="caja">
-        <h2>Cursos</h2>
+    <?php tarjeta('Cursos', 'bi-book', count($cursos) . ' cursos · ' . array_sum($conteo) . ' materias de curso'); ?>
         <?php if (!$conteo): ?>
-            <p class="aviso-codigos">Todavía no hay materias cargadas. <a href="estructura.php?ver=importar">Impórtelas de ProgMesas →</a></p>
+            <div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> Todavía no hay materias cargadas. <a href="estructura.php?ver=importar">Impórtelas de ProgMesas →</a></div>
         <?php endif; ?>
-        <div class="cursos-grilla">
+        <div class="cursos-grilla mb-0">
             <?php foreach ($cursos as $c): $cid = (int) $c['id']; ?>
-                <a class="curso-enlace <?php echo $cid === $cursoF ? 'activa' : ''; ?>" href="estructura.php?ver=cursos&amp;curso=<?php echo $cid; ?>">
-                    <?php echo e(nombreCurso($c)); ?> <span class="contador-suave"><?php echo (int) ($conteo[$cid] ?? 0); ?></span>
+                <a class="curso-enlace <?php echo $cid === $cursoF ? 'active' : ''; ?>" href="estructura.php?ver=cursos&amp;curso=<?php echo $cid; ?>">
+                    <?php echo e(nombreCurso($c)); ?> <span class="badge bg-primary"><?php echo (int) ($conteo[$cid] ?? 0); ?></span>
                 </a>
             <?php endforeach; ?>
         </div>
-    </section>
+    <?php finTarjeta(); ?>
 
     <?php if ($cursoF): $curso = array_values(array_filter($cursos, fn($c) => (int) $c['id'] === $cursoF))[0] ?? null; ?>
-        <section class="caja">
-            <h2><?php echo $curso ? e(nombreCurso($curso)) : 'Curso'; ?></h2>
-            <?php $materias = $curso ? materiasDeCurso($pdo, $cursoF) : []; ?>
+        <?php $materias = $curso ? materiasDeCurso($pdo, $cursoF) : []; ?>
+        <?php tarjeta($curso ? nombreCurso($curso) : 'Curso', 'bi-journal', count($materias) . ' materia(s)'); ?>
             <?php if (!$materias): ?>
-                <p class="vacio">Este curso no tiene materias cargadas.</p>
+                <?php sinDatos('Este curso no tiene materias cargadas.'); ?>
             <?php else: ?>
-                <div class="tabla-scroll"><table class="tabla-gestion">
+                <div class="table-responsive"><table class="table table-hover">
                     <thead><tr><th>Materia</th><th>Docentes</th><th>Programa</th><th>Nota de la planilla</th></tr></thead>
                     <tbody>
                     <?php foreach ($materias as $m): ?>
                         <tr>
                             <td><strong><?php echo e($m['materia']); ?></strong></td>
                             <td>
-                                <?php if (!$m['docentes']): ?><span class="estado estado--pendiente">Sin docente</span><?php endif; ?>
+                                <?php if (!$m['docentes']): ?><span class="badge bg-warning">Sin docente</span><?php endif; ?>
                                 <?php foreach ($m['docentes'] as $d): ?>
-                                    <div class="docente-linea">
+                                    <div class="d-flex flex-wrap align-items-center gap-1 my-1">
                                         <?php echo e($d['nombre']); ?>
                                         <?php if ($d['cuenta']): ?>
-                                            <span class="estado estado--activo" title="Cuenta del campus"><?php echo e($d['cuenta']); ?></span>
+                                            <span class="badge bg-success" title="Cuenta del campus"><i class="bi bi-person-check"></i> <?php echo e($d['cuenta']); ?></span>
                                         <?php else: ?>
-                                            <a class="estado estado--pendiente" href="estructura.php?ver=docentes&amp;q=<?php echo urlencode($d['nombre']); ?>">Sin vincular</a>
+                                            <a class="badge bg-warning text-decoration-none" href="estructura.php?ver=docentes&amp;q=<?php echo urlencode($d['nombre']); ?>">Sin vincular</a>
                                         <?php endif; ?>
                                     </div>
                                 <?php endforeach; ?>
                             </td>
-                            <td><?php echo $m['requiere'] ? 'Sí' : 'No'; ?></td>
-                            <td><?php echo e($m['revisar']); ?></td>
+                            <td><?php echo $m['requiere'] ? '<i class="bi bi-check-circle text-success"></i> Sí' : 'No'; ?></td>
+                            <td><small><?php echo e($m['revisar']); ?></small></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
                 </table></div>
             <?php endif; ?>
-        </section>
+        <?php finTarjeta(); ?>
     <?php endif; ?>
 
 <?php elseif ($ver === 'docentes'): ?>
@@ -151,22 +150,30 @@ encabezadoPanel('Estructura académica');
     $detalle = asignacionesPorDocente($pdo);
     $profesores = listarCuentas($pdo, 'profesor');
     ?>
-    <section class="caja">
-        <div class="caja__titulo">
-            <h2>Docentes de la planilla <small class="sub"><?php echo count($docentes); ?> en total · <?php echo $sinVincular; ?> sin vincular</small></h2>
-            <form method="get" class="form-linea"><input type="hidden" name="ver" value="docentes">
-                <select name="f">
-                    <option value="">Todos</option>
-                    <option value="sin" <?php echo $filtro === 'sin' ? 'selected' : ''; ?>>Sin vincular</option>
-                    <option value="con" <?php echo $filtro === 'con' ? 'selected' : ''; ?>>Vinculados</option>
-                </select>
-                <input name="q" value="<?php echo e($buscar); ?>" placeholder="Apellido">
-                <button class="boton-mini">Ver</button>
-            </form>
-        </div>
-        <p>En ProgMesas cada docente figura por apellido. Vincúlelo con su cuenta de profesor para que vea sus materias
+    <div class="row">
+        <?php foreach ([['Docentes en la planilla', count($docentes), 'bi-people', 'text-primary'], ['Vinculados', count($docentes) - $sinVincular, 'bi-person-check', 'text-success'],
+                        ['Sin vincular', $sinVincular, 'bi-person-dash', 'text-warning'], ['Cuentas de profesor', count($profesores), 'bi-person-badge', 'text-info']] as [$t, $n, $i, $col]): ?>
+            <div class="col-6 col-md-3">
+                <div class="card stats-card"><div class="card-body d-flex justify-content-between align-items-center">
+                    <div><h6 class="text-muted mb-1"><?php echo $t; ?></h6><h3 class="<?php echo $col; ?>"><?php echo (int) $n; ?></h3></div>
+                    <i class="bi <?php echo $i; ?> fs-1 <?php echo $col; ?>"></i>
+                </div></div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+
+    <?php
+    $filtroHtml = '<form method="get" class="d-flex flex-wrap gap-2"><input type="hidden" name="ver" value="docentes">'
+        . '<select name="f" class="form-select form-select-sm w-auto" aria-label="Filtro"><option value="">Todos</option>'
+        . '<option value="sin"' . ($filtro === 'sin' ? ' selected' : '') . '>Sin vincular</option>'
+        . '<option value="con"' . ($filtro === 'con' ? ' selected' : '') . '>Vinculados</option></select>'
+        . '<input name="q" class="form-control form-control-sm w-auto" value="' . e($buscar) . '" placeholder="Apellido" aria-label="Buscar docente">'
+        . '<button class="btn btn-light btn-sm"><i class="bi bi-search"></i> Ver</button></form>';
+    tarjeta('Docentes de la planilla', 'bi-person-check', '', $filtroHtml);
+    ?>
+        <p class="small">En ProgMesas cada docente figura por apellido. Vincúlelo con su cuenta de profesor para que vea sus materias
             (y, más adelante, tome asistencia). Si un docente figura de dos formas («Bailoni» y «Bailoni Cecilia»), vincule las dos
-            con la misma cuenta. Si todavía no tiene cuenta, créela en <a href="cuentas.php?ver=personal">Gestión de cuentas</a>.</p>
+            con la misma cuenta. Si todavía no tiene cuenta, créela en <a href="cuentas.php?ver=personal">Personal</a>.</p>
 
         <datalist id="profesores">
             <?php foreach ($profesores as $p): ?>
@@ -175,11 +182,11 @@ encabezadoPanel('Estructura académica');
         </datalist>
 
         <?php if (!$docentes): ?>
-            <p class="vacio">No hay docentes: primero <a href="estructura.php?ver=importar">importe la planilla</a>.</p>
+            <?php sinDatos('No hay docentes: primero <a href="estructura.php?ver=importar">importe la planilla</a>.'); ?>
         <?php elseif (!$lista): ?>
-            <p class="vacio">No hay docentes para mostrar.</p>
+            <?php sinDatos('No hay docentes para mostrar.'); ?>
         <?php else: ?>
-            <div class="tabla-scroll"><table class="tabla-gestion">
+            <div class="table-responsive"><table class="table table-hover">
                 <thead><tr><th>Docente en la planilla</th><th>Materias</th><th>Cuenta del campus</th></tr></thead>
                 <tbody>
                 <?php foreach ($lista as $d): ?>
@@ -192,25 +199,26 @@ encabezadoPanel('Estructura académica');
                         </td>
                         <td>
                             <?php if ($d['usuario_id']): ?>
-                                <div class="acciones">
-                                    <span class="estado estado--activo"><?php echo e($d['cuenta']); ?></span>
-                                    <form method="post" onsubmit="return confirm('¿Quitar el vínculo? Esa cuenta deja de ver estas materias.');"><?php echo csrf_campo(); ?>
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <span class="badge bg-success"><i class="bi bi-person-check"></i> <?php echo e($d['cuenta']); ?></span>
+                                    <form method="post" class="d-inline" onsubmit="return confirm('¿Quitar el vínculo? Esa cuenta deja de ver estas materias.');"><?php echo csrf_campo(); ?>
                                         <input type="hidden" name="accion" value="desvincular"><input type="hidden" name="docente" value="<?php echo e($d['docente_clave']); ?>">
-                                        <button class="boton-mini boton-mini--peligro">Desvincular</button>
+                                        <button class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i> Desvincular</button>
                                     </form>
                                 </div>
                             <?php else: ?>
                                 <?php foreach ($d['sugeridos'] as $s): ?>
-                                    <form method="post" class="form-sugerencia"><?php echo csrf_campo(); ?>
+                                    <form method="post" class="d-flex align-items-center gap-2 mb-1"><?php echo csrf_campo(); ?>
                                         <input type="hidden" name="accion" value="vincular"><input type="hidden" name="docente" value="<?php echo e($d['docente_clave']); ?>">
                                         <input type="hidden" name="usuario_id" value="<?php echo (int) $s['id']; ?>">
-                                        <button class="boton-mini">Vincular con <?php echo e($s['nombre']); ?></button> <span class="rol-chip">Sugerido</span>
+                                        <button class="btn btn-primary btn-sm"><i class="bi bi-link-45deg"></i> Vincular con <?php echo e($s['nombre']); ?></button>
+                                        <span class="badge bg-warning">Sugerido</span>
                                     </form>
                                 <?php endforeach; ?>
-                                <form method="post" class="form-linea"><?php echo csrf_campo(); ?>
+                                <form method="post" class="d-flex gap-1"><?php echo csrf_campo(); ?>
                                     <input type="hidden" name="accion" value="vincular"><input type="hidden" name="docente" value="<?php echo e($d['docente_clave']); ?>">
-                                    <input name="cuenta" list="profesores" placeholder="<?php echo $d['sugeridos'] ? 'Otra cuenta…' : 'Buscar cuenta de profesor…'; ?>" aria-label="Cuenta de profesor para <?php echo e($d['nombre']); ?>" required>
-                                    <button class="boton-mini">Vincular</button>
+                                    <input name="cuenta" list="profesores" class="form-control form-control-sm" placeholder="<?php echo $d['sugeridos'] ? 'Otra cuenta…' : 'Buscar cuenta de profesor…'; ?>" aria-label="Cuenta de profesor para <?php echo e($d['nombre']); ?>" required>
+                                    <button class="btn btn-outline-primary btn-sm"><i class="bi bi-link-45deg"></i> Vincular</button>
                                 </form>
                             <?php endif; ?>
                         </td>
@@ -219,7 +227,7 @@ encabezadoPanel('Estructura académica');
                 </tbody>
             </table></div>
         <?php endif; ?>
-    </section>
+    <?php finTarjeta(); ?>
 
 <?php else: ?>
     <?php
@@ -227,7 +235,7 @@ encabezadoPanel('Estructura académica');
     try {
         $plan = planImportacion($pdo, leerPlanillaAsignaciones());
     } catch (RuntimeException $ex) {
-        echo '<div class="error">' . e($ex->getMessage()) . '</div>';
+        echo '<div class="alert alert-danger error"><i class="bi bi-exclamation-triangle"></i> ' . e($ex->getMessage()) . '</div>';
     }
     if ($plan):
         $nombres = [];
@@ -236,11 +244,21 @@ encabezadoPanel('Estructura académica');
         }
         $hayCambios = $plan['nuevas'] || $plan['cambios'] || $plan['solo_campus'];
     ?>
-        <section class="caja">
-            <h2>Vista previa de la importación</h2>
-            <p>Planilla: <code>progmesas/backend/data/asignaciones.xlsx</code> · <?php echo (int) $plan['filas']; ?> filas.
-                Nada cambia hasta que confirme abajo. Los vínculos de docentes ya hechos se conservan.</p>
-            <ul class="resumen-import">
+        <div class="row">
+            <?php foreach ([['Materias nuevas', count($plan['materias_nuevas']), 'bi-journal-plus', 'text-primary'], ['Para agregar', count($plan['nuevas']), 'bi-plus-circle', 'text-success'],
+                            ['Con cambios', count($plan['cambios']), 'bi-pencil-square', 'text-warning'], ['Ya no en la planilla', count($plan['solo_campus']), 'bi-dash-circle', 'text-danger']] as [$t, $n, $i, $col]): ?>
+                <div class="col-6 col-md-3">
+                    <div class="card stats-card"><div class="card-body d-flex justify-content-between align-items-center">
+                        <div><h6 class="text-muted mb-1"><?php echo $t; ?></h6><h3 class="<?php echo $col; ?>"><?php echo (int) $n; ?></h3></div>
+                        <i class="bi <?php echo $i; ?> fs-1 <?php echo $col; ?>"></i>
+                    </div></div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+
+        <?php tarjeta('Vista previa de la importación', 'bi-eye', (int) $plan['filas'] . ' filas en la planilla'); ?>
+            <p>Planilla: <code>progmesas/backend/data/asignaciones.xlsx</code>. Nada cambia hasta que confirme abajo. Los vínculos de docentes ya hechos se conservan.</p>
+            <ul class="mb-3">
                 <li><strong><?php echo count($plan['materias_nuevas']); ?></strong> materias nuevas en el catálogo</li>
                 <li><strong><?php echo count($plan['nuevas']); ?></strong> materias de curso para agregar</li>
                 <li><strong><?php echo count($plan['cambios']); ?></strong> con cambios (docentes, programa o nota)</li>
@@ -248,60 +266,64 @@ encabezadoPanel('Estructura académica');
                 <li><strong><?php echo (int) $plan['sin_docente']; ?></strong> sin docente en la planilla</li>
             </ul>
             <?php if ($plan['cursos_desconocidos']): ?>
-                <div class="error">Estos cursos de la planilla no existen en el campus y sus filas no se importan:
+                <div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> Estos cursos de la planilla no existen en el campus y sus filas no se importan:
                     <?php echo e(implode(', ', array_map(fn($c, $n) => "$c ($n)", array_keys($plan['cursos_desconocidos']), $plan['cursos_desconocidos']))); ?>.</div>
             <?php endif; ?>
             <?php if ($plan['turnos_distintos']): ?>
-                <p class="aviso-codigos">La planilla indica otro turno para:
+                <div class="alert alert-warning"><i class="bi bi-exclamation-triangle"></i> La planilla indica otro turno para:
                     <?php echo e(implode(', ', array_map(fn($c, $t) => "$c (planilla: $t)", array_keys($plan['turnos_distintos']), $plan['turnos_distintos']))); ?>.
-                    Se importa igual; el turno del curso no cambia.</p>
+                    Se importa igual; el turno del curso no cambia.</div>
             <?php endif; ?>
 
             <?php if (!$hayCambios): ?>
-                <p class="exito">El campus ya está igual que la planilla. No hay nada para importar.</p>
+                <div class="alert alert-success mb-0"><i class="bi bi-check-circle"></i> El campus ya está igual que la planilla. No hay nada para importar.</div>
             <?php else: ?>
                 <form method="post" onsubmit="return confirm('¿Importar estos cambios?');"><?php echo csrf_campo(); ?>
                     <input type="hidden" name="accion" value="importar">
                     <input type="hidden" name="huella" value="<?php echo e($plan['huella']); ?>">
                     <?php if ($plan['solo_campus']): ?>
-                        <label class="casilla"><input type="checkbox" name="quitar" value="1">
-                            Quitar del campus las <?php echo count($plan['solo_campus']); ?> materias de curso que ya no están en la planilla</label>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" name="quitar" value="1" id="quitar">
+                            <label class="form-check-label" for="quitar">Quitar del campus las <?php echo count($plan['solo_campus']); ?> materias de curso que ya no están en la planilla</label>
+                        </div>
                     <?php endif; ?>
-                    <button class="boton">Importar</button>
+                    <button class="btn btn-primary"><i class="bi bi-cloud-download"></i> Importar</button>
                 </form>
             <?php endif; ?>
-        </section>
+        <?php finTarjeta(); ?>
 
         <?php if ($plan['materias_nuevas']): ?>
-            <section class="caja"><details><summary><strong>Materias nuevas (<?php echo count($plan['materias_nuevas']); ?>)</strong></summary>
-                <p><?php echo e(implode(' · ', $plan['materias_nuevas'])); ?></p>
-            </details></section>
+            <?php tarjeta('Materias nuevas', 'bi-journal-plus', '(' . count($plan['materias_nuevas']) . ')'); ?>
+                <details><summary>Ver la lista</summary><p class="mt-2 mb-0"><?php echo e(implode(' · ', $plan['materias_nuevas'])); ?></p></details>
+            <?php finTarjeta(); ?>
         <?php endif; ?>
 
-        <?php foreach (['nuevas' => 'Materias de curso para agregar', 'cambios' => 'Con cambios'] as $k => $titulo): if ($plan[$k]): ?>
-            <section class="caja"><details <?php echo $k === 'cambios' ? 'open' : ''; ?>><summary><strong><?php echo $titulo; ?> (<?php echo count($plan[$k]); ?>)</strong></summary>
-                <div class="tabla-scroll"><table class="tabla-gestion">
-                    <thead><tr><th>Curso</th><th>Materia</th><th>Docentes en la planilla</th><?php if ($k === 'cambios'): ?><th>Qué cambia</th><?php else: ?><th>Nota</th><?php endif; ?></tr></thead>
+        <?php foreach (['nuevas' => ['Materias de curso para agregar', 'bi-plus-circle'], 'cambios' => ['Con cambios', 'bi-pencil-square']] as $k => [$titulo, $icoT]): if ($plan[$k]): ?>
+            <?php tarjeta($titulo, $icoT, '(' . count($plan[$k]) . ')'); ?>
+                <details <?php echo $k === 'cambios' ? 'open' : ''; ?>><summary>Ver el detalle</summary>
+                <div class="table-responsive mt-2"><table class="table table-sm table-hover">
+                    <thead><tr><th>Curso</th><th>Materia</th><th>Docentes en la planilla</th><th><?php echo $k === 'cambios' ? 'Qué cambia' : 'Nota'; ?></th></tr></thead>
                     <tbody>
                     <?php foreach ($plan[$k] as $a): ?>
                         <tr>
                             <td><?php echo e($a['curso']); ?></td>
                             <td><?php echo e($a['materia']); ?></td>
-                            <td><?php echo $a['docentes'] ? e(implode(' / ', $a['docentes'])) : '<span class="estado estado--pendiente">Sin docente</span>'; ?></td>
-                            <td><?php echo e($k === 'cambios' ? implode('; ', $a['detalle']) : $a['revisar']); ?></td>
+                            <td><?php echo $a['docentes'] ? e(implode(' / ', $a['docentes'])) : '<span class="badge bg-warning">Sin docente</span>'; ?></td>
+                            <td><small><?php echo e($k === 'cambios' ? implode('; ', $a['detalle']) : $a['revisar']); ?></small></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
                 </table></div>
-            </details></section>
+                </details>
+            <?php finTarjeta(); ?>
         <?php endif; endforeach; ?>
 
         <?php if ($plan['solo_campus']): ?>
-            <section class="caja"><details open><summary><strong>En el campus pero no en la planilla (<?php echo count($plan['solo_campus']); ?>)</strong></summary>
-                <ul class="lista-chica">
+            <?php tarjeta('En el campus pero no en la planilla', 'bi-dash-circle', '(' . count($plan['solo_campus']) . ')'); ?>
+                <ul class="lista-chica mb-0">
                     <?php foreach ($plan['solo_campus'] as $s): ?><li><?php echo e(($nombres[$s['curso_id']] ?? 'Curso ' . $s['curso_id']) . ' — ' . $s['materia']); ?></li><?php endforeach; ?>
                 </ul>
-            </details></section>
+            <?php finTarjeta(); ?>
         <?php endif; ?>
     <?php endif; ?>
 <?php endif; ?>

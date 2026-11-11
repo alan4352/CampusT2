@@ -108,91 +108,106 @@ foreach ($misCursos as $c) {
     $cursoNombre[(int) $c['id']] = nombreCurso($c);
 }
 $sinActivar = count(array_filter($alumnos, fn($a) => $a['estado'] === 'pendiente'));
+$activos = count(array_filter($alumnos, fn($a) => $a['estado'] === 'activo'));
 
-encabezadoPanel('Alumnos y cuentas');
+encabezadoPanel('Alumnos y cuentas', 'bi-key', 'Cargue a los alumnos de sus cursos y entrégueles el código de primer ingreso.', 'padron');
 ?>
 
 <?php if (!$misCursos): ?>
-    <section class="caja"><p class="vacio">Todavía no tiene cursos asignados. Pídale a un directivo que se los asigne en «Gestión de cuentas».</p></section>
+    <?php sinDatos('Todavía no tiene cursos asignados. Pídale a un directivo que se los asigne en «Gestión de cuentas».'); ?>
 <?php else: ?>
 
-    <?php if ($pedidos): ?>
-        <section class="caja no-imprimir">
-            <h2>Pedidos de recuperación (<?php echo count($pedidos); ?>)</h2>
-            <p>Verifique que quien lo pide es el alumno antes de entregarle el código.</p>
-            <div class="tabla-scroll"><table class="tabla-gestion">
-                <thead><tr><th>Alumno</th><th>DNI</th><th>Curso</th><th>Pedido</th><th>Acciones</th></tr></thead>
-                <tbody>
-                <?php foreach ($pedidos as $s): ?>
-                    <tr>
-                        <td><strong><?php echo e($s['nombre']); ?></strong></td>
-                        <td><?php echo e($s['dni'] ?? ''); ?></td>
-                        <td><?php echo e($cursoNombre[(int) $s['curso_id']] ?? ''); ?></td>
-                        <td><?php echo e(date('d/m/Y H:i', strtotime($s['pedida_en']))); ?></td>
-                        <td><div class="acciones">
-                            <form method="post"><?php echo csrf_campo(); ?>
-                                <input type="hidden" name="accion" value="codigo"><input type="hidden" name="usuario_id" value="<?php echo (int) $s['usuario_id']; ?>">
-                                <button class="boton-mini">Generar código</button>
-                            </form>
-                            <form method="post"><?php echo csrf_campo(); ?>
-                                <input type="hidden" name="accion" value="descartar"><input type="hidden" name="usuario_id" value="<?php echo (int) $s['usuario_id']; ?>">
-                                <input type="hidden" name="solicitud_id" value="<?php echo (int) $s['id']; ?>">
-                                <button class="boton-mini boton-mini--peligro">Descartar</button>
-                            </form>
-                        </div></td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table></div>
-        </section>
-    <?php endif; ?>
-
-    <nav class="pestanas-gestion no-imprimir">
-        <?php foreach ($misCursos as $c): ?>
-            <a href="preceptor.php?curso=<?php echo (int) $c['id']; ?>" class="<?php echo (int) $c['id'] === $cursoSel ? 'activa' : ''; ?>"><?php echo e(nombreCurso($c)); ?></a>
+    <ul class="nav nav-pills mb-3 no-imprimir">
+        <?php foreach ($misCursos as $c): $act = (int) $c['id'] === $cursoSel; ?>
+            <li class="nav-item"><a href="preceptor.php?curso=<?php echo (int) $c['id']; ?>" class="nav-link <?php echo $act ? 'active' : ''; ?>"<?php echo $act ? ' aria-current="page"' : ''; ?>><i class="bi bi-book"></i> <?php echo e(nombreCurso($c)); ?></a></li>
         <?php endforeach; ?>
-    </nav>
+    </ul>
 
-    <section class="caja no-imprimir">
-        <h2>Cargar alumno en <?php echo e($cursoNombre[$cursoSel] ?? ''); ?></h2>
-        <form method="post" class="form-linea"><?php echo csrf_campo(); ?>
-            <input type="hidden" name="accion" value="crear_alumno"><input type="hidden" name="curso_id" value="<?php echo $cursoSel; ?>">
-            <label>Nombre y apellido <input name="nombre" maxlength="150" required></label>
-            <label>DNI <input name="dni" inputmode="numeric" maxlength="8" pattern="[0-9]{7,8}" required placeholder="Sin puntos"></label>
-            <button class="boton">Cargar y generar código</button>
-        </form>
-        <p style="margin-top:8px;">Si el DNI ya tiene cuenta (por ejemplo, cambió de curso), pídale a un directivo que lo actualice.</p>
-    </section>
+    <div class="row no-imprimir">
+        <?php foreach ([['Alumnos', count($alumnos), 'bi-people', 'text-primary'], ['Cuentas activas', $activos, 'bi-person-check', 'text-success'],
+                        ['Sin activar', $sinActivar, 'bi-hourglass-split', 'text-warning'], ['Pedidos de recuperación', count($pedidos), 'bi-key', 'text-danger']] as [$t, $n, $i, $col]): ?>
+            <div class="col-6 col-md-3">
+                <div class="card stats-card"><div class="card-body d-flex justify-content-between align-items-center">
+                    <div><h6 class="text-muted mb-1"><?php echo $t; ?></h6><h3 class="<?php echo $col; ?>"><?php echo (int) $n; ?></h3></div>
+                    <i class="bi <?php echo $i; ?> fs-1 <?php echo $col; ?>"></i>
+                </div></div>
+            </div>
+        <?php endforeach; ?>
+    </div>
 
-    <section class="caja no-imprimir">
-        <div class="caja__titulo">
-            <h2><?php echo e($cursoNombre[$cursoSel] ?? ''); ?> · <?php echo count($alumnos); ?> alumno(s), <?php echo $sinActivar; ?> sin activar</h2>
-            <?php if ($sinActivar): ?>
-                <form method="post" onsubmit="return confirm('Se generan códigos nuevos para los <?php echo $sinActivar; ?> alumnos sin activar. Los códigos anteriores dejan de servir. ¿Continuar?');"><?php echo csrf_campo(); ?>
-                    <input type="hidden" name="accion" value="codigos_curso"><input type="hidden" name="curso_id" value="<?php echo $cursoSel; ?>">
-                    <button class="boton boton--chico">Generar códigos para imprimir</button>
+    <div class="row no-imprimir">
+        <div class="col-lg-6">
+            <?php tarjeta('Cargar alumno en ' . ($cursoNombre[$cursoSel] ?? ''), 'bi-person-plus', '', '', 'h-100'); ?>
+                <form method="post"><?php echo csrf_campo(); ?>
+                    <input type="hidden" name="accion" value="crear_alumno"><input type="hidden" name="curso_id" value="<?php echo $cursoSel; ?>">
+                    <div class="mb-3"><label class="form-label" for="nombre">Nombre y apellido</label><input id="nombre" name="nombre" class="form-control" maxlength="150" required></div>
+                    <div class="mb-3"><label class="form-label" for="dni">DNI</label><input id="dni" name="dni" class="form-control" inputmode="numeric" maxlength="8" pattern="[0-9]{7,8}" required placeholder="Sin puntos"></div>
+                    <button class="btn btn-primary"><i class="bi bi-key"></i> Cargar y generar código</button>
                 </form>
-            <?php endif; ?>
+                <p class="mt-3 mb-0 small">Si el DNI ya tiene cuenta (por ejemplo, cambió de curso), pídale a un directivo que lo actualice.</p>
+            <?php finTarjeta(); ?>
         </div>
+        <div class="col-lg-6">
+            <?php tarjeta('Solicitudes de recuperación', 'bi-person-gear', '(' . count($pedidos) . ')', '', 'h-100'); ?>
+                <?php if (!$pedidos): ?>
+                    <?php sinDatos('No hay solicitudes de recuperación pendientes.'); ?>
+                <?php else: ?>
+                    <p class="small">Verifique que quien lo pide es el alumno antes de entregarle el código.</p>
+                    <div class="table-responsive"><table class="table table-sm table-hover">
+                        <thead><tr><th>Alumno</th><th>Curso</th><th>Acción</th></tr></thead>
+                        <tbody>
+                        <?php foreach ($pedidos as $s): ?>
+                            <tr>
+                                <td><?php echo e($s['nombre']); ?><br><small class="text-muted">DNI: <?php echo e($s['dni'] ?? ''); ?> · <?php echo e(date('d/m H:i', strtotime($s['pedida_en']))); ?></small></td>
+                                <td><?php echo e($cursoNombre[(int) $s['curso_id']] ?? ''); ?></td>
+                                <td><div class="d-flex flex-wrap gap-1">
+                                    <form method="post" class="d-inline"><?php echo csrf_campo(); ?>
+                                        <input type="hidden" name="accion" value="codigo"><input type="hidden" name="usuario_id" value="<?php echo (int) $s['usuario_id']; ?>">
+                                        <button class="btn btn-primary btn-sm"><i class="bi bi-key"></i> Generar</button>
+                                    </form>
+                                    <form method="post" class="d-inline"><?php echo csrf_campo(); ?>
+                                        <input type="hidden" name="accion" value="descartar"><input type="hidden" name="usuario_id" value="<?php echo (int) $s['usuario_id']; ?>">
+                                        <input type="hidden" name="solicitud_id" value="<?php echo (int) $s['id']; ?>">
+                                        <button class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i> Descartar</button>
+                                    </form>
+                                </div></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table></div>
+                <?php endif; ?>
+            <?php finTarjeta(); ?>
+        </div>
+    </div>
+
+    <?php
+    $botonCodigos = '';
+    if ($sinActivar) {
+        $botonCodigos = '<form method="post" onsubmit="return confirm(\'Se generan códigos nuevos para los ' . $sinActivar . ' alumnos sin activar. Los códigos anteriores dejan de servir. ¿Continuar?\');">'
+            . csrf_campo() . '<input type="hidden" name="accion" value="codigos_curso"><input type="hidden" name="curso_id" value="' . $cursoSel . '">'
+            . '<button class="btn btn-light btn-sm"><i class="bi bi-printer"></i> Generar códigos para imprimir</button></form>';
+    }
+    tarjeta($cursoNombre[$cursoSel] ?? 'Curso', 'bi-people', count($alumnos) . ' alumno(s), ' . $sinActivar . ' sin activar', $botonCodigos, 'no-imprimir');
+    ?>
         <?php if (!$alumnos): ?>
-            <p class="vacio">Todavía no hay alumnos cargados en este curso.</p>
+            <?php sinDatos('Todavía no hay alumnos cargados en este curso.'); ?>
         <?php else: ?>
-            <div class="tabla-scroll"><table class="tabla-gestion">
+            <div class="table-responsive"><table class="table table-hover">
                 <thead><tr><th>Alumno</th><th>DNI</th><th>Estado</th><th>Último ingreso</th><th>Acciones</th></tr></thead>
                 <tbody>
                 <?php foreach ($alumnos as $a): [$txt, $cls] = estadoCuenta($a); ?>
                     <tr>
                         <td><strong><?php echo e($a['nombre']); ?></strong></td>
                         <td><?php echo e($a['dni']); ?></td>
-                        <td><span class="estado <?php echo $cls; ?>"><?php echo $txt; ?></span></td>
+                        <td><span class="badge <?php echo $cls; ?>"><?php echo $txt; ?></span></td>
                         <td><?php echo $a['ultimo_ingreso'] ? e(date('d/m/Y H:i', strtotime($a['ultimo_ingreso']))) : '—'; ?></td>
                         <td>
                             <?php if ($a['estado'] === 'bloqueado'): ?>
-                                <span class="vacio">Suspendida por un directivo</span>
+                                <small class="text-muted fst-italic">Suspendida por un directivo</small>
                             <?php else: ?>
-                                <form method="post"><?php echo csrf_campo(); ?>
+                                <form method="post" class="d-inline"><?php echo csrf_campo(); ?>
                                     <input type="hidden" name="accion" value="codigo"><input type="hidden" name="usuario_id" value="<?php echo (int) $a['id']; ?>">
-                                    <button class="boton-mini"><?php echo $a['estado'] === 'activo' ? 'Código de recuperación' : 'Código de alta'; ?></button>
+                                    <button class="btn btn-outline-primary btn-sm"><i class="bi bi-key"></i> <?php echo $a['estado'] === 'activo' ? 'Código de recuperación' : 'Código de alta'; ?></button>
                                 </form>
                             <?php endif; ?>
                         </td>
@@ -201,7 +216,7 @@ encabezadoPanel('Alumnos y cuentas');
                 </tbody>
             </table></div>
         <?php endif; ?>
-    </section>
+    <?php finTarjeta(); ?>
 <?php endif; ?>
 
 <?php piePanel(); ?>

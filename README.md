@@ -8,7 +8,7 @@ principal y da el inicio de sesión; los demás sistemas son subpáginas que usa
 | `campus/` | Campus virtual: portal, registro, inicio de sesión unificado y panel con los módulos de cada rol |
 | `preinscripciones/` | Mesas de examen: preinscripción de alumnos y gestión administrativa |
 | `proyectores/` | Reserva de proyectores para profesores y directivos |
-| `progmesas/` | ProgMesas: carga, control y consulta de los programas de examen ([repositorio propio](https://github.com/alan4352/progMesas)) |
+| `progmesas/` | ProgMesas: carga, control y consulta de los programas de examen, con programa común y programa libre por materia ([repositorio propio](https://github.com/alan4352/progMesas)) |
 | `index.php` | Entrada: manda a cada persona a su panel según el rol, o al portal si no inició sesión |
 | `docs/` | Seguridad del sistema y configuración de nginx para un servidor propio |
 | `docker/`, `Dockerfile`, `render.yaml` | Publicación en Render (no se copian a un servidor propio) |

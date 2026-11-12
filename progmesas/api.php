@@ -336,6 +336,14 @@ function db(): PDO {
         )
     ");
 
+    // Tipo de programa: 'regular' o 'libre'. Los cargados antes de que existiera el tipo quedan como regulares.
+    $columnas = array_column($pdo->query('PRAGMA table_info(programas)')->fetchAll(), 'name');
+    if (!in_array('tipo', $columnas, true)) {
+        $pdo->exec("ALTER TABLE programas ADD COLUMN tipo TEXT NOT NULL DEFAULT 'regular'");
+        $pdo->exec("UPDATE programas SET title = 'Programa regular de ' || substr(title, 13) WHERE title LIKE 'Programa de %'");
+    }
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_programas_asignacion_tipo ON programas (asignacion_id, year, tipo)');
+
     return $pdo;
 }
 
@@ -603,16 +611,31 @@ function resumenVinculos(): array {
 function normalizarFilaPrograma(array $r): array {
     $r['id'] = (int)$r['id'];
     $r['year'] = (int)$r['year'];
+    $r['tipo'] = ($r['tipo'] ?? '') === 'libre' ? 'libre' : 'regular';
     return $r;
 }
 
+/** Tipos de programa de examen: para alumnos regulares o libres. */
+const TIPOS_PROGRAMA = ['regular', 'libre'];
+
+/** Tipo válido ('regular' o 'libre'); sin valor → 'regular'; otro valor → null. */
+function tipoValido($valor): ?string {
+    if ($valor === null || $valor === '') return 'regular';
+    $t = strtolower(trim((string)$valor));
+    return in_array($t, TIPOS_PROGRAMA, true) ? $t : null;
+}
+
+function errorTipo(): void {
+    responderJson(['error' => 'El tipo de programa tiene que ser regular o libre'], 400);
+}
+
 function getProgramas(): array {
-    $stmt = db()->query("SELECT id, title, materia, year, curso, profesor, file_url, fecha, uploaded_by, asignacion_id, almacenamiento, archivo_ref, created_at FROM programas ORDER BY year DESC, created_at DESC, id DESC");
+    $stmt = db()->query("SELECT id, title, materia, year, curso, profesor, file_url, fecha, uploaded_by, asignacion_id, almacenamiento, archivo_ref, created_at, tipo FROM programas ORDER BY year DESC, created_at DESC, id DESC");
     return array_map('normalizarFilaPrograma', $stmt->fetchAll());
 }
 
 function getPrograma($id): ?array {
-    $stmt = db()->prepare("SELECT id, title, materia, year, curso, profesor, file_url, fecha, uploaded_by, asignacion_id, almacenamiento, archivo_ref, created_at FROM programas WHERE id = ?");
+    $stmt = db()->prepare("SELECT id, title, materia, year, curso, profesor, file_url, fecha, uploaded_by, asignacion_id, almacenamiento, archivo_ref, created_at, tipo FROM programas WHERE id = ?");
     $stmt->execute([(int)$id]);
     $r = $stmt->fetch();
     return $r ? normalizarFilaPrograma($r) : null;
@@ -720,8 +743,8 @@ function errorAnioPrograma(): void {
 }
 
 /** Título de un programa: siempre se genera solo (curso, materia y año). */
-function tituloAutomatico(array $asignacion, int $anio): string {
-    return "Programa de {$asignacion['materia']} - {$asignacion['curso']} - $anio";
+function tituloAutomatico(array $asignacion, int $anio, string $tipo = 'regular'): string {
+    return "Programa $tipo de {$asignacion['materia']} - {$asignacion['curso']} - $anio";
 }
 
 /** Direcciones del campus (carpeta hermana de progmesas), para Ingresar, Cerrar sesión y Volver al campus. */
@@ -958,23 +981,35 @@ if ($metodo === 'GET' && $ruta === '/asignaciones/mias') {
         }
     }
 
+    // Clave asignación + tipo ("id|regular"): cada materia puede tener un programa regular y uno libre
     $cargados = [];
     $anteriores = [];
     foreach (getProgramas() as $p) {
         $aid = $p['asignacion_id'] ?? '';
         if ($aid === '') continue;
-        if ($p['year'] === $anio && !isset($cargados[$aid])) {
-            $cargados[$aid] = $p;
+        $clave = $aid . '|' . $p['tipo'];
+        if ($p['year'] === $anio && !isset($cargados[$clave])) {
+            $cargados[$clave] = $p;
         }
-        if ($p['year'] < $anio && !isset($anteriores[$aid])) {
-            $anteriores[$aid] = $p;
+        if ($p['year'] < $anio && !isset($anteriores[$clave])) {
+            $anteriores[$clave] = $p;
         }
     }
+    $porTipo = function (array $mapa, string $id, bool $conAnio): array {
+        $salida = [];
+        foreach (TIPOS_PROGRAMA as $t) {
+            $p = $mapa["$id|$t"] ?? null;
+            $salida[$t] = $p ? array_merge(
+                ['id' => $p['id'], 'title' => $p['title'], 'fecha' => $p['fecha'], 'tipo' => $p['tipo']],
+                $conAnio ? ['year' => $p['year']] : []
+            ) : null;
+        }
+        return $salida;
+    };
 
     $asigSalida = [];
     foreach ($lista as $a) {
-        $p = $cargados[$a['id']] ?? null;
-        $ant = $anteriores[$a['id']] ?? null;
+        $programasTipo = $porTipo($cargados, $a['id'], false);
         $asigSalida[] = [
             'id' => $a['id'],
             'curso' => $a['curso'],
@@ -983,8 +1018,9 @@ if ($metodo === 'GET' && $ruta === '/asignaciones/mias') {
             'docentes' => $a['docentes'],
             'requiere' => $a['requiere'],
             'propia' => isset($propias[$a['id']]),
-            'programa' => $p ? ['id' => $p['id'], 'title' => $p['title'], 'fecha' => $p['fecha']] : null,
-            'anterior' => $ant ? ['id' => $ant['id'], 'year' => $ant['year'], 'title' => $ant['title'], 'fecha' => $ant['fecha']] : null
+            'programa' => $programasTipo['regular'] ?? $programasTipo['libre'],   // alguno cargado (compatibilidad)
+            'programas' => $programasTipo,                                        // ['regular' => …, 'libre' => …]
+            'anteriores' => $porTipo($anteriores, $a['id'], true)                 // de años anteriores
         ];
     }
 
@@ -1005,8 +1041,10 @@ if ($metodo === 'POST' && $ruta === '/programas/subir') {
 
     $asignacion = asignacionPorId($_POST['asignacion_id'] ?? '');
     $anio = anioDelPrograma($_POST['anio'] ?? null);
+    $tipo = tipoValido($_POST['tipo'] ?? null);
     if (!$asignacion) responderJson(['error' => 'Elegí la materia y el curso del programa'], 400);
     if (!$anio) errorAnioPrograma();
+    if (!$tipo) errorTipo();
 
     if (empty($_FILES['pdf']) || $_FILES['pdf']['error'] !== UPLOAD_ERR_OK) {
         responderJson(['error' => 'Falta el archivo PDF'], 400);
@@ -1019,12 +1057,12 @@ if ($metodo === 'POST' && $ruta === '/programas/subir') {
         responderJson(['error' => 'El archivo no es un PDF válido'], 400);
     }
 
-    $titulo = tituloAutomatico($asignacion, $anio);
+    $titulo = tituloAutomatico($asignacion, $anio, $tipo);
     $profesor = $esAsesora ? (implode(' / ', $asignacion['docentes']) ?: $u['nombre']) : $docente;
 
     $dirUploads = __DIR__ . '/backend/uploads';
     if (!is_dir($dirUploads)) @mkdir($dirUploads, 0775, true);
-    $slug = substr(preg_replace('/\s+/', '_', claveTexto("{$asignacion['curso']} {$asignacion['materia']}")), 0, 60) ?: 'programa';
+    $slug = substr(preg_replace('/\s+/', '_', claveTexto("{$asignacion['curso']} {$asignacion['materia']} $tipo")), 0, 60) ?: 'programa';
     $nombreArchivo = round(microtime(true) * 1000) . '_' . $slug . '.pdf';
     file_put_contents($dirUploads . '/' . $nombreArchivo, $contenido);
 
@@ -1032,8 +1070,9 @@ if ($metodo === 'POST' && $ruta === '/programas/subir') {
     $fechaHoy = date('j/n/Y');
     $ahoraIso = gmdate('Y-m-d\TH:i:s.v\Z');
 
-    $stmtAnt = db()->prepare('SELECT * FROM programas WHERE asignacion_id = ? AND year = ? ORDER BY created_at DESC, id DESC LIMIT 1');
-    $stmtAnt->execute([$asignacion['id'], $anio]);
+    // Si ya hay uno del mismo tipo para ese curso, materia y año, se reemplaza y el anterior queda en el historial
+    $stmtAnt = db()->prepare('SELECT * FROM programas WHERE asignacion_id = ? AND year = ? AND tipo = ? ORDER BY created_at DESC, id DESC LIMIT 1');
+    $stmtAnt->execute([$asignacion['id'], $anio, $tipo]);
     $anterior = $stmtAnt->fetch();
 
     if ($anterior) {
@@ -1063,10 +1102,10 @@ if ($metodo === 'POST' && $ruta === '/programas/subir') {
         $up->execute([$titulo, $asignacion['materia'], $asignacion['curso'], $profesor, $fileUrl, $fechaHoy, $u['id'], $nombreArchivo, $ahoraIso, $id]);
     } else {
         $ins = db()->prepare("
-            INSERT INTO programas (title, materia, year, curso, profesor, file_url, fecha, uploaded_by, asignacion_id, almacenamiento, archivo_ref, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'local', ?, ?)
+            INSERT INTO programas (title, materia, year, curso, profesor, file_url, fecha, uploaded_by, asignacion_id, almacenamiento, archivo_ref, created_at, tipo)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'local', ?, ?, ?)
         ");
-        $ins->execute([$titulo, $asignacion['materia'], $anio, $asignacion['curso'], $profesor, $fileUrl, $fechaHoy, $u['id'], $asignacion['id'], $nombreArchivo, $ahoraIso]);
+        $ins->execute([$titulo, $asignacion['materia'], $anio, $asignacion['curso'], $profesor, $fileUrl, $fechaHoy, $u['id'], $asignacion['id'], $nombreArchivo, $ahoraIso, $tipo]);
         $id = (int)db()->lastInsertId();
     }
 
@@ -1075,6 +1114,7 @@ if ($metodo === 'POST' && $ruta === '/programas/subir') {
         'curso' => $asignacion['curso'],
         'materia' => $asignacion['materia'],
         'anio' => $anio,
+        'tipo' => $tipo,
         'titulo' => $titulo,
         'almacenamiento' => 'local'
     ]);
@@ -1097,21 +1137,23 @@ if ($metodo === 'POST' && $ruta === '/programas/reutilizar') {
     $body = leerBodyJson();
     $asignacion = asignacionPorId($body['asignacion_id'] ?? '');
     $anio = anioDelPrograma($body['anio'] ?? null);
+    $tipo = tipoValido($body['tipo'] ?? null);
     if (!$asignacion) responderJson(['error' => 'Elegí la materia y el curso del programa'], 400);
     if (!$anio) errorAnioPrograma();
+    if (!$tipo) errorTipo();
 
-    $stmtOrig = db()->prepare('SELECT * FROM programas WHERE asignacion_id = ? AND year < ? ORDER BY year DESC, created_at DESC, id DESC LIMIT 1');
-    $stmtOrig->execute([$asignacion['id'], $anio]);
+    $stmtOrig = db()->prepare('SELECT * FROM programas WHERE asignacion_id = ? AND year < ? AND tipo = ? ORDER BY year DESC, created_at DESC, id DESC LIMIT 1');
+    $stmtOrig->execute([$asignacion['id'], $anio, $tipo]);
     $origen = $stmtOrig->fetch();
-    if (!$origen) responderJson(['error' => 'No hay un programa de años anteriores para ese curso y materia'], 404);
+    if (!$origen) responderJson(['error' => "No hay un programa $tipo de años anteriores para ese curso y materia"], 404);
 
-    $tituloNuevo = tituloAutomatico($asignacion, $anio);
+    $tituloNuevo = tituloAutomatico($asignacion, $anio, $tipo);
     $profesor = $esAsesora ? ($origen['profesor'] ?: implode(' / ', $asignacion['docentes'])) : $docente;
     $fechaHoy = date('j/n/Y');
     $ahoraIso = gmdate('Y-m-d\TH:i:s.v\Z');
 
-    $stmtAct = db()->prepare('SELECT * FROM programas WHERE asignacion_id = ? AND year = ? ORDER BY created_at DESC, id DESC LIMIT 1');
-    $stmtAct->execute([$asignacion['id'], $anio]);
+    $stmtAct = db()->prepare('SELECT * FROM programas WHERE asignacion_id = ? AND year = ? AND tipo = ? ORDER BY created_at DESC, id DESC LIMIT 1');
+    $stmtAct->execute([$asignacion['id'], $anio, $tipo]);
     $actual = $stmtAct->fetch();
 
     if ($actual) {
@@ -1133,10 +1175,10 @@ if ($metodo === 'POST' && $ruta === '/programas/reutilizar') {
         $up->execute([$tituloNuevo, $asignacion['materia'], $asignacion['curso'], $profesor, $origen['file_url'], $fechaHoy, $u['id'], $origen['almacenamiento'], $origen['archivo_ref'], $ahoraIso, $id]);
     } else {
         $ins = db()->prepare("
-            INSERT INTO programas (title, materia, year, curso, profesor, file_url, fecha, uploaded_by, asignacion_id, almacenamiento, archivo_ref, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO programas (title, materia, year, curso, profesor, file_url, fecha, uploaded_by, asignacion_id, almacenamiento, archivo_ref, created_at, tipo)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $ins->execute([$tituloNuevo, $asignacion['materia'], $anio, $asignacion['curso'], $profesor, $origen['file_url'], $fechaHoy, $u['id'], $asignacion['id'], $origen['almacenamiento'], $origen['archivo_ref'], $ahoraIso]);
+        $ins->execute([$tituloNuevo, $asignacion['materia'], $anio, $asignacion['curso'], $profesor, $origen['file_url'], $fechaHoy, $u['id'], $asignacion['id'], $origen['almacenamiento'], $origen['archivo_ref'], $ahoraIso, $tipo]);
         $id = (int)db()->lastInsertId();
     }
 
@@ -1145,6 +1187,7 @@ if ($metodo === 'POST' && $ruta === '/programas/reutilizar') {
         'curso' => $asignacion['curso'],
         'materia' => $asignacion['materia'],
         'anio' => $anio,
+        'tipo' => $tipo,
         'desde' => (int)$origen['year'],
         'titulo' => $tituloNuevo
     ]);
@@ -1186,6 +1229,7 @@ if ($metodo === 'DELETE' && preg_match('#^/programas/(\d+)$#', $ruta, $m)) {
         'curso' => $programa['curso'],
         'materia' => $programa['materia'],
         'anio' => $programa['year'],
+        'tipo' => $programa['tipo'],
         'titulo' => $programa['title'],
         'versiones' => count($versiones)
     ]);
@@ -1220,17 +1264,34 @@ if ($metodo === 'GET' && $ruta === '/cobertura') {
     $anio = anioValido($_GET['anio'] ?? null) ?: anioLectivo();
     vincularProgramasViejos();
 
+    // Una materia está completa con cualquiera de los dos programas (regular o libre)
     $delAnio = array_values(array_filter(getProgramas(), fn($p) => $p['year'] === $anio));
-    $porAsignacion = [];
+    $porAsignacion = [];   // id => ['regular' => …, 'libre' => …]
     foreach ($delAnio as $p) {
-        if (!empty($p['asignacion_id']) && !isset($porAsignacion[$p['asignacion_id']])) {
-            $porAsignacion[$p['asignacion_id']] = $p;
+        if (!empty($p['asignacion_id']) && !isset($porAsignacion[$p['asignacion_id']][$p['tipo']])) {
+            $porAsignacion[$p['asignacion_id']][$p['tipo']] = $p;
         }
     }
+    $resumen = fn($p) => $p ? [
+        'id' => $p['id'],
+        'title' => $p['title'],
+        'tipo' => $p['tipo'],
+        'fecha' => $p['fecha'],
+        'created_at' => $p['created_at'],
+        'file_url' => $p['file_url'],
+        'almacenamiento' => $p['almacenamiento']
+    ] : null;
 
     $asignaciones = [];
     foreach (asignacionesRequeridas() as $a) {
-        $p = $porAsignacion[$a['id']] ?? null;
+        $tipos = $porAsignacion[$a['id']] ?? [];
+        // El programa que se muestra: el más reciente de los cargados
+        $p = null;
+        foreach ($tipos as $cand) {
+            if (!$p || strcmp((string)$cand['created_at'], (string)$p['created_at']) > 0) $p = $cand;
+        }
+        $programasTipo = [];
+        foreach (TIPOS_PROGRAMA as $t) $programasTipo[$t] = $resumen($tipos[$t] ?? null);
         $asignaciones[] = [
             'id' => $a['id'],
             'curso' => $a['curso'],
@@ -1238,14 +1299,8 @@ if ($metodo === 'GET' && $ruta === '/cobertura') {
             'materia' => $a['materia'],
             'docentes' => $a['docentes'],
             'revisar' => $a['revisar'],
-            'programa' => $p ? [
-                'id' => $p['id'],
-                'title' => $p['title'],
-                'fecha' => $p['fecha'],
-                'created_at' => $p['created_at'],
-                'file_url' => $p['file_url'],
-                'almacenamiento' => $p['almacenamiento']
-            ] : null
+            'programa' => $resumen($p),
+            'programas' => $programasTipo
         ];
     }
 
@@ -1335,10 +1390,13 @@ if ($metodo === 'GET' && $ruta === '/cursos/zip') {
         responderJson(['error' => 'El año lectivo no es válido'], 400);
     }
 
+    $tipo = isset($_GET['tipo']) && $_GET['tipo'] !== '' ? tipoValido($_GET['tipo']) : null;
+    if (isset($_GET['tipo']) && $_GET['tipo'] !== '' && !$tipo) errorTipo();
+
     $clave = cursoClave($curso);
     $programas = array_values(array_filter(
         getProgramas(),
-        fn($p) => cursoClave($p['curso']) === $clave && (!$anio || $p['year'] === $anio)
+        fn($p) => cursoClave($p['curso']) === $clave && (!$anio || $p['year'] === $anio) && (!$tipo || $p['tipo'] === $tipo)
     ));
     if (empty($programas)) {
         responderJson(['error' => 'No hay programas cargados para ese curso'], 404);
@@ -1348,7 +1406,8 @@ if ($metodo === 'GET' && $ruta === '/cursos/zip') {
     $usados = [];
     $faltantes = [];
     foreach ($programas as $p) {
-        $matLimpia = trim((string)preg_replace('/[\\\\\/:*?"<>|\x00-\x1f]+/', ' ', $p['materia']));
+        $nombreTipo = $p['tipo'] === 'libre' ? 'Libre' : 'Regular';
+        $matLimpia = trim((string)preg_replace('/[\\\\\/:*?"<>|\x00-\x1f]+/', ' ', "{$p['materia']} - $nombreTipo"));
         $matLimpia = substr(preg_replace('/\s+/', ' ', $matLimpia), 0, 90) ?: 'programa';
         $nombre = "{$p['year']}/$matLimpia";
         for ($i = 2; isset($usados[claveTexto($nombre)]); $i++) {
@@ -1370,7 +1429,7 @@ if ($metodo === 'GET' && $ruta === '/cursos/zip') {
                 'timestamp' => !empty($p['created_at']) ? strtotime($p['created_at']) : time()
             ];
         } else {
-            $faltantes[] = "{$p['year']} - {$p['materia']}: El archivo está alojado externamente o no se encontró en el servidor local.";
+            $faltantes[] = "{$p['year']} - {$p['materia']} ({$p['tipo']}): El archivo está alojado externamente o no se encontró en el servidor local.";
         }
     }
 
@@ -1382,7 +1441,7 @@ if ($metodo === 'GET' && $ruta === '/cursos/zip') {
         ];
     }
 
-    $nombreZip = "Programas $curso" . ($anio ? " $anio" : '') . ".zip";
+    $nombreZip = 'Programas ' . ($tipo ? ($tipo === 'libre' ? 'libres ' : 'regulares ') : '') . $curso . ($anio ? " $anio" : '') . '.zip';
     $nombreAscii = preg_replace('/[^\x20-\x7e]/', '', sinAcentos($nombreZip));
     header('Content-Type: application/zip');
     header('Content-Disposition: attachment; filename="' . addslashes($nombreAscii) . '"; filename*=UTF-8\'\'' . rawurlencode($nombreZip));

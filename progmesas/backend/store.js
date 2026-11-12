@@ -2,8 +2,18 @@ import db from './db.js';
 
 // Todas las consultas usan parámetros (?), así los datos del usuario nunca se interpretan como SQL.
 
+/** Tipos de programa de examen: para alumnos regulares o libres. */
+export const TIPOS = ['regular', 'libre'];
+
+/** Tipo válido ('regular' o 'libre'); sin valor → 'regular'; otro valor → null. */
+export function tipoValido(valor) {
+    if (valor === undefined || valor === null || valor === '') return 'regular';
+    const t = String(valor).trim().toLowerCase();
+    return TIPOS.includes(t) ? t : null;
+}
+
 const CAMPOS = `id, title, materia, year, curso, profesor, file_url, fecha, uploaded_by,
-                asignacion_id, almacenamiento, archivo_ref, created_at`;
+                asignacion_id, almacenamiento, archivo_ref, created_at, tipo`;
 
 // ================= VERSIONES ANTERIORES =================
 // Al reemplazar un programa, la versión anterior (con su archivo) se guarda acá en lugar de borrarse.
@@ -29,18 +39,18 @@ db.exec('CREATE INDEX IF NOT EXISTS idx_versiones_programa ON programas_versione
 const stmtTodos = db.prepare(`SELECT ${CAMPOS} FROM programas ORDER BY year DESC, created_at DESC, id DESC`);
 const stmtPorId = db.prepare(`SELECT ${CAMPOS} FROM programas WHERE id = ?`);
 const stmtPorAsignacion = db.prepare(
-    `SELECT ${CAMPOS} FROM programas WHERE asignacion_id = ? AND year = ? ORDER BY created_at DESC, id DESC LIMIT 1`
+    `SELECT ${CAMPOS} FROM programas WHERE asignacion_id = ? AND year = ? AND tipo = ? ORDER BY created_at DESC, id DESC LIMIT 1`
 );
 const stmtAnteriorDeAsignacion = db.prepare(
-    `SELECT ${CAMPOS} FROM programas WHERE asignacion_id = ? AND year < ? ORDER BY year DESC, created_at DESC, id DESC LIMIT 1`
+    `SELECT ${CAMPOS} FROM programas WHERE asignacion_id = ? AND year < ? AND tipo = ? ORDER BY year DESC, created_at DESC, id DESC LIMIT 1`
 );
 const stmtSinAsignacion = db.prepare(`SELECT ${CAMPOS} FROM programas WHERE asignacion_id IS NULL OR asignacion_id = ''`);
 
 const stmtInsertar = db.prepare(`
     INSERT INTO programas (title, materia, year, curso, profesor, file_url, fecha, uploaded_by,
-                           asignacion_id, almacenamiento, archivo_ref, created_at)
+                           asignacion_id, almacenamiento, archivo_ref, created_at, tipo)
     VALUES (@title, @materia, @year, @curso, @profesor, @file_url, @fecha, @uploaded_by,
-            @asignacion_id, @almacenamiento, @archivo_ref, @created_at)
+            @asignacion_id, @almacenamiento, @archivo_ref, @created_at, @tipo)
 `);
 
 const stmtReemplazar = db.prepare(`
@@ -93,13 +103,13 @@ export function getPrograma(id) {
     return stmtPorId.get(Number(id));
 }
 
-export function programaDeAsignacion(asignacionId, anio) {
-    return stmtPorAsignacion.get(String(asignacionId), Number(anio));
+export function programaDeAsignacion(asignacionId, anio, tipo = 'regular') {
+    return stmtPorAsignacion.get(String(asignacionId), Number(anio), tipo);
 }
 
 /** El programa más reciente de la misma asignación en un año anterior (para reutilizarlo). */
-export function programaAnteriorDeAsignacion(asignacionId, anio) {
-    return stmtAnteriorDeAsignacion.get(String(asignacionId), Number(anio));
+export function programaAnteriorDeAsignacion(asignacionId, anio, tipo = 'regular') {
+    return stmtAnteriorDeAsignacion.get(String(asignacionId), Number(anio), tipo);
 }
 
 export function programasSinAsignacion() {
@@ -126,13 +136,14 @@ export function agregarPrograma(p) {
     const info = stmtInsertar.run({
         ...datosBase(p),
         year: parseInt(p.year, 10) || new Date().getFullYear(),
-        asignacion_id: p.asignacion_id || null
+        asignacion_id: p.asignacion_id || null,
+        tipo: tipoValido(p.tipo) || 'regular'
     });
     return Number(info.lastInsertRowid);
 }
 
 /**
- * Reemplaza el archivo y los datos de un programa existente (misma asignación y año).
+ * Reemplaza el archivo y los datos de un programa existente (misma asignación, año y tipo).
  * La versión anterior queda en el historial, con su archivo.
  */
 export const reemplazarPrograma = db.transaction((id, p, reemplazadoPor = '') => {

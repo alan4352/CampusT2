@@ -97,7 +97,7 @@ async function carpetaRaiz() {
 // ================= ARCHIVOS =================
 
 /** Sube el PDF a Año/Curso/Materia y lo deja público (sólo lectura). Devuelve el id del archivo. */
-export async function subirArchivo(buffer, anio, materia, curso, profesor) {
+export async function subirArchivo(buffer, anio, materia, curso, profesor, tipo = '') {
     if (!drive) throw new Error(ultimoError || 'Google Drive no está configurado');
     try {
         const carpetaAnio = await obtenerOCrearCarpeta(String(anio), await carpetaRaiz());
@@ -105,7 +105,7 @@ export async function subirArchivo(buffer, anio, materia, curso, profesor) {
         const carpetaMateria = await obtenerOCrearCarpeta(materia, carpetaCurso);
 
         const archivo = await drive.files.create({
-            requestBody: { name: `${anio}-${curso}_${profesor}_${materia}.pdf`, parents: [carpetaMateria] },
+            requestBody: { name: `${anio}-${curso}_${profesor}_${materia}${tipo ? `_${tipo}` : ''}.pdf`, parents: [carpetaMateria] },
             media: { mimeType: 'application/pdf', body: Readable.from(buffer) },
             fields: 'id'
         });

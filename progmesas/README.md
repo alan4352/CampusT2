@@ -21,6 +21,9 @@ Proyecto de Práctica Profesional — Escuela Técnica N.º 2 "Independencia".
 
 **Programas**
 
+- **Regular o libre:** cada materia puede tener dos programas de examen, el **regular** y el **libre**. Al cargarlo se
+  elige el tipo; uno no reemplaza al otro. En la lista cada programa lleva su etiqueta y se puede filtrar por tipo
+  (`?tipo=libre`). En el dashboard, una materia cuenta como entregada con cualquiera de los dos.
 - **Historial de versiones:** al reemplazar un programa, la versión anterior queda guardada con su PDF, quién la reemplazó y cuándo.
 - **Reutilizar:** si un programa no cambió, se usa el del año anterior para el mismo curso y materia sin volver a subirlo
   (el archivo se comparte, no se duplica).
@@ -282,6 +285,22 @@ hace falta Google Drive o un disco persistente (`DATOS_DIR`, ver `render.yaml`).
 - Dependencias sin vulnerabilidades conocidas (`npm audit`, octubre de 2026).
 
 ## Historial de cambios
+
+### 12/11/2026 — Programas regulares y libres
+
+- Al subir un programa se elige **Tipo de programa: Regular o Libre**. Cada materia, curso y año puede tener los dos;
+  subir el libre no reemplaza al regular (y al revés). Reemplazar y reutilizar el del año anterior funcionan por tipo.
+- El título automático incluye el tipo ("Programa libre de Matemática - 2° 1° - 2026").
+- Base de datos: columna `programas.tipo` (`regular` o `libre`). Los programas cargados antes quedan como **regulares**
+  y su título pasa a "Programa regular de …". La migración se hace sola al arrancar (Node) o al primer uso (`api.php`).
+- API: `tipo` en `POST /programas/subir` y `POST /programas/reutilizar` (sin tipo = regular; otro valor = error 400);
+  `/asignaciones/mias` devuelve `programas` y `anteriores` por tipo; `/cobertura` devuelve `programas` por tipo y
+  cuenta la materia como entregada con cualquiera de los dos; `/cursos/zip` acepta `tipo` y nombra los PDF
+  "Materia - Regular.pdf" / "Materia - Libre.pdf".
+- Listado: etiqueta **Regular** / **Libre** en cada programa y filtro por tipo (queda en el enlace compartido).
+- Dashboard: **Últimos programas cargados** muestra los dos tipos con su etiqueta; el registro de actividad indica el tipo.
+- Igual en `api.php` (versión PHP dentro del campus), en el servidor Node y en la demo. Pruebas nuevas para subir,
+  reemplazar, reutilizar, cobertura y ZIP por tipo, y para el formulario y el filtro en la interfaz.
 
 ### 06/11/2026 — Versión PHP para correr dentro del campus (prototipo v4)
 

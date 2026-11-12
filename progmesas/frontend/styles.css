@@ -521,6 +521,7 @@ details.sub-collapsible[open] > summary { border-bottom: 1px solid var(--borde-s
 
 .filtros { display: flex; gap: 1rem; margin-bottom: 1.2rem; flex-wrap: wrap; }
 .filtros .form-control, .filtros .form-select { flex: 1; min-width: 180px; }
+.filtros #busqueda { flex-basis: 100%; }
 .campo-busqueda { margin-bottom: 1rem; }
 .select-chico { height: 38px; width: auto; min-width: 140px; font-size: 0.9rem; }
 .campo-docente { height: 38px; width: 240px; font-size: 0.9rem; }
@@ -727,6 +728,25 @@ select optgroup { font-weight: 700; }
 .coverage-mid { background: var(--aviso-solido); color: #000; }
 .coverage-low { background: var(--peligro-solido); color: #fff; }
 .badge-chico { font-size: 0.78rem; padding: 2px 9px; margin-top: 0; }
+
+/* Tipo de programa (regular / libre) */
+.etiqueta-tipo {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border-radius: 6px;
+    padding: 1px 8px;
+    margin-left: 0.3rem;
+    vertical-align: middle;
+    border: 1px solid;
+}
+.etiqueta-regular { background: var(--exito-fondo); color: var(--exito); border-color: var(--exito-borde); }
+.etiqueta-libre { background: var(--info-fondo); color: var(--info); border-color: var(--info-borde); }
+
+.grupo-tipo { border: 0; padding: 0; margin: 0 0 0.8rem; display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; }
+.grupo-tipo legend { float: left; margin: 0 0.4rem 0 0; padding: 0; }
+.opcion-tipo { display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; font-weight: 600; }
+.opcion-tipo input { width: 18px; height: 18px; accent-color: var(--color-primary); }
 
 .marca-revisar {
     font-size: 0.72rem;

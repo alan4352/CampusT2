@@ -22,9 +22,9 @@ function rutaLocal(archivoRef) {
 /**
  * @returns {Promise<{almacenamiento:'drive'|'local', archivo_ref:string, file_url:string, aviso:string|null}>}
  */
-export async function guardarPdf(buffer, { anio, curso, materia, profesor }) {
+export async function guardarPdf(buffer, { anio, curso, materia, profesor, tipo = '' }) {
     try {
-        const id = await subirArchivo(buffer, anio, materia, curso, profesor);
+        const id = await subirArchivo(buffer, anio, materia, curso, profesor, tipo);
         return {
             almacenamiento: 'drive',
             archivo_ref: id,
@@ -33,7 +33,7 @@ export async function guardarPdf(buffer, { anio, curso, materia, profesor }) {
         };
     } catch (err) {
         console.warn('[Almacenamiento] Drive no disponible, se guarda en el servidor:', err.message);
-        const nombre = `${Date.now()}_${nombreSeguro(`${curso} ${materia}`)}.pdf`;
+        const nombre = `${Date.now()}_${nombreSeguro(`${curso} ${materia} ${tipo}`.trim())}.pdf`;
         fs.writeFileSync(rutaLocal(nombre), buffer);
         return {
             almacenamiento: 'local',

@@ -9,7 +9,8 @@ import {
 } from './docentes.js';
 import {
     getProgramas, getPrograma, programaDeAsignacion, programaAnteriorDeAsignacion, programasSinAsignacion,
-    agregarPrograma, reemplazarPrograma, vincularAsignacion, eliminarPrograma, versionesDe, cantidadDeVersiones
+    agregarPrograma, reemplazarPrograma, vincularAsignacion, eliminarPrograma, versionesDe, cantidadDeVersiones,
+    TIPOS, tipoValido
 } from './store.js';
 import {
     todasLasAsignaciones, asignacionesRequeridas, asignacionPorId, asignacionesDeDocente,
@@ -119,9 +120,18 @@ function puedeGestionar(usuario, programa) {
     return (asignacion && docente && docenteDictaAsignacion(docente, asignacion)) || programa.uploaded_by === usuario.id;
 }
 
-/** Título de un programa: siempre se genera solo (curso, materia y año). */
-function tituloAutomatico(asignacion, anio) {
-    return `Programa de ${asignacion.materia} - ${asignacion.curso} - ${anio}`;
+/** Título de un programa: siempre se genera solo (tipo, curso, materia y año). */
+function tituloAutomatico(asignacion, anio, tipo = 'regular') {
+    return `Programa ${tipo} de ${asignacion.materia} - ${asignacion.curso} - ${anio}`;
+}
+
+const NOMBRE_TIPO = { regular: 'Regular', libre: 'Libre' };
+const errorTipo = { error: 'El tipo de programa tiene que ser regular o libre' };
+
+/** Resumen de un programa para el formulario de carga. */
+function resumenPrograma(p, conAnio = false) {
+    if (!p) return null;
+    return { id: p.id, title: p.title, fecha: p.fecha, tipo: p.tipo, ...(conAnio ? { year: p.year } : {}) };
 }
 
 /** Nombre de archivo seguro para dentro del ZIP. */
@@ -285,13 +295,17 @@ app.get('/api/asignaciones/mias', auth, rol('teacher', 'advisor'), (req, res) =>
 
     const lista = todasLasAsignaciones();
     const propias = new Set(docente ? asignacionesDeDocente(docente).map((a) => a.id) : []);
+    // Clave asignación + tipo ("id|regular"): cada materia puede tener un programa regular y uno libre
     const cargados = new Map();
     const anteriores = new Map(); // el más reciente de un año anterior, para reutilizarlo
     for (const p of getProgramas()) {
         if (!p.asignacion_id) continue;
-        if (p.year === anio && !cargados.has(p.asignacion_id)) cargados.set(p.asignacion_id, p);
-        if (p.year < anio && !anteriores.has(p.asignacion_id)) anteriores.set(p.asignacion_id, p);
+        const clave = `${p.asignacion_id}|${p.tipo}`;
+        if (p.year === anio && !cargados.has(clave)) cargados.set(clave, p);
+        if (p.year < anio && !anteriores.has(clave)) anteriores.set(clave, p);
     }
+    const porTipo = (mapa, id, conAnio) =>
+        Object.fromEntries(TIPOS.map((t) => [t, resumenPrograma(mapa.get(`${id}|${t}`), conAnio)]));
 
     res.json({
         anio,
@@ -299,8 +313,7 @@ app.get('/api/asignaciones/mias', auth, rol('teacher', 'advisor'), (req, res) =>
         fechaLimite: fechaLimite(anio),
         vinculo: esAsesora ? null : vinculoPublico(vinculoDe(req.user.id)),
         asignaciones: lista.map((a) => {
-            const p = cargados.get(a.id);
-            const ant = anteriores.get(a.id);
+            const programas = porTipo(cargados, a.id, false);
             return {
                 id: a.id,
                 curso: a.curso,
@@ -309,8 +322,9 @@ app.get('/api/asignaciones/mias', auth, rol('teacher', 'advisor'), (req, res) =>
                 docentes: a.docentes,
                 requiere: a.requiere,
                 propia: propias.has(a.id),
-                programa: p ? { id: p.id, title: p.title, fecha: p.fecha } : null,
-                anterior: ant ? { id: ant.id, year: ant.year, title: ant.title, fecha: ant.fecha } : null
+                programa: programas.regular || programas.libre, // alguno cargado (compatibilidad)
+                programas,                                       // { regular, libre }
+                anteriores: porTipo(anteriores, a.id, true)      // { regular, libre } de años anteriores
             };
         })
     });
@@ -324,20 +338,23 @@ app.post('/api/programas/subir', auth, rol('teacher', 'advisor'), upload.single(
 
     const asignacion = asignacionPorId(req.body?.asignacion_id);
     const anio = anioDelPrograma(req.body?.anio);
+    const tipo = tipoValido(req.body?.tipo);
 
     if (!asignacion) return res.status(400).json({ error: 'Elegí la materia y el curso del programa' });
     if (!anio) return res.status(400).json(errorAnioPrograma());
+    if (!tipo) return res.status(400).json(errorTipo);
     if (!req.file) return res.status(400).json({ error: 'Falta el archivo PDF' });
     if (!esPdfValido(req.file.buffer)) return res.status(400).json({ error: 'El archivo no es un PDF válido' });
 
-    const titulo = tituloAutomatico(asignacion, anio);
+    const titulo = tituloAutomatico(asignacion, anio, tipo);
     const profesor = esAsesora ? asignacion.docentes.join(' / ') || req.user.nombre : docente;
 
     const archivo = await guardarPdf(req.file.buffer, {
         anio,
         curso: asignacion.curso,
         materia: asignacion.materia,
-        profesor
+        profesor,
+        tipo
     });
 
     const datos = {
@@ -348,11 +365,12 @@ app.post('/api/programas/subir', auth, rol('teacher', 'advisor'), upload.single(
         profesor,
         uploaded_by: req.user.id,
         asignacion_id: asignacion.id,
+        tipo,
         ...archivo
     };
 
-    // Si ya había uno para ese curso, materia y año, se reemplaza y el anterior queda en el historial
-    const anterior = programaDeAsignacion(asignacion.id, anio);
+    // Si ya había uno del mismo tipo para ese curso, materia y año, se reemplaza y el anterior queda en el historial
+    const anterior = programaDeAsignacion(asignacion.id, anio, tipo);
     let id;
     if (anterior) {
         reemplazarPrograma(anterior.id, datos, req.user.nombre || req.user.id);
@@ -361,7 +379,7 @@ app.post('/api/programas/subir', auth, rol('teacher', 'advisor'), upload.single(
         id = agregarPrograma(datos);
     }
     registrar(req.user, anterior ? 'programa.reemplazado' : 'programa.subido', {
-        id, curso: asignacion.curso, materia: asignacion.materia, anio, titulo, almacenamiento: archivo.almacenamiento
+        id, curso: asignacion.curso, materia: asignacion.materia, anio, tipo, titulo, almacenamiento: archivo.almacenamiento
     });
 
     res.json({ ok: true, id, reemplazado: Boolean(anterior), almacenamiento: archivo.almacenamiento, aviso: archivo.aviso });
@@ -375,25 +393,28 @@ app.post('/api/programas/reutilizar', auth, rol('teacher', 'advisor'), (req, res
     const docente = esAsesora ? '' : docenteConfirmado(req.user.id) || req.user.nombre || req.user.id;
     const asignacion = asignacionPorId(req.body?.asignacion_id);
     const anio = anioDelPrograma(req.body?.anio);
+    const tipo = tipoValido(req.body?.tipo);
     if (!asignacion) return res.status(400).json({ error: 'Elegí la materia y el curso del programa' });
     if (!anio) return res.status(400).json(errorAnioPrograma());
-    const origen = programaAnteriorDeAsignacion(asignacion.id, anio);
-    if (!origen) return res.status(404).json({ error: 'No hay un programa de años anteriores para ese curso y materia' });
+    if (!tipo) return res.status(400).json(errorTipo);
+    const origen = programaAnteriorDeAsignacion(asignacion.id, anio, tipo);
+    if (!origen) return res.status(404).json({ error: `No hay un programa ${tipo} de años anteriores para ese curso y materia` });
 
     // El archivo se comparte: no se duplica, y sólo se borra cuando ningún programa lo usa
     const datos = {
-        title: tituloAutomatico(asignacion, anio),
+        title: tituloAutomatico(asignacion, anio, tipo),
         materia: asignacion.materia,
         year: anio,
         curso: asignacion.curso,
         profesor: esAsesora ? origen.profesor || asignacion.docentes.join(' / ') : docente,
         uploaded_by: req.user.id,
         asignacion_id: asignacion.id,
+        tipo,
         file_url: origen.file_url,
         almacenamiento: origen.almacenamiento,
         archivo_ref: origen.archivo_ref
     };
-    const actual = programaDeAsignacion(asignacion.id, anio);
+    const actual = programaDeAsignacion(asignacion.id, anio, tipo);
     let id;
     if (actual) {
         reemplazarPrograma(actual.id, datos, req.user.nombre || req.user.id);
@@ -402,7 +423,7 @@ app.post('/api/programas/reutilizar', auth, rol('teacher', 'advisor'), (req, res
         id = agregarPrograma(datos);
     }
     registrar(req.user, 'programa.reutilizado', {
-        id, curso: asignacion.curso, materia: asignacion.materia, anio, desde: origen.year, titulo: datos.title
+        id, curso: asignacion.curso, materia: asignacion.materia, anio, tipo, desde: origen.year, titulo: datos.title
     });
     res.json({ ok: true, id, reemplazado: Boolean(actual), desde: origen.year });
 });
@@ -418,7 +439,7 @@ app.delete('/api/programas/:id', auth, rol('advisor'), async (req, res) => {
     // Se borran los archivos del programa y de sus versiones, salvo los que otro programa reutiliza
     for (const r of borrados) await eliminarPdfSiNoSeUsa(r);
     registrar(req.user, 'programa.eliminado', {
-        id, curso: programa.curso, materia: programa.materia, anio: programa.year, titulo: programa.title,
+        id, curso: programa.curso, materia: programa.materia, anio: programa.year, tipo: programa.tipo, titulo: programa.title,
         versiones: borrados.length - 1
     });
     res.json({ ok: true });
@@ -442,14 +463,24 @@ app.patch('/api/programas/:id/asignacion', auth, rol('advisor'), (req, res) => {
 function calcularCobertura(anio) {
     vincularProgramasViejos();
 
+    // Una materia está completa con cualquiera de los dos programas (regular o libre)
     const delAnio = getProgramas().filter((p) => p.year === anio);
-    const porAsignacion = new Map();
+    const porAsignacion = new Map(); // id → { regular, libre }
     for (const p of delAnio) {
-        if (p.asignacion_id && !porAsignacion.has(p.asignacion_id)) porAsignacion.set(p.asignacion_id, p);
+        if (!p.asignacion_id) continue;
+        const tipos = porAsignacion.get(p.asignacion_id) || {};
+        if (!tipos[p.tipo]) tipos[p.tipo] = p;
+        porAsignacion.set(p.asignacion_id, tipos);
     }
+    const resumen = (p) => p
+        ? { id: p.id, title: p.title, tipo: p.tipo, fecha: p.fecha, created_at: p.created_at, file_url: p.file_url, almacenamiento: p.almacenamiento }
+        : null;
 
     const asignaciones = asignacionesRequeridas().map((a) => {
-        const p = porAsignacion.get(a.id);
+        const tipos = porAsignacion.get(a.id) || {};
+        // El programa que se muestra: el más reciente de los cargados
+        const p = [tipos.regular, tipos.libre].filter(Boolean)
+            .sort((x, y) => String(y.created_at).localeCompare(String(x.created_at)))[0];
         return {
             id: a.id,
             curso: a.curso,
@@ -457,9 +488,8 @@ function calcularCobertura(anio) {
             materia: a.materia,
             docentes: a.docentes,
             revisar: a.revisar,
-            programa: p
-                ? { id: p.id, title: p.title, fecha: p.fecha, created_at: p.created_at, file_url: p.file_url, almacenamiento: p.almacenamiento }
-                : null
+            programa: resumen(p),
+            programas: Object.fromEntries(TIPOS.map((t) => [t, resumen(tipos[t])]))
         };
     });
 
@@ -513,22 +543,27 @@ app.get('/api/cursos/zip', async (req, res) => {
     if (!curso) return res.status(400).json({ error: 'Indicá el curso' });
     const anio = req.query.anio ? anioValido(req.query.anio) : null;
     if (req.query.anio && !anio) return res.status(400).json({ error: 'El año lectivo no es válido' });
+    const tipo = req.query.tipo ? tipoValido(req.query.tipo) : null;
+    if (req.query.tipo && !tipo) return res.status(400).json(errorTipo);
 
     const clave = cursoClave(curso);
-    const programas = getProgramas().filter((p) => cursoClave(p.curso) === clave && (!anio || p.year === anio));
+    const programas = getProgramas().filter(
+        (p) => cursoClave(p.curso) === clave && (!anio || p.year === anio) && (!tipo || p.tipo === tipo)
+    );
     if (programas.length === 0) return res.status(404).json({ error: 'No hay programas cargados para ese curso' });
 
     const archivos = [];
     const usados = new Set();
     const faltantes = [];
     for (const p of programas) {
-        let nombre = `${p.year}/${nombreArchivoZip(p.materia)}`;
-        for (let i = 2; usados.has(claveTexto(nombre)); i++) nombre = `${p.year}/${nombreArchivoZip(p.materia)} (${i})`;
+        const base = `${p.year}/${nombreArchivoZip(`${p.materia} - ${NOMBRE_TIPO[p.tipo] || 'Regular'}`)}`;
+        let nombre = base;
+        for (let i = 2; usados.has(claveTexto(nombre)); i++) nombre = `${base} (${i})`;
         usados.add(claveTexto(nombre));
         try {
             archivos.push({ nombre: `${nombre}.pdf`, datos: await leerPdf(p), fecha: new Date(p.created_at || Date.now()) });
         } catch (err) {
-            faltantes.push(`${p.year} - ${p.materia}: ${err.message}`);
+            faltantes.push(`${p.year} - ${p.materia} (${p.tipo}): ${err.message}`);
         }
     }
     if (faltantes.length) {
@@ -538,7 +573,7 @@ app.get('/api/cursos/zip', async (req, res) => {
         });
     }
 
-    const nombreZip = `Programas ${curso}${anio ? ` ${anio}` : ''}.zip`;
+    const nombreZip = `Programas ${tipo ? (tipo === 'libre' ? 'libres ' : 'regulares ') : ''}${curso}${anio ? ` ${anio}` : ''}.zip`;
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader(
         'Content-Disposition',

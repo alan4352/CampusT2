@@ -7,6 +7,11 @@ let asignaciones = [];       // las que el usuario puede cargar
 
 const $ = (id) => document.getElementById(id);
 
+const NOMBRE_TIPO = { regular: 'Regular', libre: 'Libre' };
+const tipoElegido = () => document.querySelector('input[name="tipo"]:checked')?.value || 'regular';
+const etiquetaTipo = (tipo) =>
+    `<span class="etiqueta-tipo etiqueta-${tipo === 'libre' ? 'libre' : 'regular'}">${esc(NOMBRE_TIPO[tipo] || 'Regular')}</span>`;
+
 function mostrar(el, visible) {
     if (el) el.classList.toggle('hidden', !visible);
 }
@@ -111,7 +116,8 @@ async function cargarProgramas() {
 // Filtros pedidos en la dirección (?curso=…&materia=…&anio=…&q=…), para enlaces compartidos
 const filtrosIniciales = (() => {
     const p = new URLSearchParams(location.search);
-    return { curso: p.get('curso') || '', materia: p.get('materia') || '', anio: p.get('anio') || '', q: p.get('q') || '' };
+    const tipo = ['regular', 'libre'].includes(p.get('tipo')) ? p.get('tipo') : '';
+    return { curso: p.get('curso') || '', materia: p.get('materia') || '', anio: p.get('anio') || '', tipo, q: p.get('q') || '' };
 })();
 let filtrosAplicados = false;
 
@@ -133,6 +139,7 @@ function actualizarFiltros() {
     opciones($('filtroAnio'), unicos('year').sort((a, b) => b - a), 'Todos los años', pedido.anio);
     if (!filtrosAplicados) {
         $('busqueda').value = filtrosIniciales.q;
+        $('filtroTipo').value = filtrosIniciales.tipo;
         filtrosAplicados = true;
     }
 }
@@ -142,6 +149,7 @@ function filtrosActuales() {
         curso: $('filtroCurso').value,
         materia: $('filtroMateria').value,
         anio: $('filtroAnio').value,
+        tipo: $('filtroTipo').value,
         q: $('busqueda').value.trim()
     };
 }
@@ -159,18 +167,20 @@ function actualizarAccionesFiltro() {
     }
     if (f.curso) {
         const anios = f.anio ? `de ${esc(f.anio)}` : 'de todos los años';
-        html += `<button type="button" class="btn-secondary-auth btn-chico" data-accion="zip-curso">${icono('zip')}Descargar los programas de ${esc(f.curso)} ${anios} (ZIP)</button>`;
+        const cuales = f.tipo ? `${f.tipo === 'libre' ? 'libres' : 'regulares'} ` : '';
+        html += `<button type="button" class="btn-secondary-auth btn-chico" data-accion="zip-curso">${icono('zip')}Descargar los programas ${cuales}de ${esc(f.curso)} ${anios} (ZIP)</button>`;
     }
     $('accionesFiltro').innerHTML = html;
 }
 
 async function descargarZipCurso() {
-    const { curso, anio } = filtrosActuales();
+    const { curso, anio, tipo } = filtrosActuales();
     if (!curso) return;
-    const ruta = `/cursos/zip?curso=${encodeURIComponent(curso)}${anio ? `&anio=${encodeURIComponent(anio)}` : ''}`;
+    const ruta = `/cursos/zip?curso=${encodeURIComponent(curso)}${anio ? `&anio=${encodeURIComponent(anio)}` : ''}` +
+        (tipo ? `&tipo=${encodeURIComponent(tipo)}` : '');
     try {
         showToast('Preparando el ZIP…');
-        await descargar(ruta, `Programas ${curso}${anio ? ' ' + anio : ''}.zip`);
+        await descargar(ruta, `Programas ${tipo ? (tipo === 'libre' ? 'libres ' : 'regulares ') : ''}${curso}${anio ? ' ' + anio : ''}.zip`);
     } catch (err) {
         showToast(err.message, 'danger');
     }
@@ -181,11 +191,13 @@ function aplicarFiltros() {
     const materia = $('filtroMateria').value;
     const curso = $('filtroCurso').value;
     const anio = $('filtroAnio').value;
+    const tipo = $('filtroTipo').value;
 
     const filtrados = programas.filter((p) => {
         if (materia && p.materia !== materia) return false;
         if (curso && p.curso !== curso) return false;
         if (anio && String(p.year) !== anio) return false;
+        if (tipo && (p.tipo || 'regular') !== tipo) return false;
         if (texto) {
             const enTexto = [p.title, p.materia, p.curso, p.profesor].some((v) => String(v || '').toLowerCase().includes(texto));
             if (!enTexto) return false;
@@ -216,7 +228,8 @@ function render(lista) {
 
     const anios = [...porAnio.keys()].sort((a, b) => b - a);
     contenedor.innerHTML = anios.map((anio, i) => {
-        const items = porAnio.get(anio).slice().sort((a, b) => compararCursos(a.curso, b.curso) || a.materia.localeCompare(b.materia, 'es'));
+        const items = porAnio.get(anio).slice().sort((a, b) => compararCursos(a.curso, b.curso) ||
+            a.materia.localeCompare(b.materia, 'es') || String(b.tipo || 'regular').localeCompare(String(a.tipo || 'regular')));
         return `
         <details class="sub-collapsible bloque-anio" ${i === 0 ? 'open' : ''}>
             <summary>
@@ -241,7 +254,7 @@ function tarjeta(p) {
     return `
     <div class="card">
         <div class="card-info">
-            <b>${esc(p.title)}</b>
+            <b>${esc(p.title)}</b> ${etiquetaTipo(p.tipo)}
             ${esc(p.materia)} — Curso: ${esc(p.curso)}<br>
             <small>Docente: ${esc(p.profesor || 'Sin datos')} | Fecha: ${esc(p.fecha || 'Sin fecha')}</small>
         </div>
@@ -357,15 +370,19 @@ async function cargarAsignaciones() {
     // Las materias del docente (según la lista de horarios) aparecen primero
     const mias = asignaciones.filter((a) => a.propia)
         .sort((a, b) => compararCursos(a.curso, b.curso) || a.materia.localeCompare(b.materia, 'es'));
+    const cargado = (a) => {
+        const tipos = ['regular', 'libre'].filter((t) => a.programas?.[t]);
+        return tipos.length ? ` (cargado: ${tipos.join(' y ')})` : '';
+    };
     const grupoMias = mias.length
         ? '<optgroup label="Mis materias">' +
-          mias.map((a) => `<option value="${esc(a.id)}">${esc(a.curso)} — ${esc(a.materia)}${a.programa ? ' (ya cargado)' : ''}</option>`).join('') +
+          mias.map((a) => `<option value="${esc(a.id)}">${esc(a.curso)} — ${esc(a.materia)}${esc(cargado(a))}</option>`).join('') +
           '</optgroup>'
         : '';
     select.innerHTML = '<option value="">Elegí curso y materia…</option>' + grupoMias + cursos.map((c) => {
         const items = porCurso.get(c).sort((a, b) => a.materia.localeCompare(b.materia, 'es'));
         return `<optgroup label="${esc(c)}${items[0].turno ? ' — ' + esc(items[0].turno) : ''}">` +
-            items.map((a) => `<option value="${esc(a.id)}">${esc(a.materia)}${a.programa ? ' (ya cargado)' : ''}</option>`).join('') +
+            items.map((a) => `<option value="${esc(a.id)}">${esc(a.materia)}${esc(cargado(a))}</option>`).join('') +
             '</optgroup>';
     }).join('');
     if (asignaciones.some((a) => a.id === elegido)) select.value = elegido;
@@ -379,16 +396,19 @@ function mostrarInfoAsignacion() {
         info.textContent = '';
         return;
     }
+    const tipo = tipoElegido();
+    const actual = a.programas?.[tipo];
+    const anterior = a.anteriores?.[tipo];
     let html = `Docentes: <b>${esc(a.docentes.join(' / ') || 'sin datos')}</b>`;
-    if (a.programa) {
-        html += `<br><span class="texto-aviso">Ya hay un programa cargado para ${esc($('anio').value)} ` +
-            `("${esc(a.programa.title)}", ${esc(a.programa.fecha)}). Si subís otro, lo reemplaza.</span>`;
+    if (actual) {
+        html += `<br><span class="texto-aviso">Ya hay un programa ${esc(tipo)} cargado para ${esc($('anio').value)} ` +
+            `("${esc(actual.title)}", ${esc(actual.fecha)}). Si subís otro, lo reemplaza.</span>`;
     }
     if (!a.requiere) html += '<br><small>Esta materia está marcada como "no requiere programa".</small>';
-    if (a.anterior) {
-        html += `<br><span class="fila-reutilizar">Hay un programa de <b>${esc(a.anterior.year)}</b> para este curso y materia
-            ("${esc(a.anterior.title)}").
-            <button type="button" class="btn-secondary-auth btn-chico" data-accion="reutilizar">${icono('copiar')}Usar el de ${esc(a.anterior.year)}</button></span>`;
+    if (anterior) {
+        html += `<br><span class="fila-reutilizar">Hay un programa ${esc(tipo)} de <b>${esc(anterior.year)}</b> para este curso y materia
+            ("${esc(anterior.title)}").
+            <button type="button" class="btn-secondary-auth btn-chico" data-accion="reutilizar">${icono('copiar')}Usar el de ${esc(anterior.year)}</button></span>`;
     }
     info.innerHTML = html;
 }
@@ -406,15 +426,17 @@ function mostrarFechaLimite(fecha, anio) {
 
 async function reutilizar() {
     const a = asignaciones.find((x) => x.id === $('asignacion').value);
-    if (!a?.anterior) return;
+    const tipo = tipoElegido();
+    const anterior = a?.anteriores?.[tipo];
+    if (!anterior) return;
     const anio = $('anio').value;
-    const pregunta = a.programa
-        ? `Ya hay un programa de ${a.materia} (${a.curso}) para ${anio}. ¿Reemplazarlo por el de ${a.anterior.year}?`
-        : `¿Usar para ${anio} el programa de ${a.anterior.year} de ${a.materia} (${a.curso})?`;
+    const pregunta = a.programas?.[tipo]
+        ? `Ya hay un programa ${tipo} de ${a.materia} (${a.curso}) para ${anio}. ¿Reemplazarlo por el de ${anterior.year}?`
+        : `¿Usar para ${anio} el programa ${tipo} de ${anterior.year} de ${a.materia} (${a.curso})?`;
     if (!confirm(pregunta)) return;
     try {
-        await api('/programas/reutilizar', { method: 'POST', json: { asignacion_id: a.id, anio: Number(anio) } });
-        showToast(`Listo: se usa el programa de ${a.anterior.year}`, 'success');
+        await api('/programas/reutilizar', { method: 'POST', json: { asignacion_id: a.id, anio: Number(anio), tipo } });
+        showToast(`Listo: se usa el programa ${tipo} de ${anterior.year}`, 'success');
         await Promise.all([cargarProgramas(), cargarAsignaciones()]);
     } catch (err) {
         showToast(err.message, 'danger');
@@ -432,12 +454,14 @@ async function subir(evento) {
     if (!/\.pdf$/i.test(archivo.name) && archivo.type !== 'application/pdf') return showToast('El archivo tiene que ser un PDF', 'danger');
     if (archivo.size > config.maxPdfMb * 1024 * 1024) return showToast(`El PDF supera los ${config.maxPdfMb} MB`, 'danger');
 
+    const tipo = tipoElegido();
     const a = asignaciones.find((x) => x.id === asignacionId);
-    if (a?.programa && !confirm(`Ya hay un programa de ${a.materia} (${a.curso}) para ${anio}. ¿Reemplazarlo?`)) return;
+    if (a?.programas?.[tipo] && !confirm(`Ya hay un programa ${tipo} de ${a.materia} (${a.curso}) para ${anio}. ¿Reemplazarlo?`)) return;
 
     const datos = new FormData();
     datos.append('asignacion_id', asignacionId);
     datos.append('anio', anio);
+    datos.append('tipo', tipo);
     datos.append('pdf', archivo);
 
     const boton = $('btnSubir');
@@ -445,7 +469,7 @@ async function subir(evento) {
     boton.textContent = 'Subiendo…';
     try {
         const r = await api('/programas/subir', { method: 'POST', body: datos });
-        showToast(r.reemplazado ? 'Programa reemplazado' : '¡Programa subido!', 'success');
+        showToast(r.reemplazado ? `Programa ${tipo} reemplazado` : `¡Programa ${tipo} subido!`, 'success');
         if (r.aviso) showToast(r.aviso, 'warning', 8000);
         $('pdf').value = '';
         await Promise.all([cargarProgramas(), cargarAsignaciones()]);
@@ -465,9 +489,10 @@ function conectarEventos() {
     $('btnCerrarVisor').addEventListener('click', cerrarVisor);
     $('formSubida').addEventListener('submit', subir);
     $('asignacion').addEventListener('change', mostrarInfoAsignacion);
+    for (const r of document.querySelectorAll('input[name="tipo"]')) r.addEventListener('change', mostrarInfoAsignacion);
 
     $('busqueda').addEventListener('input', aplicarFiltros);
-    for (const id of ['filtroMateria', 'filtroCurso', 'filtroAnio']) $(id).addEventListener('change', aplicarFiltros);
+    for (const id of ['filtroMateria', 'filtroCurso', 'filtroAnio', 'filtroTipo']) $(id).addEventListener('change', aplicarFiltros);
 
     // Un solo listener para los botones de todas las tarjetas
     $('lista').addEventListener('click', (e) => {

@@ -432,7 +432,7 @@ const ACCIONES = {
 
 function detalleRegistro(r) {
     const d = r.detalle || {};
-    const programa = d.materia ? `${d.materia} (${d.curso}) ${d.anio || ''}`.trim() : '';
+    const programa = d.materia ? `${d.materia} (${d.curso}) ${d.anio || ''}${d.tipo ? ` · ${d.tipo}` : ''}`.trim() : '';
     switch (r.accion) {
         case 'programa.subido':
         case 'programa.reemplazado':
@@ -485,8 +485,9 @@ function renderRegistro() {
 // ================= ÚLTIMOS =================
 
 function renderUltimos() {
+    // Cada materia puede tener el programa regular y el libre: se listan los dos
     const cargados = datos.asignaciones
-        .filter((a) => a.programa)
+        .flatMap((a) => Object.values(a.programas || { regular: a.programa }).filter(Boolean).map((programa) => ({ ...a, programa })))
         .sort((a, b) => String(b.programa.created_at).localeCompare(String(a.programa.created_at)))
         .slice(0, 8);
 
@@ -498,7 +499,7 @@ function renderUltimos() {
         const url = urlPdfSegura(a.programa.file_url);
         return `<div class="card">
             <div class="card-info">
-                <b>${esc(a.programa.title)}</b>
+                <b>${esc(a.programa.title)}</b> <span class="etiqueta-tipo etiqueta-${a.programa.tipo === 'libre' ? 'libre' : 'regular'}">${a.programa.tipo === 'libre' ? 'Libre' : 'Regular'}</span>
                 ${esc(a.materia)} — ${esc(a.curso)}<br>
                 <small>Docente(s): ${esc(a.docentes.join(' / '))} | Fecha: ${esc(a.programa.fecha)}${a.programa.almacenamiento === 'local' ? ' | guardado en el servidor' : ''}</small>
             </div>

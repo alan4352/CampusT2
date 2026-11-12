@@ -36,8 +36,13 @@ asegurarColumna('programas', 'asignacion_id', 'TEXT');
 asegurarColumna('programas', 'almacenamiento', "TEXT DEFAULT ''"); // 'drive' | 'local'
 asegurarColumna('programas', 'archivo_ref', "TEXT DEFAULT ''");    // id de Drive o nombre del archivo local
 const nuevaCreatedAt = asegurarColumna('programas', 'created_at', 'TEXT');
+// Tipo de programa: 'regular' o 'libre'. Los cargados antes de que existiera el tipo quedan como regulares.
+if (asegurarColumna('programas', 'tipo', "TEXT NOT NULL DEFAULT 'regular'")) {
+    db.exec("UPDATE programas SET title = 'Programa regular de ' || substr(title, 13) WHERE title LIKE 'Programa de %'");
+}
 
-db.exec('CREATE INDEX IF NOT EXISTS idx_programas_asignacion ON programas (asignacion_id, year)');
+db.exec('DROP INDEX IF EXISTS idx_programas_asignacion');
+db.exec('CREATE INDEX IF NOT EXISTS idx_programas_asignacion_tipo ON programas (asignacion_id, year, tipo)');
 
 // Completar datos de las filas creadas con la versión anterior
 if (nuevaCreatedAt) {

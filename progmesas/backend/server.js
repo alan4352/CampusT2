@@ -122,10 +122,11 @@ function puedeGestionar(usuario, programa) {
 
 /** Título de un programa: siempre se genera solo (tipo, curso, materia y año). */
 function tituloAutomatico(asignacion, anio, tipo = 'regular') {
-    return `Programa ${tipo} de ${asignacion.materia} - ${asignacion.curso} - ${anio}`;
+    return `Programa ${tipo === 'libre' ? 'libre ' : ''}de ${asignacion.materia} - ${asignacion.curso} - ${anio}`;
 }
 
-const NOMBRE_TIPO = { regular: 'Regular', libre: 'Libre' };
+/** "programa" o "programa libre": sólo se aclara cuando es libre. */
+const nombrePrograma = (tipo) => (tipo === 'libre' ? 'programa libre' : 'programa');
 const errorTipo = { error: 'El tipo de programa tiene que ser regular o libre' };
 
 /** Resumen de un programa para el formulario de carga. */
@@ -398,7 +399,7 @@ app.post('/api/programas/reutilizar', auth, rol('teacher', 'advisor'), (req, res
     if (!anio) return res.status(400).json(errorAnioPrograma());
     if (!tipo) return res.status(400).json(errorTipo);
     const origen = programaAnteriorDeAsignacion(asignacion.id, anio, tipo);
-    if (!origen) return res.status(404).json({ error: `No hay un programa ${tipo} de años anteriores para ese curso y materia` });
+    if (!origen) return res.status(404).json({ error: `No hay un ${nombrePrograma(tipo)} de años anteriores para ese curso y materia` });
 
     // El archivo se comparte: no se duplica, y sólo se borra cuando ningún programa lo usa
     const datos = {
@@ -556,14 +557,14 @@ app.get('/api/cursos/zip', async (req, res) => {
     const usados = new Set();
     const faltantes = [];
     for (const p of programas) {
-        const base = `${p.year}/${nombreArchivoZip(`${p.materia} - ${NOMBRE_TIPO[p.tipo] || 'Regular'}`)}`;
+        const base = `${p.year}/${nombreArchivoZip(p.tipo === 'libre' ? `${p.materia} - Libre` : p.materia)}`;
         let nombre = base;
         for (let i = 2; usados.has(claveTexto(nombre)); i++) nombre = `${base} (${i})`;
         usados.add(claveTexto(nombre));
         try {
             archivos.push({ nombre: `${nombre}.pdf`, datos: await leerPdf(p), fecha: new Date(p.created_at || Date.now()) });
         } catch (err) {
-            faltantes.push(`${p.year} - ${p.materia} (${p.tipo}): ${err.message}`);
+            faltantes.push(`${p.year} - ${p.materia}${p.tipo === 'libre' ? ' (libre)' : ''}: ${err.message}`);
         }
     }
     if (faltantes.length) {
@@ -573,7 +574,7 @@ app.get('/api/cursos/zip', async (req, res) => {
         });
     }
 
-    const nombreZip = `Programas ${tipo ? (tipo === 'libre' ? 'libres ' : 'regulares ') : ''}${curso}${anio ? ` ${anio}` : ''}.zip`;
+    const nombreZip = `Programas ${tipo === 'libre' ? 'libres ' : ''}${curso}${anio ? ` ${anio}` : ''}.zip`;
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader(
         'Content-Disposition',

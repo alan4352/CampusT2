@@ -7,10 +7,10 @@ let asignaciones = [];       // las que el usuario puede cargar
 
 const $ = (id) => document.getElementById(id);
 
-const NOMBRE_TIPO = { regular: 'Regular', libre: 'Libre' };
-const tipoElegido = () => document.querySelector('input[name="tipo"]:checked')?.value || 'regular';
-const etiquetaTipo = (tipo) =>
-    `<span class="etiqueta-tipo etiqueta-${tipo === 'libre' ? 'libre' : 'regular'}">${esc(NOMBRE_TIPO[tipo] || 'Regular')}</span>`;
+const tipoElegido = () => ($('esLibre').checked ? 'libre' : 'regular');
+// Sólo se aclara cuando el programa es libre; el regular no lleva etiqueta
+const etiquetaTipo = (tipo) => (tipo === 'libre' ? '<span class="etiqueta-tipo etiqueta-libre">Libre</span>' : '');
+const nombrePrograma = (tipo) => (tipo === 'libre' ? 'programa libre' : 'programa');
 
 function mostrar(el, visible) {
     if (el) el.classList.toggle('hidden', !visible);
@@ -167,7 +167,7 @@ function actualizarAccionesFiltro() {
     }
     if (f.curso) {
         const anios = f.anio ? `de ${esc(f.anio)}` : 'de todos los años';
-        const cuales = f.tipo ? `${f.tipo === 'libre' ? 'libres' : 'regulares'} ` : '';
+        const cuales = f.tipo === 'libre' ? 'libres ' : f.tipo === 'regular' ? 'no libres ' : '';
         html += `<button type="button" class="btn-secondary-auth btn-chico" data-accion="zip-curso">${icono('zip')}Descargar los programas ${cuales}de ${esc(f.curso)} ${anios} (ZIP)</button>`;
     }
     $('accionesFiltro').innerHTML = html;
@@ -180,7 +180,7 @@ async function descargarZipCurso() {
         (tipo ? `&tipo=${encodeURIComponent(tipo)}` : '');
     try {
         showToast('Preparando el ZIP…');
-        await descargar(ruta, `Programas ${tipo ? (tipo === 'libre' ? 'libres ' : 'regulares ') : ''}${curso}${anio ? ' ' + anio : ''}.zip`);
+        await descargar(ruta, `Programas ${tipo === 'libre' ? 'libres ' : ''}${curso}${anio ? ' ' + anio : ''}.zip`);
     } catch (err) {
         showToast(err.message, 'danger');
     }
@@ -371,8 +371,10 @@ async function cargarAsignaciones() {
     const mias = asignaciones.filter((a) => a.propia)
         .sort((a, b) => compararCursos(a.curso, b.curso) || a.materia.localeCompare(b.materia, 'es'));
     const cargado = (a) => {
-        const tipos = ['regular', 'libre'].filter((t) => a.programas?.[t]);
-        return tipos.length ? ` (cargado: ${tipos.join(' y ')})` : '';
+        const { regular, libre } = a.programas || {};
+        if (regular && libre) return ' (cargado, también el libre)';
+        if (libre) return ' (cargado sólo el libre)';
+        return regular ? ' (ya cargado)' : '';
     };
     const grupoMias = mias.length
         ? '<optgroup label="Mis materias">' +
@@ -401,12 +403,12 @@ function mostrarInfoAsignacion() {
     const anterior = a.anteriores?.[tipo];
     let html = `Docentes: <b>${esc(a.docentes.join(' / ') || 'sin datos')}</b>`;
     if (actual) {
-        html += `<br><span class="texto-aviso">Ya hay un programa ${esc(tipo)} cargado para ${esc($('anio').value)} ` +
+        html += `<br><span class="texto-aviso">Ya hay un ${nombrePrograma(tipo)} cargado para ${esc($('anio').value)} ` +
             `("${esc(actual.title)}", ${esc(actual.fecha)}). Si subís otro, lo reemplaza.</span>`;
     }
     if (!a.requiere) html += '<br><small>Esta materia está marcada como "no requiere programa".</small>';
     if (anterior) {
-        html += `<br><span class="fila-reutilizar">Hay un programa ${esc(tipo)} de <b>${esc(anterior.year)}</b> para este curso y materia
+        html += `<br><span class="fila-reutilizar">Hay un ${nombrePrograma(tipo)} de <b>${esc(anterior.year)}</b> para este curso y materia
             ("${esc(anterior.title)}").
             <button type="button" class="btn-secondary-auth btn-chico" data-accion="reutilizar">${icono('copiar')}Usar el de ${esc(anterior.year)}</button></span>`;
     }
@@ -431,12 +433,12 @@ async function reutilizar() {
     if (!anterior) return;
     const anio = $('anio').value;
     const pregunta = a.programas?.[tipo]
-        ? `Ya hay un programa ${tipo} de ${a.materia} (${a.curso}) para ${anio}. ¿Reemplazarlo por el de ${anterior.year}?`
-        : `¿Usar para ${anio} el programa ${tipo} de ${anterior.year} de ${a.materia} (${a.curso})?`;
+        ? `Ya hay un ${nombrePrograma(tipo)} de ${a.materia} (${a.curso}) para ${anio}. ¿Reemplazarlo por el de ${anterior.year}?`
+        : `¿Usar para ${anio} el ${nombrePrograma(tipo)} de ${anterior.year} de ${a.materia} (${a.curso})?`;
     if (!confirm(pregunta)) return;
     try {
         await api('/programas/reutilizar', { method: 'POST', json: { asignacion_id: a.id, anio: Number(anio), tipo } });
-        showToast(`Listo: se usa el programa ${tipo} de ${anterior.year}`, 'success');
+        showToast(`Listo: se usa el ${nombrePrograma(tipo)} de ${anterior.year}`, 'success');
         await Promise.all([cargarProgramas(), cargarAsignaciones()]);
     } catch (err) {
         showToast(err.message, 'danger');
@@ -456,7 +458,7 @@ async function subir(evento) {
 
     const tipo = tipoElegido();
     const a = asignaciones.find((x) => x.id === asignacionId);
-    if (a?.programas?.[tipo] && !confirm(`Ya hay un programa ${tipo} de ${a.materia} (${a.curso}) para ${anio}. ¿Reemplazarlo?`)) return;
+    if (a?.programas?.[tipo] && !confirm(`Ya hay un ${nombrePrograma(tipo)} de ${a.materia} (${a.curso}) para ${anio}. ¿Reemplazarlo?`)) return;
 
     const datos = new FormData();
     datos.append('asignacion_id', asignacionId);
@@ -469,7 +471,7 @@ async function subir(evento) {
     boton.textContent = 'Subiendo…';
     try {
         const r = await api('/programas/subir', { method: 'POST', body: datos });
-        showToast(r.reemplazado ? `Programa ${tipo} reemplazado` : `¡Programa ${tipo} subido!`, 'success');
+        showToast(r.reemplazado ? `Programa ${tipo === 'libre' ? 'libre ' : ''}reemplazado` : `¡Programa ${tipo === 'libre' ? 'libre ' : ''}subido!`, 'success');
         if (r.aviso) showToast(r.aviso, 'warning', 8000);
         $('pdf').value = '';
         await Promise.all([cargarProgramas(), cargarAsignaciones()]);
@@ -489,7 +491,7 @@ function conectarEventos() {
     $('btnCerrarVisor').addEventListener('click', cerrarVisor);
     $('formSubida').addEventListener('submit', subir);
     $('asignacion').addEventListener('change', mostrarInfoAsignacion);
-    for (const r of document.querySelectorAll('input[name="tipo"]')) r.addEventListener('change', mostrarInfoAsignacion);
+    $('esLibre').addEventListener('change', mostrarInfoAsignacion);
 
     $('busqueda').addEventListener('input', aplicarFiltros);
     for (const id of ['filtroMateria', 'filtroCurso', 'filtroAnio', 'filtroTipo']) $(id).addEventListener('change', aplicarFiltros);

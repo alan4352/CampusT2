@@ -21,9 +21,10 @@ Proyecto de Práctica Profesional — Escuela Técnica N.º 2 "Independencia".
 
 **Programas**
 
-- **Regular o libre:** cada materia puede tener dos programas de examen, el **regular** y el **libre**. Al cargarlo se
-  elige el tipo; uno no reemplaza al otro. En la lista cada programa lleva su etiqueta y se puede filtrar por tipo
-  (`?tipo=libre`). En el dashboard, una materia cuenta como entregada con cualquiera de los dos.
+- **Programa libre:** cada materia puede tener, además de su programa, un **programa libre** (para alumnos libres). Al
+  cargarlo se marca **Es el programa libre**; uno no reemplaza al otro. Sólo los libres llevan etiqueta y título
+  distinto ("Programa libre de …"); el filtro permite incluirlos, sacarlos o ver sólo esos (`?tipo=libre`). En el
+  dashboard, una materia cuenta como entregada con cualquiera de los dos.
 - **Historial de versiones:** al reemplazar un programa, la versión anterior queda guardada con su PDF, quién la reemplazó y cuándo.
 - **Reutilizar:** si un programa no cambió, se usa el del año anterior para el mismo curso y materia sin volver a subirlo
   (el archivo se comparte, no se duplica).
@@ -285,6 +286,16 @@ hace falta Google Drive o un disco persistente (`DATOS_DIR`, ver `render.yaml`).
 - Dependencias sin vulnerabilidades conocidas (`npm audit`, octubre de 2026).
 
 ## Historial de cambios
+
+### 12/11/2026 — Sólo se aclara cuando el programa es libre
+
+- El título ya no dice "regular": el programa común queda "Programa de Matemática - 2° 1° - 2026" y sólo el libre dice
+  "Programa libre de …". Los títulos que habían quedado como "Programa regular de …" se corrigen solos (Node al
+  arrancar, `api.php` al primer uso), también en las versiones anteriores.
+- En el formulario, **Tipo de programa (Regular / Libre)** pasó a ser una casilla: **Es el programa libre**.
+- Sólo los libres llevan etiqueta (**Libre**) en la lista y en el dashboard. El filtro dice **Incluir libres / Sin libres /
+  Sólo libres**. En el ZIP, el común es "Materia.pdf" y el libre "Materia - Libre.pdf".
+- Internamente sigue la columna `tipo` (`regular` o `libre`) y el parámetro `tipo` de la API, sin cambios.
 
 ### 12/11/2026 — Programas regulares y libres
 

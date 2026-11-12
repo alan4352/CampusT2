@@ -22,13 +22,13 @@ No hace falta iniciar sesión.
 1. Entrá a la página principal: aparecen los programas cargados, agrupados por año. Están **todos los años**, así que
    también se encuentran los programas de materias que se deben de años anteriores.
 2. Para encontrar uno, escribí en el buscador (materia, curso, docente o título) o usá los filtros de **materia**, **curso**,
-   **año** y **tipo** (regulares, libres o los dos). Cada programa muestra si es **Regular** o **Libre**.
+   **año** y libres (incluirlos, sacarlos o ver sólo esos). Los programas para alumnos libres llevan la etiqueta **Libre**.
 3. Tocá **Ver PDF** para abrir el programa en el visor de la página. **Cerrar visor** lo oculta.
 4. **Compartir:** lo que filtrás queda en la dirección de la página. **Copiar enlace a esta búsqueda** copia esa dirección,
    por ejemplo para mandar al grupo de un curso el enlace con sus programas.
 5. **Descargar todos los de un curso:** elegí el curso (y, si querés, el año) y tocá **Descargar los programas de … (ZIP)**.
-   El ZIP trae una carpeta por año, con un PDF por materia y tipo (por ejemplo, "Matemática - Libre.pdf"). Si en el filtro
-   de tipo elegiste sólo regulares o sólo libres, el ZIP trae sólo esos.
+   El ZIP trae una carpeta por año, con un PDF por materia; el programa libre va aparte, como "Matemática - Libre.pdf".
+   Si en el filtro elegiste **Sólo libres**, el ZIP trae sólo esos.
 
 ### Docentes
 
@@ -47,19 +47,19 @@ No hace falta iniciar sesión.
 1. En **Subir programa de examen**, elegí en **Curso y materia** el curso y la materia. Aparecen **todos** los cursos;
    si estás vinculado, tus materias están primero, en **Mis materias**. Cada curso lleva su propio programa: si das la
    misma materia en varios cursos, cargá uno por curso.
-2. En **Tipo de programa** elegí **Regular** (para alumnos regulares) o **Libre** (para alumnos libres). Cada materia
-   puede tener los dos: son programas distintos y uno no reemplaza al otro. En la lista de materias, "(cargado: regular y
-   libre)" indica cuáles ya están.
-3. El **Año lectivo** es el actual y no se puede cambiar. El título se pone solo
-   (por ejemplo, "Programa libre de Matemática - 2° 1° - 2026").
+2. Si es el programa para alumnos libres, marcá **Es el programa libre**. Cada materia puede tener los dos: el programa
+   y el programa libre son distintos y uno no reemplaza al otro. En la lista de materias, "(ya cargado)", "(cargado sólo
+   el libre)" o "(cargado, también el libre)" indica cuáles ya están.
+3. El **Año lectivo** es el actual y no se puede cambiar. El título se pone solo: "Programa de Matemática - 2° 1° - 2026",
+   o "Programa libre de Matemática - 2° 1° - 2026" si es el libre.
 4. Elegí el **archivo PDF** (hasta 10 MB) y tocá **Guardar programa**.
 
 Arriba del formulario aparece la **fecha límite** de entrega del año, si la asesora la fijó, y cuántos días faltan.
 
-**Usar el programa del año anterior:** si para ese curso, materia y tipo hay un programa de un año anterior, al elegirlo aparece
+**Usar el programa del año anterior:** si para ese curso y materia (y libre o no) hay un programa de un año anterior, al elegirlo aparece
 **Usar el de 2025** (o el año que corresponda). Tocalo y queda cargado para este año sin volver a subir el PDF, con el título de este año.
 
-**Reemplazar un programa:** subí el nuevo PDF para el mismo curso, materia, tipo y año. La página avisa que ya hay uno cargado
+**Reemplazar un programa:** subí el nuevo PDF para el mismo curso, materia y año (con la misma marca de libre). La página avisa que ya hay uno cargado
 y, si confirmás, lo reemplaza. La versión anterior **no se borra**: queda en **Versiones anteriores**.
 
 **Versiones anteriores:** en la lista, los programas que se reemplazaron muestran **Versiones anteriores (n)**. Al tocarlo
@@ -77,7 +77,7 @@ para **cualquier** curso y materia, y además puede **Eliminar** programas desde
 - **Avisos** (arriba de todo): si Google Drive no está disponible o hay programas guardados en el servidor y no en Drive.
   Esos programas pasan solos a Drive cuando vuelve (al arrancar el servidor y cada 6 horas); **Pasar a Drive ahora** lo hace en el momento.
 - **Cobertura general:** programas requeridos, entregados, pendientes y porcentaje. Una materia cuenta como entregada
-  con cualquiera de los dos programas, el regular o el libre.
+  con cualquiera de los dos programas, el común o el libre.
 - **Fecha límite:** elegí la fecha y tocá **Guardar fecha** (**Quitar** la borra). Cada año tiene la suya. Los docentes la ven
   al cargar; cuando pasa, los pendientes se muestran como **Atrasados** y se cuentan los entregados **fuera de término**.
 - **Notificaciones y alertas:** asignaciones para revisar en la planilla, los primeros pendientes y los

@@ -740,11 +740,9 @@ select optgroup { font-weight: 700; }
     vertical-align: middle;
     border: 1px solid;
 }
-.etiqueta-regular { background: var(--exito-fondo); color: var(--exito); border-color: var(--exito-borde); }
 .etiqueta-libre { background: var(--info-fondo); color: var(--info); border-color: var(--info-borde); }
 
 .grupo-tipo { border: 0; padding: 0; margin: 0 0 0.8rem; display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; }
-.grupo-tipo legend { float: left; margin: 0 0.4rem 0 0; padding: 0; }
 .opcion-tipo { display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; font-weight: 600; }
 .opcion-tipo input { width: 18px; height: 18px; accent-color: var(--color-primary); }
 

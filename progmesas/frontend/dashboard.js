@@ -432,7 +432,7 @@ const ACCIONES = {
 
 function detalleRegistro(r) {
     const d = r.detalle || {};
-    const programa = d.materia ? `${d.materia} (${d.curso}) ${d.anio || ''}${d.tipo ? ` · ${d.tipo}` : ''}`.trim() : '';
+    const programa = d.materia ? `${d.materia} (${d.curso}) ${d.anio || ''}${d.tipo === 'libre' ? ' · libre' : ''}`.trim() : '';
     switch (r.accion) {
         case 'programa.subido':
         case 'programa.reemplazado':
@@ -499,7 +499,7 @@ function renderUltimos() {
         const url = urlPdfSegura(a.programa.file_url);
         return `<div class="card">
             <div class="card-info">
-                <b>${esc(a.programa.title)}</b> <span class="etiqueta-tipo etiqueta-${a.programa.tipo === 'libre' ? 'libre' : 'regular'}">${a.programa.tipo === 'libre' ? 'Libre' : 'Regular'}</span>
+                <b>${esc(a.programa.title)}</b>${a.programa.tipo === 'libre' ? ' <span class="etiqueta-tipo etiqueta-libre">Libre</span>' : ''}
                 ${esc(a.materia)} — ${esc(a.curso)}<br>
                 <small>Docente(s): ${esc(a.docentes.join(' / '))} | Fecha: ${esc(a.programa.fecha)}${a.programa.almacenamiento === 'local' ? ' | guardado en el servidor' : ''}</small>
             </div>

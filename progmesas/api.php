@@ -340,7 +340,10 @@ function db(): PDO {
     $columnas = array_column($pdo->query('PRAGMA table_info(programas)')->fetchAll(), 'name');
     if (!in_array('tipo', $columnas, true)) {
         $pdo->exec("ALTER TABLE programas ADD COLUMN tipo TEXT NOT NULL DEFAULT 'regular'");
-        $pdo->exec("UPDATE programas SET title = 'Programa regular de ' || substr(title, 13) WHERE title LIKE 'Programa de %'");
+    }
+    // El título sólo aclara cuando el programa es libre ("Programa libre de …"); el regular queda "Programa de …".
+    foreach (['programas', 'programas_versiones'] as $tabla) {
+        $pdo->exec("UPDATE $tabla SET title = 'Programa de ' || substr(title, 21) WHERE title LIKE 'Programa regular de %'");
     }
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_programas_asignacion_tipo ON programas (asignacion_id, year, tipo)');
 
@@ -744,7 +747,8 @@ function errorAnioPrograma(): void {
 
 /** Título de un programa: siempre se genera solo (curso, materia y año). */
 function tituloAutomatico(array $asignacion, int $anio, string $tipo = 'regular'): string {
-    return "Programa $tipo de {$asignacion['materia']} - {$asignacion['curso']} - $anio";
+    $libre = $tipo === 'libre' ? 'libre ' : '';
+    return "Programa {$libre}de {$asignacion['materia']} - {$asignacion['curso']} - $anio";
 }
 
 /** Direcciones del campus (carpeta hermana de progmesas), para Ingresar, Cerrar sesión y Volver al campus. */
@@ -1145,7 +1149,7 @@ if ($metodo === 'POST' && $ruta === '/programas/reutilizar') {
     $stmtOrig = db()->prepare('SELECT * FROM programas WHERE asignacion_id = ? AND year < ? AND tipo = ? ORDER BY year DESC, created_at DESC, id DESC LIMIT 1');
     $stmtOrig->execute([$asignacion['id'], $anio, $tipo]);
     $origen = $stmtOrig->fetch();
-    if (!$origen) responderJson(['error' => "No hay un programa $tipo de años anteriores para ese curso y materia"], 404);
+    if (!$origen) responderJson(['error' => 'No hay un ' . ($tipo === 'libre' ? 'programa libre' : 'programa') . ' de años anteriores para ese curso y materia'], 404);
 
     $tituloNuevo = tituloAutomatico($asignacion, $anio, $tipo);
     $profesor = $esAsesora ? ($origen['profesor'] ?: implode(' / ', $asignacion['docentes'])) : $docente;
@@ -1406,8 +1410,8 @@ if ($metodo === 'GET' && $ruta === '/cursos/zip') {
     $usados = [];
     $faltantes = [];
     foreach ($programas as $p) {
-        $nombreTipo = $p['tipo'] === 'libre' ? 'Libre' : 'Regular';
-        $matLimpia = trim((string)preg_replace('/[\\\\\/:*?"<>|\x00-\x1f]+/', ' ', "{$p['materia']} - $nombreTipo"));
+        $nombreMateria = $p['tipo'] === 'libre' ? "{$p['materia']} - Libre" : $p['materia'];
+        $matLimpia = trim((string)preg_replace('/[\\\\\/:*?"<>|\x00-\x1f]+/', ' ', $nombreMateria));
         $matLimpia = substr(preg_replace('/\s+/', ' ', $matLimpia), 0, 90) ?: 'programa';
         $nombre = "{$p['year']}/$matLimpia";
         for ($i = 2; isset($usados[claveTexto($nombre)]); $i++) {
@@ -1429,7 +1433,7 @@ if ($metodo === 'GET' && $ruta === '/cursos/zip') {
                 'timestamp' => !empty($p['created_at']) ? strtotime($p['created_at']) : time()
             ];
         } else {
-            $faltantes[] = "{$p['year']} - {$p['materia']} ({$p['tipo']}): El archivo está alojado externamente o no se encontró en el servidor local.";
+            $faltantes[] = "{$p['year']} - {$p['materia']}" . ($p['tipo'] === 'libre' ? ' (libre)' : '') . ": El archivo está alojado externamente o no se encontró en el servidor local.";
         }
     }
 
@@ -1441,7 +1445,7 @@ if ($metodo === 'GET' && $ruta === '/cursos/zip') {
         ];
     }
 
-    $nombreZip = 'Programas ' . ($tipo ? ($tipo === 'libre' ? 'libres ' : 'regulares ') : '') . $curso . ($anio ? " $anio" : '') . '.zip';
+    $nombreZip = 'Programas ' . ($tipo === 'libre' ? 'libres ' : '') . $curso . ($anio ? " $anio" : '') . '.zip';
     $nombreAscii = preg_replace('/[^\x20-\x7e]/', '', sinAcentos($nombreZip));
     header('Content-Type: application/zip');
     header('Content-Disposition: attachment; filename="' . addslashes($nombreAscii) . '"; filename*=UTF-8\'\'' . rawurlencode($nombreZip));

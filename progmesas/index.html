@@ -116,11 +116,9 @@
                                title="Se cargan siempre los programas del año lectivo actual">
                     </div>
                 </div>
-                <fieldset class="grupo-tipo">
-                    <legend class="form-label">Tipo de programa</legend>
-                    <label class="opcion-tipo"><input type="radio" name="tipo" value="regular" checked> Regular</label>
-                    <label class="opcion-tipo"><input type="radio" name="tipo" value="libre"> Libre</label>
-                </fieldset>
+                <div class="grupo-tipo">
+                    <label class="opcion-tipo"><input type="checkbox" id="esLibre"> Es el programa libre (para alumnos libres)</label>
+                </div>
                 <p id="infoAsignacion" class="info-asignacion"></p>
                 <div class="input-group">
                     <label class="form-label" for="pdf">Archivo PDF del programa <small id="maxPdf"></small></label>
@@ -139,8 +137,8 @@
             <select id="filtroCurso" class="form-select" aria-label="Curso"></select>
             <select id="filtroAnio" class="form-select" aria-label="Año"></select>
             <select id="filtroTipo" class="form-select" aria-label="Tipo de programa">
-                <option value="">Regulares y libres</option>
-                <option value="regular">Sólo regulares</option>
+                <option value="">Incluir libres</option>
+                <option value="regular">Sin libres</option>
                 <option value="libre">Sólo libres</option>
             </select>
         </div>

@@ -9,6 +9,9 @@
  *          profesorCorreo (solo directivo): correo del docente elegido cuando hay varios con el mismo nombre; el servidor
  *          busca el ID del profesor por nombre + correo y guarda ese ID (no el correo) en reservas.profesor_id.
  *   DELETE api_reservas.php?fecha=...&proy=...&slot=HHMM → elimina la reserva
+ *   GET    api_reservas.php?lista=1                     → { reservas: [...] } panel del pie de página, de la más nueva a la más vieja
+ *          (directivo: todas · profesor: solo las suyas). Cada una trae `pasada` y `cancelable` (solo las futuras se cancelan).
+ *   DELETE api_reservas.php?mias=futuras                → (solo profesor) cancela de una vez todas sus reservas que aún no pasaron
  *
  * Requiere sesión del campus (ver conexion.php):
  *   · directivo → reserva a nombre de quien indique y puede cancelar cualquier reserva.
@@ -177,6 +180,78 @@ function campo(array $d, string $k): string
     return isset($d[$k]) && is_scalar($d[$k]) ? trim((string) $d[$k]) : '';
 }
 
+/**
+ * Reservas que el usuario puede consultar, de la más nueva a la más vieja (fecha y hora de inicio descendentes).
+ *  · directivo → todas;
+ *  · profesor  → solo las suyas (mismo criterio que puede_eliminar_reserva(): por ID y, en reservas antiguas, por nombre).
+ * Cada una trae `pasada` (su turno ya terminó) y `cancelable` (todavía no pasó). Solo consulta: no modifica nada.
+ */
+function reservas_del_usuario(PDO $pdo, array $usuario): array
+{
+    $sql = "SELECT r.ID, r.proyector_id, r.dia, r.hora_inicio, r.hora_fin, r.materia, r.curso, r.docente, r.profesor_id,
+                   p.Nombre AS proyector
+            FROM reservas r
+            LEFT JOIN proyectores p ON p.ID = r.proyector_id
+            WHERE r.estado_reserva = 'reservado'";
+    $params = [];
+    if ($usuario['rol'] !== 'directivo') {
+        // la base solo acota (compara el nombre sin distinguir mayúsculas ni tildes); la decisión final la toma puede_eliminar_reserva()
+        if (($usuario['id'] ?? null) !== null) {
+            $sql .= ' AND (r.profesor_id = ? OR r.docente = ?)';
+            $params = [(int) $usuario['id'], $usuario['nombre']];
+        } else {
+            $sql .= ' AND r.docente = ?';
+            $params = [$usuario['nombre']];
+        }
+    }
+    $sql .= ' ORDER BY r.dia DESC, r.hora_inicio DESC, r.ID DESC LIMIT 500';
+    $st = $pdo->prepare($sql);
+    $st->execute($params);
+
+    $salida = [];
+    foreach ($st as $r) {
+        $profId = $r['profesor_id'] !== null ? (int) $r['profesor_id'] : null;
+        if (!puede_eliminar_reserva($usuario, (string) $r['docente'], $profId)) {
+            continue;
+        }
+        $fecha  = substr((string) $r['dia'], 0, 10);
+        $pasada = turno_terminado($fecha, substr((string) $r['hora_fin'], 0, 5));
+        $salida[] = [
+            'id'         => (int) $r['ID'],
+            'fecha'      => $fecha,
+            'proyId'     => (int) $r['proyector_id'],
+            'proyector'  => $r['proyector'] !== null ? (string) $r['proyector'] : 'Proyector #' . (int) $r['proyector_id'],
+            'slot'       => clave_slot((string) $r['hora_inicio']),
+            'horaInicio' => substr((string) $r['hora_inicio'], 0, 5),
+            'horaFin'    => substr((string) $r['hora_fin'], 0, 5),
+            'materia'    => (string) $r['materia'],
+            'curso'      => (string) $r['curso'],
+            'docente'    => (string) $r['docente'],
+            'pasada'     => $pasada,
+            'cancelable' => !$pasada,
+        ];
+    }
+    return $salida;
+}
+
+/** Borra todas las reservas futuras del profesor de la sesión (las que ya pasaron quedan). Devuelve cuántas canceló. */
+function cancelar_futuras_del_profesor(PDO $pdo, array $usuario): int
+{
+    $ids = [];
+    foreach (reservas_del_usuario($pdo, $usuario) as $r) {
+        if ($r['cancelable']) {
+            $ids[] = $r['id'];
+        }
+    }
+    $total = 0;
+    foreach (array_chunk($ids, 100) as $lote) {
+        $st = $pdo->prepare('DELETE FROM reservas WHERE ID IN (' . implode(',', array_fill(0, count($lote), '?')) . ')');
+        $st->execute($lote);
+        $total += $st->rowCount();
+    }
+    return $total;
+}
+
 try {
     $pdo = conectar();
     $usuario = exigir_usuario_api();   // directivo o profesor; si no, responde 401 y termina
@@ -185,6 +260,10 @@ try {
     /* ── GET: reservas de un día o de toda una semana ────────── */
     if ($metodo === 'GET') {
         limpiar_reservas_viejas($pdo);   // 1 vez por día
+
+        if (param('lista') !== '') {     // panel "Ver mis reservas" / "Consultar reservas"
+            responder_json(['reservas' => reservas_del_usuario($pdo, $usuario)]);
+        }
 
         $semana = param('semana');
         if ($semana !== '') {            // una sola consulta para los 5 días: cambiar de día no necesita pedir nada más
@@ -322,6 +401,15 @@ try {
 
     /* ── DELETE: cancelar reserva ────────────────────────────── */
     if ($metodo === 'DELETE') {
+        if (param('mias') === 'futuras') {   // cancelar de una vez todas mis reservas que aún no pasaron
+            if ($usuario['rol'] !== 'profesor') {
+                responder_json(['error' => 'Esta acción es solo para profesores'], 403);
+            }
+            $n = cancelar_futuras_del_profesor($pdo, $usuario);
+            auditar($usuario, "canceló todas sus reservas futuras ($n)");
+            responder_json(['ok' => true, 'canceladas' => $n]);
+        }
+
         $fecha = param('fecha');
         $proy  = param('proy');
         $slot  = param('slot');

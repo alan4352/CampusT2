@@ -161,6 +161,7 @@ rel="stylesheet">
 
   <div class="status-bar">
     <span id="status-text">Cargando...</span>
+    <button class="btn-mis-reservas" id="btn-mis-reservas" type="button" onclick="openMisReservas()"><?= $esDirectivo ? 'Consultar reservas' : 'Ver mis reservas' ?></button>
     <span id="status-time"></span>
   </div>
 
@@ -273,6 +274,15 @@ rel="stylesheet">
     </div>
   </div>
   <?php endif; ?>
+  <!-- Panel del pie de página: profesor → "Ver mis reservas" (solo las suyas) · directivo → "Consultar reservas" (todas) -->
+  <div class="modal-overlay" id="mis-modal">
+    <div class="modal admin-modal mis-modal">
+      <button class="close-modal" onclick="closeMisReservas()" aria-label="Cerrar">✕</button>
+      <h2><?= $esDirectivo ? 'Consultar reservas' : 'Ver mis reservas' ?></h2>
+      <div class="modal-meta" id="mis-meta"></div>
+      <div id="mis-body"></div>
+    </div>
+  </div>
   <div class="toast" id="toast"></div>
 
   <!-- Etiqueta de audio oculta para el efecto de sonido al pasar el cursor sobre los horarios disponibles -->
@@ -1215,6 +1225,141 @@ rel="stylesheet">
       }
     });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAdmin(); });
+
+    /* ══════════════ Ver mis reservas / Consultar reservas (botón del pie de página) ══════════════
+     * Profesor: solo sus reservas · Directivo: todas. De la más nueva (arriba) a la más vieja (abajo).
+     * Solo se pueden cancelar las que todavía no pasaron; el servidor lo vuelve a comprobar. */
+    let misRows = [], misConfirmId = null, misConfirmTodas = false, misOcupado = false;
+    const $m = () => document.getElementById('mis-body');
+
+    const misApi = {
+      async lista() {
+        const res = await fetch(`${API_RESERVAS}?lista=1`, { cache: 'no-store' });
+        if (sesionVencida(res)) return null;
+        if (!res.ok) throw new Error('No se pudieron cargar las reservas');
+        const j = await res.json();
+        return Array.isArray(j.reservas) ? j.reservas : [];
+      },
+      async cancelarTodas() {
+        const res = await fetch(`${API_RESERVAS}?mias=futuras`, { method: 'DELETE', headers: { 'X-Requested-With': HDR_PROPIO } });
+        if (sesionVencida(res)) return null;
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(j.error || 'Error al cancelar');
+        return j;
+      }
+    };
+
+    // Tras cancelar desde el panel, lo guardado en la caché de días ya no es cierto: se descarta y se vuelve a pedir.
+    function invalidarCacheReservas() {
+      for (const k of Object.keys(cacheDias)) delete cacheDias[k];
+      loadReservations(true);
+    }
+
+    function etiquetaFecha(f) {
+      const d = new Date(f + 'T00:00:00');
+      return `${DIAS_ES[d.getDay()]} ${d.getDate()} ${MESES_ES[d.getMonth()]}`;
+    }
+
+    async function openMisReservas() {
+      misConfirmId = null; misConfirmTodas = false;
+      document.getElementById('mis-meta').textContent = '';
+      $m().innerHTML = '<p class="admin-empty">Cargando…</p>';
+      document.getElementById('mis-modal').classList.add('open');
+      await refreshMis();
+    }
+    function closeMisReservas() { const m = document.getElementById('mis-modal'); if (m) m.classList.remove('open'); }
+
+    async function refreshMis() {
+      try {
+        const filas = await misApi.lista();
+        if (filas === null) return;   // sesión vencida: ya se redirigió
+        misRows = filas;
+        renderMis();
+      } catch (e) { $m().innerHTML = `<p class="admin-empty">${esc(e.message)}</p>`; }
+    }
+
+    function renderMis() {
+      const futuras = misRows.filter(r => r.cancelable).length;
+      const pasadas = misRows.length - futuras;
+      document.getElementById('mis-meta').textContent = misRows.length
+        ? `${futuras} próxima${futuras !== 1 ? 's' : ''} · ${pasadas} finalizada${pasadas !== 1 ? 's' : ''}`
+        : '';
+
+      const filas = misRows.map((r, i) => {
+        let acciones;
+        if (!r.cancelable) acciones = '<span class="admin-badge fin">Finalizada</span>';
+        else if (misConfirmId === r.id) acciones = `<span class="admin-confirm">¿Cancelar?</span>
+            <button class="admin-btn danger" data-act="myes" data-id="${r.id}">Sí</button>
+            <button class="admin-btn" data-act="mno">No</button>`;
+        else acciones = `<button class="admin-btn danger" data-act="mcancel" data-id="${r.id}">Cancelar</button>`;
+        const detalle = [r.curso, r.proyector, ES_DIRECTIVO ? r.docente : ''].filter(Boolean).join(' · ');
+        return `<div class="admin-row mis-row${r.cancelable ? '' : ' mis-pasada'}">
+          <div class="mis-main">
+            <div class="mis-cuando">${esc(etiquetaFecha(r.fecha))} · ${esc(r.horaInicio)}–${esc(r.horaFin)}</div>
+            <div class="admin-name">${esc(r.materia)}</div>
+            <div class="admin-specs">${esc(detalle)}</div>
+          </div>
+          <div class="admin-actions">${acciones}</div>
+        </div>`;
+      }).join('');
+
+      // Solo el profesor: cancelar de una vez todas sus reservas que aún no pasaron
+      let accionTodas = '';
+      if (ES_PROFESOR && futuras > 0) {
+        accionTodas = misConfirmTodas
+          ? `<span class="admin-confirm">¿Cancelar tus ${futuras} reserva${futuras !== 1 ? 's' : ''} próxima${futuras !== 1 ? 's' : ''}?</span>
+             <button class="admin-btn danger" data-act="mtodasyes">Sí, cancelar todas</button>
+             <button class="admin-btn" data-act="mtodasno">No</button>`
+          : `<button class="admin-btn danger" data-act="mtodas">Cancelar todas mis próximas (${futuras})</button>`;
+      }
+      const vacio = `<p class="admin-empty">${ES_DIRECTIVO ? 'No hay reservas.' : 'No tenés reservas.'}</p>`;
+      $m().innerHTML = `<div class="admin-list">${filas || vacio}</div>
+        <div class="mis-pie">${accionTodas}<button class="btn-cancel" data-act="mcerrar">Cerrar</button></div>`;
+    }
+
+    async function misCancelar(id) {
+      const r = misRows.find(x => x.id === id);
+      if (!r || misOcupado) return;
+      misOcupado = true;
+      try {
+        const res = await api.deleteReserva(r.fecha, String(r.proyId), r.slot);
+        showToast(res && res.ok === false ? 'Esa reserva ya no existe — actualizando...' : 'Reserva cancelada');
+      } catch (e) { showToast(e.message || 'Error al cancelar'); }
+      finally {
+        misConfirmId = null; misOcupado = false;
+        invalidarCacheReservas();
+        await refreshMis();
+      }
+    }
+
+    async function misCancelarTodas() {
+      if (misOcupado) return;
+      misOcupado = true;
+      try {
+        const res = await misApi.cancelarTodas();
+        if (res) showToast(res.canceladas === 1 ? 'Se canceló 1 reserva' : `Se cancelaron ${res.canceladas || 0} reservas`);
+      } catch (e) { showToast(e.message || 'Error al cancelar'); }
+      finally {
+        misConfirmTodas = false; misConfirmId = null; misOcupado = false;
+        invalidarCacheReservas();
+        await refreshMis();
+      }
+    }
+
+    document.getElementById('mis-body').addEventListener('click', e => {
+      const b = e.target.closest('[data-act]'); if (!b || misOcupado) return;
+      const id = b.dataset.id ? Number(b.dataset.id) : null;
+      switch (b.dataset.act) {
+        case 'mcancel': misConfirmId = id; misConfirmTodas = false; renderMis(); break;
+        case 'mno': misConfirmId = null; renderMis(); break;
+        case 'myes': b.disabled = true; misCancelar(id); break;
+        case 'mtodas': misConfirmTodas = true; misConfirmId = null; renderMis(); break;
+        case 'mtodasno': misConfirmTodas = false; renderMis(); break;
+        case 'mtodasyes': b.disabled = true; misCancelarTodas(); break;
+        case 'mcerrar': closeMisReservas(); break;
+      }
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMisReservas(); });
 
     renderSelector();
     if (PROYECTORES_INICIAL) {

@@ -1744,3 +1744,22 @@
 @media (prefers-reduced-motion: reduce) {
   .slot.cargando .slot-dot, .modal-lado { animation: none; }
 }
+
+/* ═══ Pie de página: botón y panel "Ver mis reservas" / "Consultar reservas" ═══ */
+.btn-mis-reservas {
+  background: none; border: 1px solid rgba(245, 245, 220, .3); color: var(--blanco-dim);
+  font-family: 'DM Mono', monospace; font-size: .6rem; letter-spacing: .12em; text-transform: uppercase;
+  padding: 6px 14px; border-radius: 8px; cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.btn-mis-reservas:hover { border-color: var(--bordo-bright); background: rgba(139, 0, 32, .18); color: var(--blanco); }
+.mis-main { min-width: 0; }
+.mis-cuando { font-size: .62rem; letter-spacing: .1em; text-transform: uppercase; color: var(--bordo-light); margin-bottom: 3px; }
+.mis-row.mis-pasada { opacity: .6; }
+.admin-badge.fin { color: var(--blanco-muted); border-color: rgba(203, 191, 166, .35); }
+.mis-pie { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 10px; margin-top: 1rem; }
+.mis-pie .btn-cancel { padding: 10px 22px; }
+@media (max-width: 620px) {
+  .btn-mis-reservas { padding: 10px 16px; }
+  .mis-pie > * { flex: 1 1 100%; }
+}

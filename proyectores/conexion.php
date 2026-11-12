@@ -28,109 +28,24 @@ if (is_file(__DIR__ . '/../campus/includes/sesion.php')) {
     die('Error crítico: No se encontró la carpeta includes/ del Campus Virtual.');
 }
 
-/** Devuelve la conexión PDO del campus (una sola por petición). Lanza PDOException si falla. */
+/**
+ * Devuelve la conexión PDO del campus (una sola por petición). Lanza PDOException si falla.
+ *
+ * IMPORTANTE: este sistema NO crea, modifica ni elimina la estructura de la base de datos (tablas, columnas, índices):
+ * solo la CONSULTA (SELECT) y le CARGA / actualiza / quita filas (INSERT, UPDATE, DELETE). Las tablas `proyectores`,
+ * `reservas` y `profesores` ya deben existir, con las columnas que usan las API (entre ellas `reservas.profesor_id`).
+ */
 function conectar(): PDO
 {
-    static $preparada = false;
+    static $zonaFijada = false;
     $pdo = conectarBD();
 
-    if (!$preparada) {
-        // `dia` es TIMESTAMP: con +00:00 se guarda y se lee tal cual, sin corrimientos de zona horaria
+    if (!$zonaFijada) {
+        // `dia` es TIMESTAMP: con +00:00 se guarda y se lee tal cual, sin corrimientos de zona horaria (ajuste de sesión, no de estructura)
         $pdo->exec("SET time_zone = '+00:00'");
-        preparar_estructura_una_vez($pdo);
-        $preparada = true;
+        $zonaFijada = true;
     }
     return $pdo;
-}
-
-/** Sube este número cuando cambie la estructura de las tablas: la migración vuelve a correr una vez. */
-const VERSION_ESTRUCTURA = 2;
-
-/**
- * Antes, CADA petición ejecutaba 2 CREATE TABLE IF NOT EXISTS + un COUNT(*). Ahora la estructura se verifica
- * una sola vez (queda una marca en la carpeta temporal del servidor); si la marca se borra, se vuelve a verificar.
- */
-function preparar_estructura_una_vez(PDO $pdo): void
-{
-    $huella = md5(__DIR__ . '|' . (defined('DB_HOST') ? DB_HOST : '') . '|' . (defined('DB_NAME') ? DB_NAME : ''));
-    $marca  = sys_get_temp_dir() . '/reservas_estructura_v' . VERSION_ESTRUCTURA . '_' . $huella . '.txt';
-    if (@is_file($marca)) {
-        return;
-    }
-    try {
-        asegurar_estructura_proyectores($pdo);
-    } catch (Throwable $e) {
-        error_log('conexion.php (estructura proyectores): ' . $e->getMessage());
-        return;   // sin marca: se reintenta en la próxima petición
-    }
-    @file_put_contents($marca, date('c'), LOCK_EX);
-}
-
-function asegurar_estructura_proyectores(PDO $pdo): void
-{
-    $pdo->exec("CREATE TABLE IF NOT EXISTS `proyectores` (
-        `ID` int NOT NULL AUTO_INCREMENT,
-        `Nombre` varchar(150) NOT NULL,
-        `Marca` varchar(100) NOT NULL,
-        `Resolucion` varchar(50) DEFAULT '1080p',
-        `Brillo` varchar(50) DEFAULT '3000 lm',
-        `Conexiones` varchar(150) DEFAULT 'HDMI, VGA, USB',
-        `Estado` varchar(50) DEFAULT 'operativo',
-        `Imagen` longblob,
-        PRIMARY KEY (`ID`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-
-    $pdo->exec("CREATE TABLE IF NOT EXISTS `reservas` (
-        `id` int NOT NULL AUTO_INCREMENT,
-        `proyector_id` int NOT NULL,
-        `dia` timestamp NOT NULL,
-        `hora_inicio` varchar(20) NOT NULL,
-        `hora_fin` varchar(20) NOT NULL,
-        `estado_reserva` varchar(50) DEFAULT 'reservado',
-        `materia` varchar(150) DEFAULT '',
-        `curso` varchar(50) DEFAULT '',
-        `docente` varchar(150) NOT NULL,
-        PRIMARY KEY (`id`),
-        KEY `proyector_id` (`proyector_id`),
-        CONSTRAINT `fk_reservas_proyectores` FOREIGN KEY (`proyector_id`) REFERENCES `proyectores` (`ID`) ON DELETE CASCADE
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-
-    // Insertar proyectores iniciales si la tabla está vacía
-    $cant = (int)$pdo->query("SELECT COUNT(*) FROM `proyectores`")->fetchColumn();
-    if ($cant === 0) {
-        $st = $pdo->prepare("INSERT INTO `proyectores` (`Nombre`, `Marca`, `Resolucion`, `Brillo`, `Conexiones`, `Estado`, `Imagen`) VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $st->execute(['Proyector 1 (Audiovisuales)', 'Epson', '1920x1080 (Full HD)', '3600 lm', 'HDMI, VGA, USB', 'operativo', '']);
-        $st->execute(['Proyector 2 (Laboratorio)', 'BenQ', '1280x800 (WXGA)', '3200 lm', 'HDMI, VGA', 'operativo', '']);
-        $st->execute(['Proyector 3 (Biblioteca)', 'ViewSonic', '1024x768 (XGA)', '3000 lm', 'HDMI, USB', 'operativo', '']);
-    }
-
-    /* ── v2: cada reserva guarda el ID del profesor (columna reservas.profesor_id) ── */
-    $colsReservas = array_map('strtolower', $pdo->query('SHOW COLUMNS FROM `reservas`')->fetchAll(PDO::FETCH_COLUMN));
-    if (!in_array('profesor_id', $colsReservas, true)) {
-        $pdo->exec('ALTER TABLE `reservas` ADD COLUMN `profesor_id` INT NULL DEFAULT NULL, ADD KEY `idx_reservas_profesor` (`profesor_id`)');
-    }
-
-    // La tabla `profesores` del campus necesita una columna `id`. Si ya la tiene no se toca; si no, se agrega
-    // (numérica, autoincremental) sin alterar el resto de la tabla.
-    try {
-        $colsProf = array_map('strtolower', $pdo->query('SHOW COLUMNS FROM `profesores`')->fetchAll(PDO::FETCH_COLUMN));
-        if (!in_array('id', $colsProf, true)) {
-            $pdo->exec('ALTER TABLE `profesores` ADD COLUMN `id` INT NOT NULL AUTO_INCREMENT, ADD UNIQUE KEY `uq_profesores_id` (`id`)');
-        }
-    } catch (Throwable $e) {
-        error_log('conexion.php (profesores.id): ' . $e->getMessage());   // sin id las reservas siguen funcionando por nombre
-    }
-
-    // Un turno de un proyector no puede estar dos veces: lo garantiza la base (evita duplicados por doble clic o carreras).
-    // Si ya existe un índice único no se toca; si hay duplicados viejos el ALTER falla y solo se registra en el log.
-    try {
-        $unicos = $pdo->query("SHOW INDEX FROM `reservas` WHERE Non_unique = 0 AND Key_name <> 'PRIMARY'")->fetchAll();
-        if (!$unicos) {
-            $pdo->exec('ALTER TABLE `reservas` ADD UNIQUE KEY `uq_reserva_turno` (`proyector_id`, `dia`, `hora_inicio`)');
-        }
-    } catch (Throwable $e) {
-        error_log('conexion.php (índice único de reservas): ' . $e->getMessage());
-    }
 }
 
 /** Cabecera que la página agrega a toda petición que modifica datos (POST/PUT/DELETE). */

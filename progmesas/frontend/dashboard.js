@@ -596,7 +596,7 @@ async function confirmarDocente(usuarioId) {
 }
 
 async function desvincularDocente(usuarioId, preguntar) {
-    if (preguntar && !confirm('¿Desvincular esta cuenta? El docente no va a poder cargar programas hasta que se vuelva a vincular.')) return;
+    if (preguntar && !confirm('¿Desvincular esta cuenta? El docente puede seguir cargando programas, pero con el nombre de su cuenta y sin sus materias primero.')) return;
     try {
         await api(`/docentes/vinculos/${encodeURIComponent(usuarioId)}`, { method: 'DELETE' });
         showToast('Listo', 'success');

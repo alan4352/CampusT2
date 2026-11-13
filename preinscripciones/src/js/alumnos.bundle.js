@@ -180,7 +180,7 @@
                 const calendarYear = document.getElementById('calendarYear')?.value || '';
                 const check = validateStudentBirthdate(this.value, currentCourse, owedYear, calendarYear);
                 if (!check.valid) {
-                    highlightFieldError(this);
+                    highlightFieldError(this, "Ingrese una fecha válida para continuar");
                     showAlert(check.message, "danger");
                 }
             });
@@ -449,7 +449,7 @@
 
         const birthCheck = validateStudentBirthdate(studentBirthdate, currentCourse, owedYear, calendarYear);
         if (!birthCheck.valid) {
-            highlightFieldError(studentBirthdateInput);
+            highlightFieldError(studentBirthdateInput, "Ingrese una fecha válida para continuar");
             showAlert(birthCheck.message, "danger");
             return;
         }

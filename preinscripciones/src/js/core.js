@@ -1100,6 +1100,11 @@ window.apiFetch = function(url, options = {}) {
     // Marca en amarillo el campo que falta completar cuando el usuario intenta enviar el formulario
     function highlightFieldError(inputEl, customMsg = "Necesitas completar este campo para continuar") {
         if (!inputEl) return;
+        if (!customMsg || customMsg === "Necesitas completar este campo para continuar") {
+            if (inputEl.type === 'date' || inputEl.id === 'studentBirthdate') {
+                customMsg = "Ingrese una fecha válida para continuar";
+            }
+        }
         inputEl.classList.add('field-error-warning');
         const customWrapper = inputEl.closest('.custom-select-wrapper');
         if (customWrapper) {

@@ -63,6 +63,16 @@ Todos los módulos inician la sesión con `campus/includes/sesion.php` (ProgMesa
   - mesas, pagos, notas, configuración y vaciado de inscripciones son solo para directivos.
 - **Proyectores:** el profesor reserva a su nombre y cancela solo sus reservas. Se lo identifica por correo e ID
   (`reservas.profesor_id`); las reservas viejas sin ID se comparan por nombre.
+- **Asistencias** (`campus/asistencia.php`, reglas en `campus/includes/asistencias.php`):
+  - la fecha la pone el servidor: solo se carga o corrige la asistencia del día de hoy; de días anteriores solo se
+    cambia la justificación;
+  - el profesor toma asistencia solo en las materias vinculadas a su cuenta y el preceptor solo en sus cursos; los
+    alumnos que llegan en el formulario y no son del curso se ignoran;
+  - justifican el preceptor del curso y los directivos, y solo ausencias o llegadas tarde;
+  - en los reportes cada uno ve lo suyo, sin importar los filtros que mande: el directivo todo, el preceptor sus cursos,
+    el profesor sus materias y el alumno sus propias asistencias;
+  - la importación de la planilla no borra una materia de curso que ya tiene asistencias;
+  - las tomas, justificaciones y alertas descartadas quedan en el log como `[CAMPUS ASISTENCIAS]`.
 - **Estructura académica** (`campus/estructura.php`): solo directivos. La importación vuelve a calcular el plan en el
   servidor y lo aplica solo si coincide con la vista previa que vio el directivo (huella SHA-256), en una transacción.
   Un docente de la planilla solo se vincula con una cuenta que tenga el rol de profesor. «Mis materias»
@@ -81,7 +91,7 @@ CORS, que este servidor no habilita.
 | Preinscripciones | Modificar solo por **POST** y con `X-Requested-With: XMLHttpRequest` (o `preinscripciones`). Todas las llamadas usan `apiFetch()` de `src/js/core.js` |
 | Proyectores | `X-Requested-With: reservas` en POST, PUT y DELETE |
 | ProgMesas | `X-Requested-With: progmesas` cuando se usa la sesión del campus en lugar del pase |
-| Formularios del campus (activar, recuperar, gestión de cuentas, panel del preceptor, estructura académica) | Token con `csrf_campo()` dentro del `<form>` y `csrf_valido()` antes de procesar el POST |
+| Formularios del campus (activar, recuperar, gestión de cuentas, panel del preceptor, estructura académica, asistencias) | Token con `csrf_campo()` dentro del `<form>` y `csrf_valido()` antes de procesar el POST |
 
 ## Datos que se muestran en pantalla (XSS)
 
@@ -122,5 +132,7 @@ punto (`.env`, `.git`) y los `.sql`, `.sqlite`, `.zip` y `.xlsx`.
 - **Bloqueo por cuenta:** cualquiera que conozca un DNI puede bloquear esa cuenta 15 minutos con 5 intentos fallidos.
 - **Módulos que miran solo el rol principal:** preinscripciones y proyectores revisan `$_SESSION['rol']`. Una persona
   con dos roles usa esos módulos con el principal (por ejemplo, profesor antes que preceptor).
+- **Días anteriores:** la regla que impide cambiarlos está en el código PHP, no en la base (el sistema original usaba
+  un trigger de PostgreSQL). Quien tenga acceso directo a MySQL puede modificarlos.
 - **Correo:** el sistema no envía correos. Los códigos se entregan en persona; para mandarlos por mail haría falta un
   servicio de correo.

@@ -115,6 +115,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 avisar('exito', 'Cursos del preceptor actualizados.');
                 break;
 
+            case 'preceptor_curso':      // tabla «Preceptores por curso»: agregar o quitar uno
+                $cid = (int) ($_POST['curso_id'] ?? 0);
+                $poner = ($_POST['modo'] ?? '') === 'agregar';
+                if ($poner && !$uid) {
+                    throw new RuntimeException('Elija el preceptor.');
+                }
+                asignarCursoPreceptor($pdo, $uid, $cid, $poner);
+                auditarCuentas(($poner ? 'asignó' : 'quitó') . " el curso $cid " . ($poner ? 'al' : 'del') . " preceptor $uid");
+                avisar('exito', $poner ? 'Preceptor asignado al curso.' : 'Preceptor quitado del curso.');
+                break;
+
             case 'cambiar_curso':
                 $destino = (int) ($_POST['curso_id'] ?? 0);
                 $movidos = cambiarCursoAlumnos($pdo, (array) ($_POST['alumnos'] ?? []), $destino);
@@ -186,7 +197,7 @@ function opcionesCursos(array $cursos, int $elegido = 0): string {
 $encabezados = [
     'personal'    => ['Personal', 'bi-person-badge', 'Cree las cuentas de profesores, preceptores y directivos, y entrégueles su código de alta.'],
     'alumnos'     => ['Alumnos', 'bi-people', 'Alumnos por curso: cuentas, códigos y cambios de curso.'],
-    'preceptores' => ['Cursos de preceptores', 'bi-person-gear', 'Qué cursos atiende cada preceptor.'],
+    'preceptores' => ['Preceptores por curso', 'bi-person-gear', 'Quién atiende cada curso, y los cursos que todavía no tienen preceptor.'],
     'pedidos'     => ['Pedidos de recuperación', 'bi-key', 'Personas que pidieron recuperar su cuenta.'],
 ];
 [$tit, $ico, $sub] = $encabezados[$ver];
@@ -334,23 +345,65 @@ encabezadoPanel($tit, $ico, $sub, "cuentas:$ver", ['cuentas:pedidos' => count($p
     <?php finTarjeta(); ?>
 
 <?php elseif ($ver === 'preceptores'): ?>
-    <?php $preceptores = listarCuentas($pdo, 'preceptor'); ?>
-    <?php if (!$preceptores): ?>
-        <?php sinDatos('Todavía no hay preceptores. Créelos en <a href="cuentas.php?ver=personal">Personal</a>.'); ?>
-    <?php endif; ?>
-    <?php foreach ($preceptores as $p): $asignados = array_map(fn($c) => (int) $c['id'], cursosDePreceptor($pdo, (int) $p['id'])); ?>
-        <?php tarjeta($p['nombre'], 'bi-person-gear', ($p['correo'] ?? '') . ' · ' . count($asignados) . ' curso(s)', '', 'no-imprimir'); ?>
-            <form method="post"><?php echo csrf_campo(); ?>
-                <input type="hidden" name="accion" value="asignar_cursos"><input type="hidden" name="usuario_id" value="<?php echo (int) $p['id']; ?>">
-                <div class="cursos-grilla">
-                    <?php foreach ($cursos as $c): ?>
-                        <label class="form-check-label"><input type="checkbox" class="form-check-input" name="cursos[]" value="<?php echo (int) $c['id']; ?>" <?php echo in_array((int) $c['id'], $asignados, true) ? 'checked' : ''; ?>> <?php echo e(nombreCurso($c)); ?></label>
-                    <?php endforeach; ?>
-                </div>
-                <button class="btn btn-primary btn-sm"><i class="bi bi-save"></i> Guardar cursos</button>
-            </form>
-        <?php finTarjeta(); ?>
-    <?php endforeach; ?>
+    <?php
+    $preceptores = array_filter(listarCuentas($pdo, 'preceptor'), fn($p) => $p['estado'] !== 'bloqueado');
+    $porCurso = [];
+    foreach ($pdo->query('SELECT pc.curso_id, u.id, u.nombre FROM preceptor_cursos pc JOIN usuarios u ON u.id = pc.usuario_id ORDER BY u.nombre') as $r) {
+        $porCurso[(int) $r['curso_id']][(int) $r['id']] = $r['nombre'];
+    }
+    $alumnosPor = $pdo->query("SELECT a.curso_id, COUNT(*) FROM alumnos a JOIN usuario_roles r ON r.usuario_id = a.usuario_id AND r.rol = 'alumno'
+                               WHERE a.curso_id IS NOT NULL GROUP BY a.curso_id")->fetchAll(PDO::FETCH_KEY_PAIR);
+    $cuentaPrec = [];
+    foreach ($porCurso as $ps) {
+        foreach ($ps as $pid => $_) {
+            $cuentaPrec[$pid] = ($cuentaPrec[$pid] ?? 0) + 1;
+        }
+    }
+    $sinPrec = count(array_filter($cursos, fn($c) => empty($porCurso[(int) $c['id']])));
+    tarjeta('Preceptores por curso', 'bi-person-gear', $sinPrec ? "$sinPrec curso(s) sin preceptor" : 'todos los cursos tienen preceptor', '', 'no-imprimir');
+    ?>
+        <?php if (!$preceptores): ?>
+            <?php sinDatos('Todavía no hay preceptores. Créelos en <a href="cuentas.php?ver=personal">Personal</a>.'); ?>
+        <?php else: ?>
+            <p class="small">Un curso puede tener más de un preceptor. Entre paréntesis, cuántos cursos atiende ya cada uno.</p>
+            <div class="table-responsive"><table class="table table-sm table-hover">
+                <thead><tr><th>Curso</th><th class="text-center">Alumnos</th><th>Preceptor</th><th>Asignar</th></tr></thead>
+                <tbody>
+                <?php foreach ($cursos as $c): $cid = (int) $c['id']; $ps = $porCurso[$cid] ?? []; ?>
+                    <tr>
+                        <td class="text-nowrap"><strong><?php echo e(nombreCurso($c)); ?></strong></td>
+                        <td class="text-center"><?php echo (int) ($alumnosPor[$cid] ?? 0); ?></td>
+                        <td>
+                            <?php if (!$ps): ?><span class="badge bg-warning">Sin preceptor</span><?php endif; ?>
+                            <?php foreach ($ps as $pid => $pn): ?>
+                                <form method="post" class="d-inline-flex align-items-center gap-1 me-2 mb-1" onsubmit="return confirm('¿Quitar a <?php echo e(addslashes($pn)); ?> de este curso?');"><?php echo csrf_campo(); ?>
+                                    <input type="hidden" name="accion" value="preceptor_curso"><input type="hidden" name="modo" value="quitar">
+                                    <input type="hidden" name="curso_id" value="<?php echo $cid; ?>"><input type="hidden" name="usuario_id" value="<?php echo $pid; ?>">
+                                    <span class="profesor-badge"><?php echo e($pn); ?>
+                                        <button class="btn btn-link btn-sm p-0 ms-1 text-danger" title="Quitar" aria-label="Quitar a <?php echo e($pn); ?> de <?php echo e(nombreCurso($c)); ?>"><i class="bi bi-x-circle"></i></button></span>
+                                </form>
+                            <?php endforeach; ?>
+                        </td>
+                        <td>
+                            <?php $libres = array_filter($preceptores, fn($p) => !isset($ps[(int) $p['id']])); ?>
+                            <?php if ($libres): ?>
+                                <form method="post" class="d-flex gap-1"><?php echo csrf_campo(); ?>
+                                    <input type="hidden" name="accion" value="preceptor_curso"><input type="hidden" name="modo" value="agregar">
+                                    <input type="hidden" name="curso_id" value="<?php echo $cid; ?>">
+                                    <select name="usuario_id" class="form-select form-select-sm" required aria-label="Preceptor para <?php echo e(nombreCurso($c)); ?>">
+                                        <option value="">Elegir…</option>
+                                        <?php foreach ($libres as $p): ?><option value="<?php echo (int) $p['id']; ?>"><?php echo e($p['nombre']) . ' (' . (int) ($cuentaPrec[(int) $p['id']] ?? 0) . ')'; ?></option><?php endforeach; ?>
+                                    </select>
+                                    <button class="btn btn-outline-primary btn-sm"><i class="bi bi-plus"></i> Asignar</button>
+                                </form>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table></div>
+        <?php endif; ?>
+    <?php finTarjeta(); ?>
 
 <?php else: ?>
     <?php tarjeta('Pedidos de recuperación pendientes', 'bi-key', '(' . count($pedidos) . ')', '', 'no-imprimir'); ?>

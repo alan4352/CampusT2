@@ -21,10 +21,10 @@ acceso** de un solo uso.
 
 | Rol | Quién crea la cuenta | Módulos |
 |---|---|---|
-| **Alumno** | Su **preceptor** (panel «Alumnos y cuentas»), o un directivo | Preinscripción a mesa, programas de examen |
-| **Profesor** | Un **directivo** (panel «Gestión de cuentas») | Reserva de proyectores, subir programas de examen, mis materias |
-| **Preceptor** | Un **directivo**, que además le asigna sus cursos | Alumnos y cuentas de sus cursos, materias de sus cursos, consulta de programas |
-| **Directivo** | Otro **directivo** | Todo lo anterior, gestión de mesas, control de programas, gestión de cuentas y estructura académica |
+| **Alumno** | Su **preceptor** (panel «Alumnos y cuentas»), o un directivo | Mis asistencias, preinscripción a mesa, programas de examen |
+| **Profesor** | Un **directivo** (panel «Gestión de cuentas») | Tomar asistencia, reserva de proyectores, subir programas de examen, mis materias |
+| **Preceptor** | Un **directivo**, que además le asigna sus cursos | Asistencia, justificaciones y alertas de sus cursos; alumnos y cuentas; materias de sus cursos; consulta de programas |
+| **Directivo** | Otro **directivo** | Reportes de asistencia, gestión de mesas, control de programas, gestión de cuentas y estructura académica |
 
 Una persona puede tener **varios roles** (por ejemplo, profesor y preceptor): el directivo se los agrega a la misma
 cuenta.
@@ -73,7 +73,39 @@ Las materias de cada curso y quién las dicta salen de la planilla de ProgMesas
 3. **Materias por curso:** qué se dicta en cada curso, con sus docentes y si ya están vinculados.
 
 Con el vínculo hecho, el profesor ve sus cursos y materias en **Mis materias** (`campus/materias.php`), y el preceptor
-ve las materias y docentes de sus cursos. El módulo de asistencias (próxima etapa) usa estos datos.
+ve las materias y docentes de sus cursos. El módulo de asistencias usa estos datos.
+
+## Asistencias
+
+Es el sistema de asistencias de la escuela (PROJECT_ASIST) integrado al campus, con las mismas cuentas
+(`campus/asistencia.php`). Cada rol ve una parte:
+
+| Rol | Qué hace |
+|---|---|
+| **Profesor** | **Toma asistencia** del día en las materias vinculadas a su cuenta y ve los reportes de esas materias |
+| **Preceptor** | Toma la **asistencia general** del día de sus cursos, **justifica** faltas y llegadas tarde, ve los reportes de sus cursos y las **alertas** |
+| **Alumno** | Ve **sus asistencias** por día y por materia |
+| **Directivo** | Reportes de **todos los cursos** y justificación de faltas |
+
+- **Estados:** presente, tarde (con la hora de llegada) o ausente. En la planilla todos empiezan como presentes; el
+  alumno que no se marca queda ausente.
+- **Solo el día de hoy:** se toma asistencia con la fecha del servidor y se puede corregir hasta que termina el día. Las
+  de días anteriores no se pueden cambiar, solo **justificar**.
+- **Alertas:** el preceptor ve a los alumnos con faltas sin justificar en 3 o más días de los últimos 7. Puede
+  descartar una alerta; vuelve a aparecer si el alumno falta de nuevo.
+- **Reportes:** filtros por curso, materia, alumno, fechas, estado y justificación; totales, porcentaje de asistencia
+  (presentes + tardes sobre el total), resumen por alumno y detalle. El botón **Imprimir / PDF** arma una versión para
+  imprimir o guardar como PDF desde el navegador.
+- La asistencia general del preceptor y la de cada materia se guardan por separado.
+- **Hoy** (`campus/hoy.php`), la pantalla de inicio del trabajo diario:
+  - **preceptor:** una tarjeta por curso con la asistencia de hoy (tomada o no), las alertas, los pedidos y los
+    alumnos sin activar, con un botón para cada cosa;
+  - **directivo:** los pendientes (pedidos, alumnos sin curso, cursos sin preceptor, docentes sin vincular, cuentas
+    sin activar, cambios de la planilla) y la asistencia de hoy de todos los cursos.
+- **Curso activo:** el preceptor elige el curso una vez, en el encabezado o en cualquier pantalla, y queda elegido en
+  la planilla, justificar, reportes y alumnos.
+- **Preceptores por curso** (Gestión de cuentas): una tabla con cada curso, su preceptor y un botón para asignar o
+  quitar; los cursos sin preceptor quedan marcados.
 
 ## Requisitos
 
@@ -116,6 +148,8 @@ Al usarse por primera vez, el código crea las tablas que faltan y agrega column
   `profesores.codigo_hash` pasan a aceptar valores vacíos. Después pasa las cuentas existentes a `usuarios`;
 - **Estructura académica** (`campus/includes/academico.php`, versión 2 de `campus_migraciones`): tablas `materias`,
   `curso_materias`, `curso_materia_docentes` y `docentes_vinculos`, vacías hasta que un directivo importa la planilla;
+- **Asistencias** (`campus/includes/asistencias.php`, versión 3 de `campus_migraciones`): tablas `asistencias` y
+  `alertas_descartadas`;
 - `profesores.dni` (lo agrega `campus/includes/usuarios.php`);
 - `reservas.profesor_id`, `profesores.id` si no existe, y un índice único por proyector + día + hora en `reservas`
   (lo agrega `proyectores/conexion.php`). Si ya hay reservas duplicadas, el índice no se crea y queda anotado en el log.

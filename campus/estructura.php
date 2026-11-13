@@ -43,7 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $r = aplicarImportacion($pdo, $plan, !empty($_POST['quitar']));
                 auditarEstructura("importó la planilla de ProgMesas: {$r['materias']} materias nuevas, {$r['nuevas']} asignaciones nuevas, {$r['cambios']} con cambios, {$r['quitadas']} quitadas");
                 avisar('exito', "Importación lista: {$r['nuevas']} materias de curso nuevas, {$r['cambios']} actualizadas"
-                    . ($r['quitadas'] ? ", {$r['quitadas']} quitadas" : '') . '. Ahora vincule a los docentes con sus cuentas.');
+                    . ($r['quitadas'] ? ", {$r['quitadas']} quitadas" : '')
+                    . ($r['conservadas'] ? ", {$r['conservadas']} se conservaron porque ya tienen asistencias" : '') . '. Ahora vincule a los docentes con sus cuentas.');
                 $volver = 'estructura.php?ver=docentes&f=sin';
                 break;
 

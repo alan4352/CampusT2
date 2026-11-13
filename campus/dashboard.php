@@ -51,6 +51,35 @@ $nombre = $_SESSION['nombre'];
 
     <div class="modulos">
 
+        <?php if (tieneRol('directivo') || tieneRol('preceptor')): ?>
+            <a class="modulo" href="hoy.php">
+                <h2><?php echo tieneRol('directivo') ? 'Hoy y pendientes' : 'Hoy en mis cursos'; ?></h2>
+                <p><?php echo tieneRol('directivo')
+                    ? 'Lo que falta resolver para que el campus funcione y cómo va la asistencia de hoy en cada curso.'
+                    : 'Asistencia de hoy, alertas y pedidos de cada uno de sus cursos, con un botón para cada cosa.'; ?></p>
+            </a>
+        <?php endif; ?>
+
+        <?php
+        /* Asistencias: el texto depende de lo que puede hacer cada rol */
+        if (tienePermiso('asistencia')):
+            if (tieneRol('profesor') || tieneRol('preceptor')) {
+                [$tA, $dA, $uA] = ['Asistencias', 'Tome la asistencia del día, justifique faltas y revise los reportes.', 'asistencia.php?ver=tomar'];
+            } elseif (tieneRol('directivo')) {
+                [$tA, $dA, $uA] = ['Asistencias', 'Reportes de asistencia de todos los cursos y justificación de faltas.', 'asistencia.php?ver=reportes'];
+            } else {
+                [$tA, $dA, $uA] = ['Mis asistencias', 'Sus asistencias por día y por materia.', 'asistencia.php?ver=reportes'];
+            }
+            if (!tieneRol('preceptor') && !tieneRol('directivo') && tieneRol('profesor')) {
+                $dA = 'Tome la asistencia del día en sus materias y revise los reportes.';
+            }
+        ?>
+            <a class="modulo" href="<?php echo $uA; ?>">
+                <h2><?php echo e($tA); ?></h2>
+                <p><?php echo e($dA); ?></p>
+            </a>
+        <?php endif; ?>
+
         <?php if (tienePermiso('cuentas')): ?>
             <a class="modulo" href="cuentas.php">
                 <h2>Gestión de cuentas</h2>

@@ -115,6 +115,18 @@ body::before {
 }
 .panel-header h2, .panel-header p { color: var(--color-secondary); text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
 
+.selector-curso { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.18); border-radius: 999px; padding: 4px 6px 4px 12px; }
+.selector-curso .form-select { width: auto; border: 0; border-radius: 999px; padding-top: 2px; padding-bottom: 2px; }
+
+/* Tarjetas de la pantalla «Hoy» */
+.curso-hoy .dato { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #e0d9c0; }
+.curso-hoy .dato:last-of-type { border-bottom: 0; }
+.pendiente { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 10px; color: var(--color-primary); text-decoration: none; border: 2px solid transparent; }
+.pendiente:hover { border-color: var(--color-primary); background: rgba(122,0,0,0.04); color: var(--color-primary); }
+.pendiente i.bi { font-size: 1.5rem; }
+.pendiente .badge { font-size: 0.95rem; }
+.pendiente.listo { opacity: 0.6; }
+
 /* ---------- Tarjetas ---------- */
 .card {
     background-color: var(--color-secondary);
@@ -234,9 +246,17 @@ details > summary { cursor: pointer; font-weight: 600; }
 }
 
 @media print {
-    .no-imprimir, .sidebar, .mobile-header, .panel-header, .contenido > :not(.card-codigos) { display: none !important; }
+    .no-imprimir, .sidebar, .mobile-header, .panel-header, .contenido > :not(.card-codigos):not(.imprimible) { display: none !important; }
     body { background: #fff !important; }
     body::before { display: none; }
+    .col-md-9, .col-lg-10 { width: 100% !important; }
+    .contenido { padding: 0 !important; }
+    .imprimible .card { border: 1px solid #999; box-shadow: none; break-inside: auto; }
+    .imprimible .card-header { background: #eee !important; color: #000 !important; }
+    .imprimible .card-header h5, .imprimible .card-header small { color: #000 !important; }
+    .imprimible .table thead { background: #ddd !important; }
+    .imprimible .table thead th { color: #000; }
+    .imprimible .stats-card { margin-bottom: 0.5rem; }
     .card-codigos { border: 0; box-shadow: none; background: #fff; }
     .card-codigos .card-header { display: none; }
 }

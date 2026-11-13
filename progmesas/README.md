@@ -206,12 +206,27 @@ Ahí la API la atiende **`api.php`** (PHP + SQLite), con la misma base `backend/
   pase y vuelve; si no, muestra la consulta pública.
 - `api.php` toma la clave `PROGMESAS_SECRETO` de `campus/includes/config.php` (sin ella no acepta ningún pase) y también
   reconoce la sesión del campus del mismo navegador.
-- Los PDF se guardan en `backend/uploads/`. Los `.htaccess` impiden descargar la base, la planilla, el código y el `.env`.
+- Los PDF se guardan en **Google Drive** (carpetas Año / Curso / Materia), igual que con Node, con `backend/drive.php`
+  (la API REST de Drive, sin librerías). Si Drive no está configurado o no responde, quedan en `backend/uploads/` y pasan a
+  Drive con **Pasar a Drive ahora** o solos al abrir el dashboard (como mucho cada 6 horas). Ver «Google Drive en la
+  versión PHP», abajo. Los `.htaccess` impiden descargar la base, la planilla, el código y el `.env`.
 - El frontend llama siempre a `api.php?r=/ruta`: dentro del campus responde `api.php` y el servidor Node acepta la misma
   forma, así el mismo frontend sirve en los dos casos.
 - `campus/includes/progmesas.php` usa el servidor Node si está corriendo en el puerto 3000 y, si no, la carpeta `progmesas/`.
   Para usar Node, `iniciar.bat` (Windows) o `iniciar.sh` arrancan el servidor.
-- Requisitos de PHP: las extensiones `pdo_sqlite` y `zip` (vienen con XAMPP). Google Drive sólo funciona con el servidor Node.
+- Requisitos de PHP: las extensiones `pdo_sqlite`, `xml` y `openssl`, y `allow_url_fopen = On` (vienen así en XAMPP).
+
+#### Google Drive en la versión PHP
+
+1. Copiá a `progmesas/backend/` el `oauth.json` de la app de Google (el mismo que usa la versión Node).
+2. Desde la carpeta `progmesas`, autorizá una vez con la cuenta de la escuela: `php backend/autorizar_drive.php`
+   (abrí el enlace, aceptá y pegá la dirección a la que te redirige). Se guarda `backend/token.json`.
+3. El usuario del servidor web (en Linux, `www-data`) tiene que poder leer y escribir `backend/token.json`.
+4. Abrí el dashboard: el aviso de Drive desaparece y los PDF que estaban en el servidor pasan a Drive.
+
+La carpeta raíz es la de la escuela; otra se configura con `DRIVE_CARPETA_RAIZ` (variable de entorno) o
+`PROGMESAS_DRIVE_CARPETA_RAIZ` en `campus/includes/config.php`. En Render, el contenido de `oauth.json` y `token.json`
+va en `GOOGLE_OAUTH_JSON` y `GOOGLE_TOKEN_JSON`. Si el permiso vence, el dashboard lo avisa: se repite el paso 2.
 
 ### Sistema completo en Render (temporal)
 
@@ -261,6 +276,8 @@ hace falta Google Drive o un disco persistente (`DATOS_DIR`, ver `render.yaml`).
     ├── ajustes.js           Fecha límite por año
     ├── almacenamiento.js    Guardado de PDF (Drive o servidor) y paso a Drive
     ├── drive.js             Google Drive
+    ├── drive.php            Google Drive para la versión PHP (api.php)
+    ├── autorizar_drive.php  Autoriza Drive desde la línea de comandos (versión PHP)
     ├── respaldos.js         Copias de seguridad
     ├── lib/                 Importador de horarios, ZIP, Drive simulado y utilidades
     ├── scripts/             Herramientas de línea de comandos
@@ -286,6 +303,20 @@ hace falta Google Drive o un disco persistente (`DATOS_DIR`, ver `render.yaml`).
 - Dependencias sin vulnerabilidades conocidas (`npm audit`, octubre de 2026).
 
 ## Historial de cambios
+
+### 13/11/2026 — Google Drive en la versión PHP (dentro del campus)
+
+- `backend/drive.php`: cliente de Google Drive en PHP, sin librerías (API REST v3 y OAuth 2.0). Usa los mismos
+  `oauth.json` y `token.json` que la versión Node; renueva el permiso solo y guarda el token renovado.
+- `api.php` sube los PDF a Drive (Año / Curso / Materia, públicos de sólo lectura). Si Drive no está configurado o falla,
+  los guarda en el servidor (con aviso si falló) y los pasa a Drive con **Pasar a Drive ahora** o al abrir el dashboard
+  (como mucho cada 6 horas, hasta 10 por vez). El ZIP de un curso descarga los PDF de Drive y eliminar un programa
+  borra su archivo de Drive si ningún otro lo usa. El estado de Drive (y el último error) se ve en el dashboard.
+- `backend/autorizar_drive.php`: autoriza a la cuenta de la escuela desde la línea de comandos (`php backend/autorizar_drive.php`).
+- Corrección: el ZIP de un curso generado por `api.php` tenía mal el encabezado de cada archivo y no se podía abrir.
+- Dashboard: distingue "Drive no configurado" de "Drive no disponible" y deja reintentar el paso a Drive.
+- Pruebas: `tests/php_drive.test.js` levanta `api.php` con PHP y un Google Drive simulado (subida, carpetas, permiso
+  público, renovación del permiso, caída de Drive, paso a Drive, ZIP y borrado). Se saltean si no hay PHP.
 
 ### 12/11/2026 — Sólo se aclara cuando el programa es libre
 

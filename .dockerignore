@@ -2,3 +2,5 @@
 **/node_modules
 campus/includes/config.php
 progmesas/.env
+progmesas/backend/oauth.json
+progmesas/backend/token.json

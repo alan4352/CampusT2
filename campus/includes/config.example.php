@@ -63,3 +63,9 @@ define('ARCHIVO_CORREOS',  __DIR__ . '/../data/correos_simulados.txt'); // Corre
 define('PROGMESAS_URL', 'http://' . preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? 'localhost') . ':3000');
 define('PROGMESAS_SECRETO', 'CAMBIAR-por-una-clave-larga-y-secreta'); // php -r "echo bin2hex(random_bytes(32));"
 define('PROGMESAS_HORAS', 8);
+
+/* Google Drive de ProgMesas: los PDF se guardan en Drive, en carpetas Año / Curso / Materia.
+   Hace falta progmesas/backend/oauth.json (la app de Google) y autorizar una vez, desde la carpeta
+   progmesas:  php backend/autorizar_drive.php  (guarda backend/token.json).
+   Opcional: otra carpeta raíz de Drive (su id está en la dirección de la carpeta). */
+// define('PROGMESAS_DRIVE_CARPETA_RAIZ', 'id-de-la-carpeta');

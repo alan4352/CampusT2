@@ -97,6 +97,10 @@ ve las materias y docentes de sus cursos. El módulo de asistencias (próxima et
 5. ProgMesas funciona con PHP (`progmesas/api.php`). Si además se inicia su servidor Node (`progmesas/iniciar.bat`),
    el campus lo usa automáticamente. Para Node hace falta `progmesas/.env` con `EXTERNO_JWT_SECRET` igual a
    `PROGMESAS_SECRETO` (ver `progmesas/.env.example`).
+6. **Google Drive de ProgMesas:** los PDF de los programas se guardan en el Drive de la escuela. Copiar a
+   `progmesas/backend/` el `oauth.json` de la app de Google y, desde la carpeta `progmesas`, autorizar una vez con la
+   cuenta de la escuela: `php backend/autorizar_drive.php` (guarda `progmesas/backend/token.json`, que no se sube al
+   repositorio). Sin esto ProgMesas funciona igual, pero guarda los PDF en el servidor y el dashboard lo avisa.
 
 `config.php`, `progmesas/.env`, los datos de `campus/data/` (usuarios y correos del modo prueba), la base
 `progmesas/backend/database.sqlite` y los PDF de `progmesas/backend/uploads/` no se suben al repositorio: tienen
@@ -153,6 +157,7 @@ simulados) se borra cada vez que el servicio se reinicia, y el servicio se duerm
    | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS` | Los datos de Aiven |
    | `DB_SSL_CA` | El texto completo del certificado de Aiven (opcional: sin él la conexión va cifrada pero sin verificar) |
    | `CLAVE_REGISTRO_PROFESOR` | La clave que piden los profesores para registrarse |
+   | `GOOGLE_OAUTH_JSON`, `GOOGLE_TOKEN_JSON` | Opcional: contenido de `oauth.json` y `token.json` para que ProgMesas guarde los PDF en Google Drive (así no se pierden al reiniciar) |
 
    `PROGMESAS_SECRETO` la genera Render sola; `DB_SSL` y `MODO_PRUEBA` ya vienen en `true`.
 3. Al arrancar, el contenedor crea las tablas `alumnos` y `profesores` (`docker/crear_tablas.php`); las de

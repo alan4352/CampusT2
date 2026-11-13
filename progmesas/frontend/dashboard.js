@@ -63,16 +63,18 @@ function renderEstadoSistema() {
     const avisos = [];
     const drive = datos.estado?.drive;
     if (drive && !drive.disponible) {
-        avisos.push(`<b>Google Drive no está disponible:</b> ${esc(drive.error || 'sin conexión')}. ` +
+        const titulo = drive.configurado === false ? 'Google Drive no está configurado' : 'Google Drive no está disponible';
+        avisos.push(`<b>${titulo}:</b> ${esc(drive.error || 'sin conexión')}. ` +
             'Los programas nuevos se guardan en el servidor.');
     }
     const locales = datos.estado?.locales || 0;
     if (locales > 0) {
-        const boton = esAsesora && drive?.disponible !== false
+        // Con Drive configurado se puede reintentar aunque el último intento haya fallado
+        const boton = esAsesora && (drive?.configurado ?? drive?.disponible) !== false
             ? ` <button type="button" class="btn-secondary-auth btn-chico" data-accion="pasar-drive">${icono('nube')}Pasar a Drive ahora</button>`
             : '';
         avisos.push(`Hay <b>${locales}</b> archivo(s) de programas guardados en el servidor y no en Google Drive. ` +
-            `Se pasan solos a Drive cuando está disponible (al arrancar y cada 6 horas).${boton}`);
+            `Se pasan solos a Drive cuando está disponible (como mucho cada 6 horas).${boton}`);
     }
     const asig = datos.estado?.asignaciones;
     if (asig?.error === 'falta') {

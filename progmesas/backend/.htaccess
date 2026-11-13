@@ -4,3 +4,10 @@
         Require all denied
     </IfModule>
 </FilesMatch>
+
+# Código PHP interno: sólo lo usa api.php o se ejecuta en la línea de comandos
+<FilesMatch "^(drive|autorizar_drive)\.php$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>

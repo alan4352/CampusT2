@@ -368,15 +368,27 @@ vinculación automática y rechazo de tokens con otra firma, vencidos, sin firma
 ## 5. Google Drive
 
 Los PDF se guardan en Google Drive, en carpetas Año / Curso / Materia. Si Drive no está disponible, se guardan en
-`backend/uploads` y el dashboard lo avisa. Cuando Drive vuelve, esos PDF **pasan solos a Drive** (al arrancar el servidor y
-cada 6 horas) y se borran del servidor; la asesora también puede hacerlo con **Pasar a Drive ahora**.
+`backend/uploads` y el dashboard lo avisa. Cuando Drive vuelve, esos PDF **pasan solos a Drive** (con Node, al arrancar el
+servidor y cada 6 horas; dentro del campus, al abrir el dashboard, como mucho cada 6 horas) y se borran del servidor; la
+asesora también puede hacerlo con **Pasar a Drive ahora**.
 
 ### Autorizar o renovar el permiso
+
+Con el servidor Node:
 
 ```
 cd backend
 node scripts/autorizar_drive.js
 ```
+
+Dentro del campus (versión PHP), desde la carpeta `progmesas`:
+
+```
+php backend/autorizar_drive.php
+```
+
+Los dos usan el mismo `backend/oauth.json` y guardan el mismo `backend/token.json`. En Linux, el usuario del servidor web
+(`www-data`) tiene que poder leer y escribir `backend/token.json`.
 
 Abrí el enlace que aparece, iniciá sesión con la cuenta de la escuela, aceptá y pegá la dirección a la que te redirige.
 Se guarda `backend/token.json`; después reiniciá el servidor.

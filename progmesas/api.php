@@ -13,6 +13,7 @@
 if (is_file(__DIR__ . '/../campus/includes/config.php')) {
     require_once __DIR__ . '/../campus/includes/config.php';
 }
+require_once __DIR__ . '/backend/drive.php';
 const MAX_PDF_MB = 10;
 
 date_default_timezone_set('America/Argentina/Buenos_Aires');
@@ -489,6 +490,22 @@ function obtenerFechaLimite(int $anio): ?string {
     return $val !== false && $val !== '' ? (string)$val : null;
 }
 
+function ajusteLeer(string $clave): ?string {
+    $stmt = db()->prepare('SELECT valor FROM ajustes WHERE clave = ?');
+    $stmt->execute([$clave]);
+    $val = $stmt->fetchColumn();
+    return $val !== false ? (string)$val : null;
+}
+
+function ajusteGuardar(string $clave, ?string $valor): void {
+    if ($valor === null) {
+        db()->prepare('DELETE FROM ajustes WHERE clave = ?')->execute([$clave]);
+        return;
+    }
+    db()->prepare('INSERT INTO ajustes (clave, valor) VALUES (?, ?) ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor')
+        ->execute([$clave, $valor]);
+}
+
 function guardarFechaLimite(int $anio, $fecha): ?string {
     $clave = "fecha_limite_$anio";
     if ($fecha === null || $fecha === '') {
@@ -670,6 +687,168 @@ function vincularProgramasViejos(): void {
     }
 }
 
+// ================= ALMACENAMIENTO DE LOS PDF (GOOGLE DRIVE O SERVIDOR) =================
+// Los PDF van a Google Drive (Año / Curso / Materia). Si Drive no está configurado o falla, se guardan en
+// backend/uploads y pasan a Drive después (botón "Pasar a Drive ahora" o al abrir el dashboard).
+
+/** Estado de Drive para el dashboard. El último error se guarda en ajustes (PHP no queda corriendo entre pedidos). */
+function estadoDrive(): array {
+    $falta = driveFaltaConfigurar();
+    if ($falta) return ['disponible' => false, 'configurado' => false, 'error' => $falta, 'modo' => 'local'];
+    $error = ajusteLeer('drive_error');
+    return ['disponible' => $error === null, 'configurado' => true, 'error' => $error, 'modo' => 'drive'];
+}
+
+function marcarDrive(?string $error): void {
+    try {
+        ajusteGuardar('drive_error', $error);
+    } catch (Throwable $e) {
+        // no interrumpe la operación principal
+    }
+}
+
+function rutaUpload(string $archivoRef): string {
+    // basename evita leer o borrar algo fuera de la carpeta uploads
+    return __DIR__ . '/backend/uploads/' . basename($archivoRef);
+}
+
+/** Guarda el PDF en Drive o, si no se puede, en el servidor. Devuelve almacenamiento, archivo_ref, file_url y aviso. */
+function guardarPdf(string $contenido, array $asignacion, int $anio, string $tipo, string $profesor): array {
+    $motivo = driveFaltaConfigurar();
+    if ($motivo === null) {
+        try {
+            $id = driveSubir($contenido, $anio, $asignacion['curso'], $asignacion['materia'], $profesor, $tipo);
+            marcarDrive(null);
+            return ['almacenamiento' => 'drive', 'archivo_ref' => $id, 'file_url' => driveUrlVista($id), 'aviso' => null];
+        } catch (Throwable $e) {
+            $motivo = $e->getMessage();
+            marcarDrive($motivo);
+            $aviso = "El programa se guardó en el servidor porque Google Drive no está disponible ($motivo).";
+        }
+    }
+
+    $dir = __DIR__ . '/backend/uploads';
+    if (!is_dir($dir)) @mkdir($dir, 0775, true);
+    $slug = substr(preg_replace('/\s+/', '_', claveTexto("{$asignacion['curso']} {$asignacion['materia']} $tipo")), 0, 60) ?: 'programa';
+    $nombre = round(microtime(true) * 1000) . '_' . $slug . '.pdf';
+    if (file_put_contents(rutaUpload($nombre), $contenido) === false) {
+        responderJson(['error' => 'No se pudo guardar el archivo en el servidor'], 500);
+    }
+    return ['almacenamiento' => 'local', 'archivo_ref' => $nombre, 'file_url' => '/uploads/' . rawurlencode($nombre), 'aviso' => $aviso ?? null];
+}
+
+/** Cuántos programas o versiones usan un archivo (un programa reutilizado comparte el archivo). */
+function usosDeArchivo(string $almacenamiento, string $archivoRef): int {
+    $stmt = db()->prepare("
+        SELECT (SELECT COUNT(*) FROM programas WHERE almacenamiento = :a AND archivo_ref = :r)
+             + (SELECT COUNT(*) FROM programas_versiones WHERE almacenamiento = :a AND archivo_ref = :r)
+    ");
+    $stmt->execute([':a' => $almacenamiento, ':r' => $archivoRef]);
+    return (int)$stmt->fetchColumn();
+}
+
+/** Borra el archivo de un programa o versión, sólo si ningún otro programa o versión lo usa. */
+function eliminarPdfSiNoSeUsa(array $registro): void {
+    $alm = (string)($registro['almacenamiento'] ?? '');
+    $ref = (string)($registro['archivo_ref'] ?? '');
+    if ($ref === '' || usosDeArchivo($alm, $ref) > 0) return;
+    if ($alm === 'drive') {
+        try {
+            driveEliminar($ref);
+        } catch (Throwable $e) {
+            error_log("[ProgMesas] No se pudo borrar de Drive el archivo $ref: " . $e->getMessage());
+        }
+    } elseif ($alm === 'local' && is_file(rutaUpload($ref))) {
+        @unlink(rutaUpload($ref));
+    }
+}
+
+/** Contenido del PDF de un programa (del servidor o de Drive). */
+function leerPdf(array $p): string {
+    if (($p['almacenamiento'] ?? '') === 'drive' && !empty($p['archivo_ref'])) return driveDescargar($p['archivo_ref']);
+    $ref = $p['archivo_ref'] ?? '';
+    if ($ref === '' && strpos((string)$p['file_url'], '/uploads/') === 0) {
+        $ref = rawurldecode(substr($p['file_url'], strlen('/uploads/')));
+    }
+    if ($ref !== '' && is_file(rutaUpload($ref))) return (string)file_get_contents(rutaUpload($ref));
+    throw new RuntimeException('No se encontró el archivo en el servidor');
+}
+
+/** Archivos guardados en el servidor (y no en Drive), con los datos para ubicarlos en Drive. */
+function archivosLocales(): array {
+    return db()->query("
+        SELECT archivo_ref, MIN(year) AS year, MIN(curso) AS curso, MIN(materia) AS materia, MIN(profesor) AS profesor, MAX(tipo) AS tipo FROM (
+            SELECT archivo_ref, year, curso, materia, profesor, tipo FROM programas WHERE almacenamiento = 'local' AND archivo_ref <> ''
+            UNION ALL
+            SELECT v.archivo_ref, p.year, p.curso, p.materia, v.profesor, p.tipo
+            FROM programas_versiones v JOIN programas p ON p.id = v.programa_id
+            WHERE v.almacenamiento = 'local' AND v.archivo_ref <> ''
+        ) GROUP BY archivo_ref
+    ")->fetchAll();
+}
+
+/**
+ * Sube a Drive los PDF que quedaron en el servidor y actualiza los programas y versiones que los usan.
+ * $limite: cuántos pasar en este pedido (para no superar el tiempo máximo de PHP). Devuelve pasados, pendientes y errores.
+ */
+function pasarADrive(?int $limite = null): array {
+    $locales = archivosLocales();
+    $resultado = ['pasados' => 0, 'pendientes' => count($locales), 'errores' => []];
+    if (!$locales) return $resultado;
+    $falta = driveFaltaConfigurar();
+    if ($falta) {
+        $resultado['errores'][] = $falta;
+        return $resultado;
+    }
+    @set_time_limit(300);
+    foreach ($locales as $i => $a) {
+        if ($limite !== null && $i >= $limite) break;
+        try {
+            $contenido = @file_get_contents(rutaUpload($a['archivo_ref']));
+            if ($contenido === false) throw new RuntimeException('no se encontró en el servidor');
+            $id = driveSubir($contenido, (int)$a['year'], (string)$a['curso'], (string)$a['materia'], (string)$a['profesor'], (string)$a['tipo']);
+            $params = [':id' => $id, ':url' => driveUrlVista($id), ':r' => $a['archivo_ref']];
+            foreach (['programas', 'programas_versiones'] as $tabla) {
+                db()->prepare("UPDATE $tabla SET almacenamiento = 'drive', archivo_ref = :id, file_url = :url WHERE almacenamiento = 'local' AND archivo_ref = :r")
+                    ->execute($params);
+            }
+            @unlink(rutaUpload($a['archivo_ref']));
+            $resultado['pasados']++;
+            $resultado['pendientes']--;
+            marcarDrive(null);
+        } catch (Throwable $e) {
+            $resultado['errores'][] = "{$a['archivo_ref']}: " . $e->getMessage();
+            if ($e instanceof DriveError) {
+                marcarDrive($e->getMessage());
+                break; // Drive no responde: no tiene sentido seguir probando con los demás
+            }
+        }
+    }
+    return $resultado;
+}
+
+/**
+ * Al abrir el dashboard (como mucho cada 6 horas) se intenta pasar a Drive lo que quedó en el servidor,
+ * y si Drive había fallado se comprueba si volvió. Reemplaza a la tarea periódica de la versión Node.
+ */
+function sincronizacionAutomatica(): void {
+    if (driveFaltaConfigurar()) return;
+    $ultima = (int)(ajusteLeer('drive_sincronizado_at') ?? 0);
+    if (time() - $ultima < 6 * 3600) return;
+    ajusteGuardar('drive_sincronizado_at', (string)time());
+    $r = pasarADrive(10);
+    if ($r['pasados']) {
+        registrarAccion(null, 'drive.sincronizado', ['pasados' => $r['pasados'], 'pendientes' => $r['pendientes']]);
+    } elseif (!archivosLocales() && ajusteLeer('drive_error') !== null) {
+        try {
+            driveJson('GET', '/drive/v3/files/' . rawurlencode(driveRaiz()), ['fields' => 'id']);
+            marcarDrive(null);
+        } catch (Throwable $e) {
+            marcarDrive($e->getMessage());
+        }
+    }
+}
+
 function crearZipBuffer(array $archivos): string {
     $locales = '';
     $centrales = '';
@@ -690,7 +869,7 @@ function crearZipBuffer(array $archivos): string {
         $tam = strlen($datos);
         $largoNombre = strlen($nombre);
 
-        $local = pack('VvvvvVVVvv', 0x04034b50, 20, 0x0800, 0, $horaDos, $diaDos, $crc, $tam, $tam, $largoNombre, 0);
+        $local = pack('VvvvvvVVVvv', 0x04034b50, 20, 0x0800, 0, $horaDos, $diaDos, $crc, $tam, $tam, $largoNombre, 0);
         $locales .= $local . $nombre . $datos;
 
         $central = pack('VvvvvvvVVVvvvvvVV', 0x02014b50, 20, 20, 0x0800, 0, $horaDos, $diaDos, $crc, $tam, $tam, $largoNombre, 0, 0, 0, 0, 0, $offset);
@@ -1064,13 +1243,11 @@ if ($metodo === 'POST' && $ruta === '/programas/subir') {
     $titulo = tituloAutomatico($asignacion, $anio, $tipo);
     $profesor = $esAsesora ? (implode(' / ', $asignacion['docentes']) ?: $u['nombre']) : $docente;
 
-    $dirUploads = __DIR__ . '/backend/uploads';
-    if (!is_dir($dirUploads)) @mkdir($dirUploads, 0775, true);
-    $slug = substr(preg_replace('/\s+/', '_', claveTexto("{$asignacion['curso']} {$asignacion['materia']} $tipo")), 0, 60) ?: 'programa';
-    $nombreArchivo = round(microtime(true) * 1000) . '_' . $slug . '.pdf';
-    file_put_contents($dirUploads . '/' . $nombreArchivo, $contenido);
+    $archivo = guardarPdf($contenido, $asignacion, $anio, $tipo, (string)$profesor);
+    $nombreArchivo = $archivo['archivo_ref'];
 
-    $fileUrl = '/uploads/' . rawurlencode($nombreArchivo);
+    $fileUrl = $archivo['file_url'];
+    $almacenamiento = $archivo['almacenamiento'];
     $fechaHoy = date('j/n/Y');
     $ahoraIso = gmdate('Y-m-d\TH:i:s.v\Z');
 
@@ -1100,16 +1277,16 @@ if ($metodo === 'POST' && $ruta === '/programas/subir') {
         ]);
 
         $up = db()->prepare("
-            UPDATE programas SET title = ?, materia = ?, curso = ?, profesor = ?, file_url = ?, fecha = ?, uploaded_by = ?, almacenamiento = 'local', archivo_ref = ?, created_at = ?
+            UPDATE programas SET title = ?, materia = ?, curso = ?, profesor = ?, file_url = ?, fecha = ?, uploaded_by = ?, almacenamiento = ?, archivo_ref = ?, created_at = ?
             WHERE id = ?
         ");
-        $up->execute([$titulo, $asignacion['materia'], $asignacion['curso'], $profesor, $fileUrl, $fechaHoy, $u['id'], $nombreArchivo, $ahoraIso, $id]);
+        $up->execute([$titulo, $asignacion['materia'], $asignacion['curso'], $profesor, $fileUrl, $fechaHoy, $u['id'], $almacenamiento, $nombreArchivo, $ahoraIso, $id]);
     } else {
         $ins = db()->prepare("
             INSERT INTO programas (title, materia, year, curso, profesor, file_url, fecha, uploaded_by, asignacion_id, almacenamiento, archivo_ref, created_at, tipo)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'local', ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $ins->execute([$titulo, $asignacion['materia'], $anio, $asignacion['curso'], $profesor, $fileUrl, $fechaHoy, $u['id'], $asignacion['id'], $nombreArchivo, $ahoraIso, $tipo]);
+        $ins->execute([$titulo, $asignacion['materia'], $anio, $asignacion['curso'], $profesor, $fileUrl, $fechaHoy, $u['id'], $asignacion['id'], $almacenamiento, $nombreArchivo, $ahoraIso, $tipo]);
         $id = (int)db()->lastInsertId();
     }
 
@@ -1120,15 +1297,15 @@ if ($metodo === 'POST' && $ruta === '/programas/subir') {
         'anio' => $anio,
         'tipo' => $tipo,
         'titulo' => $titulo,
-        'almacenamiento' => 'local'
+        'almacenamiento' => $almacenamiento
     ]);
 
     responderJson([
         'ok' => true,
         'id' => $id,
         'reemplazado' => (bool)$anterior,
-        'almacenamiento' => 'local',
-        'aviso' => null
+        'almacenamiento' => $almacenamiento,
+        'aviso' => $archivo['aviso']
     ]);
 }
 
@@ -1213,19 +1390,9 @@ if ($metodo === 'DELETE' && preg_match('#^/programas/(\d+)$#', $ruta, $m)) {
     db()->prepare('DELETE FROM programas_versiones WHERE programa_id = ?')->execute([$id]);
     db()->prepare('DELETE FROM programas WHERE id = ?')->execute([$id]);
 
-    $todosBorrados = array_merge([$programa], $versiones);
-    $stmtUsos = db()->prepare("
-        SELECT (SELECT COUNT(*) FROM programas WHERE almacenamiento = :a AND archivo_ref = :r)
-             + (SELECT COUNT(*) FROM programas_versiones WHERE almacenamiento = :a AND archivo_ref = :r)
-    ");
-    foreach ($todosBorrados as $reg) {
-        if (($reg['almacenamiento'] ?? '') === 'local' && !empty($reg['archivo_ref'])) {
-            $stmtUsos->execute([':a' => 'local', ':r' => $reg['archivo_ref']]);
-            if ((int)$stmtUsos->fetchColumn() === 0) {
-                $rutaPdf = __DIR__ . '/backend/uploads/' . basename($reg['archivo_ref']);
-                if (is_file($rutaPdf)) @unlink($rutaPdf);
-            }
-        }
+    // Se borran los archivos del programa y de sus versiones (en Drive o en el servidor), salvo los que otro programa reutiliza
+    foreach (array_merge([$programa], $versiones) as $reg) {
+        eliminarPdfSiNoSeUsa($reg);
     }
 
     registrarAccion($u, 'programa.eliminado', [
@@ -1318,7 +1485,8 @@ if ($metodo === 'GET' && $ruta === '/cobertura') {
         }
     }
 
-    $localesCount = (int)db()->query("SELECT COUNT(DISTINCT archivo_ref) FROM programas WHERE almacenamiento = 'local' AND archivo_ref <> ''")->fetchColumn();
+    sincronizacionAutomatica();
+    $localesCount = count(archivosLocales());
     $infoAsig = cargarAsignaciones();
 
     responderJson([
@@ -1327,7 +1495,7 @@ if ($metodo === 'GET' && $ruta === '/cobertura') {
         'sinAsignacion' => $sinAsignacion,
         'fechaLimite' => obtenerFechaLimite($anio),
         'estado' => [
-            'drive' => ['disponible' => false, 'error' => null, 'modo' => 'local'],
+            'drive' => estadoDrive(),
             'asignaciones' => ['cantidad' => count($infoAsig['asignaciones']), 'error' => $infoAsig['error']],
             'locales' => $localesCount
         ]
@@ -1381,8 +1549,11 @@ if ($metodo === 'GET' && $ruta === '/registro') {
 
 // POST /drive/sincronizar
 if ($metodo === 'POST' && $ruta === '/drive/sincronizar') {
-    exigirRol($usuario, ['advisor']);
-    responderJson(['ok' => true, 'pasados' => 0, 'pendientes' => 0, 'errores' => []]);
+    $u = exigirRol($usuario, ['advisor']);
+    ajusteGuardar('drive_sincronizado_at', (string)time());
+    $r = pasarADrive(50);
+    if ($r['pasados']) registrarAccion($u, 'drive.sincronizado', ['pasados' => $r['pasados'], 'pendientes' => $r['pendientes']]);
+    responderJson(array_merge(['ok' => empty($r['errores'])], $r));
 }
 
 // GET /cursos/zip
@@ -1419,28 +1590,21 @@ if ($metodo === 'GET' && $ruta === '/cursos/zip') {
         }
         $usados[claveTexto($nombre)] = true;
 
-        $rutaLocal = '';
-        if (!empty($p['archivo_ref']) && ($p['almacenamiento'] === 'local' || strpos($p['file_url'], '/uploads/') === 0)) {
-            $rutaLocal = __DIR__ . '/backend/uploads/' . basename($p['archivo_ref']);
-        } elseif (strpos($p['file_url'], '/uploads/') === 0) {
-            $rutaLocal = __DIR__ . '/backend/uploads/' . basename(rawurldecode(substr($p['file_url'], strlen('/uploads/'))));
-        }
-
-        if ($rutaLocal !== '' && is_file($rutaLocal)) {
+        try {
             $archivos[] = [
                 'nombre' => "$nombre.pdf",
-                'datos' => (string)file_get_contents($rutaLocal),
+                'datos' => leerPdf($p),
                 'timestamp' => !empty($p['created_at']) ? strtotime($p['created_at']) : time()
             ];
-        } else {
-            $faltantes[] = "{$p['year']} - {$p['materia']}" . ($p['tipo'] === 'libre' ? ' (libre)' : '') . ": El archivo está alojado externamente o no se encontró en el servidor local.";
+        } catch (Throwable $e) {
+            $faltantes[] = "{$p['year']} - {$p['materia']}" . ($p['tipo'] === 'libre' ? ' (libre)' : '') . ': ' . $e->getMessage();
         }
     }
 
     if (!empty($faltantes)) {
         $archivos[] = [
             'nombre' => 'NO INCLUIDOS.txt',
-            'datos' => "Estos programas no se pudieron incluir en el archivo local:\r\n\r\n" . implode("\r\n", $faltantes) . "\r\n",
+            'datos' => "Estos programas no se pudieron descargar:\r\n\r\n" . implode("\r\n", $faltantes) . "\r\n",
             'timestamp' => time()
         ];
     }
